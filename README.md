@@ -27,17 +27,3 @@ npm run dev
 
 The Golang backend automatically deploys to Google Cloud Run on push to main.
 
-### Setup Required:
-
-1. Create GCP project
-2. Enable Cloud Run API
-3. Create service account with Cloud Run Admin role
-4. Add these GitHub secrets:
-   - `GCP_PROJECT_ID` - Your GCP project ID
-   - `GCP_SA_KEY` - Service account JSON key
-
-### Manual Deploy:
-```bash
-cd apps/backend
-gcloud run deploy simple-relay-backend --source .
-```

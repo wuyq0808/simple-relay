@@ -41,14 +41,21 @@ func main() {
 		log.Fatal("Failed to parse target URL:", err)
 	}
 
+	// Get API key from environment variable
+	apiKey := os.Getenv("API_SECRET_KEY")
+	if apiKey == "" {
+		log.Fatal("API_SECRET_KEY environment variable is required")
+	}
+	
 	// Create reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	
-	// Set target URL for all requests
+	// Set target URL for all requests and add API key
 	proxy.Director = func(req *http.Request) {
 		req.URL.Scheme = target.Scheme
 		req.URL.Host = target.Host
 		req.Host = target.Host
+		req.Header.Set("Authorization", "Bearer "+apiKey)
 	}
 
 	r := mux.NewRouter()
@@ -66,6 +73,7 @@ func main() {
 	log.Printf("IP whitelist: %v", ipWhitelist)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
+
 
 func ipFilterMiddleware(whitelist []string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +125,7 @@ func getClientIP(r *http.Request) string {
 	// Fallback to RemoteAddr (direct connection)
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+			return r.RemoteAddr
 	}
 	
 	return ip
