@@ -48,6 +48,10 @@ jobs:
         service: ${{ env.SERVICE }}
         region: ${{ env.REGION }}
         image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}/${{ env.SERVICE }}:${{ github.sha }}
+        env_vars: |
+          API_BASE_URL=${{ secrets.API_BASE_URL }}
+          IP_WHITELIST=${{ secrets.IP_WHITELIST }}
+          DEPLOYMENT_ENV=production
 
     - name: Show Output
       run: echo ${{ steps.deploy.outputs.url }}
