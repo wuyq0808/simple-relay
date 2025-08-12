@@ -51,6 +51,7 @@ jobs:
         env_vars: |
           API_BASE_URL=${{ secrets.API_BASE_URL }}
           IP_WHITELIST=${{ secrets.IP_WHITELIST }}
+          API_SECRET_KEY=${{ secrets.API_SECRET_KEY }}
           DEPLOYMENT_ENV=production
 
     - name: Show Output
