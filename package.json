@@ -1,0 +1,18 @@
+{
+  "name": "@simple-relay/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {},
+  "private": true,
+  "dependencies": {},
+  "devDependencies": {
+    "@nx/playwright": "21.3.11",
+    "@nx/react": "21.3.11",
+    "@nx/vite": "21.3.11",
+    "@nx/workspace": "21.3.11",
+    "nx": "21.3.11"
+  },
+  "workspaces": [
+    "apps/*"
+  ]
+}
