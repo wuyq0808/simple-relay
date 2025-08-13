@@ -12,7 +12,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func main() {
+type Config struct {
+	Target                    *url.URL
+	APIKey                   string
+	AllowedClientSecretKey   string
+}
+
+func loadConfig() *Config {
 	// Load .env file for local development
 	godotenv.Load()
 	
@@ -21,7 +27,6 @@ func main() {
 	if apiBaseURL == "" {
 		log.Fatal("API_BASE_URL environment variable is required")
 	}
-	
 	
 	// Parse target URL
 	target, err := url.Parse(apiBaseURL)
@@ -40,30 +45,40 @@ func main() {
 	if allowedClientSecretKey == "" {
 		log.Fatal("ALLOWED_CLIENT_SECRET_KEY environment variable is required")
 	}
+
+	return &Config{
+		Target:                   target,
+		APIKey:                   apiKey,
+		AllowedClientSecretKey:   allowedClientSecretKey,
+	}
+}
+
+func main() {
+	config := loadConfig()
 	
 	// Create reverse proxy
-	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy := httputil.NewSingleHostReverseProxy(config.Target)
 	
 	// Set target URL for all requests and add API key
 	proxy.Director = func(req *http.Request) {
-		req.URL.Scheme = target.Scheme
-		req.URL.Host = target.Host
-		req.Host = target.Host
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.URL.Scheme = config.Target.Scheme
+		req.URL.Host = config.Target.Host
+		req.Host = config.Target.Host
+		req.Header.Set("Authorization", "Bearer "+config.APIKey)
 	}
 
 	r := mux.NewRouter()
 	
 	// Proxy all requests with API key validation
-	r.PathPrefix("/").HandlerFunc(clientApiKeyValidationMiddleware(allowedClientSecretKey, proxy.ServeHTTP))
+	r.PathPrefix("/").HandlerFunc(clientApiKeyValidationMiddleware(config.AllowedClientSecretKey, proxy.ServeHTTP))
 	
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	
-	log.Printf("TCP Proxy server starting on port %s", port)
-	log.Printf("Proxying to %s", target.String())
+	log.Printf("Server starting on port %s", port)
+	log.Printf("Proxying to %s", config.Target.String())
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
