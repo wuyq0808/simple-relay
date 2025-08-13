@@ -50,8 +50,8 @@ jobs:
         image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}/${{ env.SERVICE }}:${{ github.sha }}
         env_vars: |
           API_BASE_URL=${{ secrets.API_BASE_URL }}
-          IP_WHITELIST=${{ vars.IP_WHITELIST }}
           API_SECRET_KEY=${{ secrets.API_SECRET_KEY }}
+          ALLOWED_CLIENT_SECRET_KEY=${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
           DEPLOYMENT_ENV=production
 
     - name: Show Output
