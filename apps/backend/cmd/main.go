@@ -65,6 +65,7 @@ func main() {
 		req.URL.Host = config.Target.Host
 		req.Host = config.Target.Host
 		req.Header.Set("Authorization", "Bearer "+config.APIKey)
+		req.Header["X-Forwarded-For"] = nil
 	}
 
 	r := mux.NewRouter()
