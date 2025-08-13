@@ -52,6 +52,7 @@ jobs:
           API_BASE_URL=${{ secrets.API_BASE_URL }}
           API_SECRET_KEY=${{ secrets.API_SECRET_KEY }}
           ALLOWED_CLIENT_SECRET_KEY=${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
+          OFFICIAL_BASE_URL=${{ secrets.OFFICIAL_BASE_URL }}
           DEPLOYMENT_ENV=production
 
     - name: Show Output

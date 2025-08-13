@@ -16,6 +16,7 @@ type Config struct {
 	Target                    *url.URL
 	APIKey                   string
 	AllowedClientSecretKey   string
+	OfficialTarget           *url.URL
 }
 
 func loadConfig() *Config {
@@ -46,10 +47,22 @@ func loadConfig() *Config {
 		log.Fatal("ALLOWED_CLIENT_SECRET_KEY environment variable is required")
 	}
 
+	// Get official base URL from environment variable (optional)
+	var officialTarget *url.URL
+	officialBaseURL := os.Getenv("OFFICIAL_BASE_URL")
+	if officialBaseURL != "" {
+		var err error
+		officialTarget, err = url.Parse(officialBaseURL)
+		if err != nil {
+			log.Fatal("Failed to parse official target URL:", err)
+		}
+	}
+
 	return &Config{
 		Target:                   target,
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
+		OfficialTarget:           officialTarget,
 	}
 }
 
@@ -61,10 +74,25 @@ func main() {
 	
 	// Set target URL for all requests and add API key
 	proxy.Director = func(req *http.Request) {
-		req.URL.Scheme = config.Target.Scheme
-		req.URL.Host = config.Target.Host
-		req.Host = config.Target.Host
-		req.Header.Set("Authorization", "Bearer "+config.APIKey)
+		// Check for X-Official-Key header
+		officialKey := req.Header.Get("X-Official-Key")
+		
+		if officialKey != "" && config.OfficialTarget != nil {
+			// Use official target URL and X-Official-Key as bearer
+			log.Printf("Using official path: %s %s -> %s (with X-Official-Key)", req.Method, req.URL.Path, config.OfficialTarget.String())
+			req.URL.Scheme = config.OfficialTarget.Scheme
+			req.URL.Host = config.OfficialTarget.Host
+			req.Host = config.OfficialTarget.Host
+			req.Header.Set("Authorization", "Bearer "+officialKey)
+		} else {
+			// Use default target URL and API key
+			log.Printf("Using default path: %s %s -> %s", req.Method, req.URL.Path, config.Target.String())
+			req.URL.Scheme = config.Target.Scheme
+			req.URL.Host = config.Target.Host
+			req.Host = config.Target.Host
+			req.Header.Set("Authorization", "Bearer "+config.APIKey)
+		}
+		
 		req.Header["X-Forwarded-For"] = nil
 	}
 
