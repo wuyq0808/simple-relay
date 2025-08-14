@@ -12,6 +12,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const oauthBetaFlag = "oauth-2025-04-20"
+
 type Config struct {
 	Target                    *url.URL
 	APIKey                   string
@@ -84,6 +86,12 @@ func main() {
 			req.URL.Host = config.OfficialTarget.Host
 			req.Host = config.OfficialTarget.Host
 			req.Header.Set("Authorization", "Bearer "+officialKey)
+			
+			// Ensure host header matches target
+			req.Header.Set("Host", config.OfficialTarget.Host)
+			
+			// Add OAuth beta feature to anthropic-beta header if not already present
+			addOAuthBetaHeader(req)
 		} else {
 			// Use default target URL and API key
 			log.Printf("Using default path: %s %s -> %s", req.Method, req.URL.Path, config.Target.String())
@@ -111,6 +119,17 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
+
+func addOAuthBetaHeader(req *http.Request) {
+	existingBeta := req.Header.Get("anthropic-beta")
+	if existingBeta != "" {
+		if !strings.Contains(existingBeta, oauthBetaFlag) {
+			req.Header.Set("anthropic-beta", oauthBetaFlag+","+existingBeta)
+		}
+	} else {
+		req.Header.Set("anthropic-beta", oauthBetaFlag)
+	}
+}
 
 func clientApiKeyValidationMiddleware(allowedClientSecretKey string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
