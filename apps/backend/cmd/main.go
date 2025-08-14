@@ -102,6 +102,7 @@ func main() {
 		}
 		
 		req.Header["X-Forwarded-For"] = nil
+		req.Header.Del("X-Official-Key")
 	}
 
 	r := mux.NewRouter()
