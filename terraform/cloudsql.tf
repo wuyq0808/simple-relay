@@ -18,7 +18,6 @@ resource "google_sql_database_instance" "mysql_instance" {
     backup_configuration {
       enabled                        = true
       start_time                    = "03:00"
-      point_in_time_recovery_enabled = true
       binary_log_enabled            = true
       backup_retention_settings {
         retained_backups = 7
@@ -31,7 +30,7 @@ resource "google_sql_database_instance" "mysql_instance" {
       # Security best practice: Disable public IP when possible
       ipv4_enabled    = !var.enable_private_ip
       private_network = var.enable_private_ip ? google_compute_network.private_network[0].id : null
-      require_ssl     = true  # Force SSL connections
+      ssl_mode        = "ENCRYPTED_ONLY"  # Force SSL connections
       
       # Only allow public access if not using private IP
       dynamic "authorized_networks" {
