@@ -81,6 +81,12 @@ variable "enable_private_ip" {
   default     = false
 }
 
+variable "image_tag" {
+  description = "Docker image tag"
+  type        = string
+  default     = "latest"
+}
+
 # Generate secure random passwords - NOT stored in variables
 resource "random_password" "db_password" {
   length  = 16

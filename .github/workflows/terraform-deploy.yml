@@ -15,6 +15,7 @@ on:
 env:
   TF_VERSION: '1.5.0'
   TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
 
 jobs:
   terraform-plan:
@@ -55,6 +56,11 @@ jobs:
       env:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
+        TF_VAR_image_tag: ${{ github.sha }}
+        TF_VAR_db_user: ${{ vars.DB_USER }}
+        TF_VAR_db_name: ${{ vars.DB_NAME }}
+        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
+        TF_VAR_db_instance_name: ${{ vars.DB_INSTANCE_NAME }}
       run: terraform plan -no-color
 
   terraform-deploy:
@@ -79,15 +85,19 @@ jobs:
     - name: Setup Google Cloud SDK
       uses: 'google-github-actions/setup-gcloud@v2'
 
-    - name: Build and Push Docker Image
+    - name: Docker Auth
+      id: docker-auth
+      uses: 'docker/login-action@v3'
+      with:
+        registry: ${{ env.REGION }}-docker.pkg.dev
+        username: _json_key
+        password: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Build and Push Container
       working-directory: ./apps/backend
-      run: |
-        # Configure Docker for GCR
-        gcloud auth configure-docker gcr.io
-        
-        # Build and push image
-        docker build -t "gcr.io/${{ secrets.GCP_PROJECT_ID }}/simple-relay:${{ github.sha }}" ./
-        docker push "gcr.io/${{ secrets.GCP_PROJECT_ID }}/simple-relay:${{ github.sha }}"
+      run: |-
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}"
 
     - name: Terraform Init
       working-directory: ./terraform
@@ -101,6 +111,11 @@ jobs:
       env:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
+        TF_VAR_image_tag: ${{ github.sha }}
+        TF_VAR_db_user: ${{ vars.DB_USER }}
+        TF_VAR_db_name: ${{ vars.DB_NAME }}
+        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
+        TF_VAR_db_instance_name: ${{ vars.DB_INSTANCE_NAME }}
       run: terraform apply -auto-approve -no-color
 
     - name: Populate Secrets

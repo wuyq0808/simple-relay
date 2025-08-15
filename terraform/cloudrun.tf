@@ -41,7 +41,7 @@ resource "google_cloud_run_v2_service" "simple_relay" {
     }
 
     containers {
-      image = "gcr.io/${var.project_id}/${var.service_name}"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/${var.service_name}:${var.image_tag}"
 
       # Non-sensitive environment variables
       env {
