@@ -1,0 +1,88 @@
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.1"
+    }
+  }
+  required_version = ">= 1.0"
+  
+  # Best practice: Use Cloud Storage backend for state
+  backend "gcs" {
+    # Configure via backend config file or environment variables
+    # bucket = "your-terraform-state-bucket"
+    # prefix = "simple-relay"
+  }
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+# Get current project information
+data "google_project" "project" {}
+
+# Variables
+variable "project_id" {
+  description = "The GCP project ID"
+  type        = string
+}
+
+variable "region" {
+  description = "The GCP region"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "service_name" {
+  description = "Name of the Cloud Run service"
+  type        = string
+  default     = "simple-relay"
+}
+
+variable "db_instance_name" {
+  description = "Name of the Cloud SQL instance"
+  type        = string
+  default     = "oauth-tokens-db"
+}
+
+variable "db_name" {
+  description = "Name of the database"
+  type        = string
+  default     = "oauth_db"
+}
+
+variable "db_user" {
+  description = "Database user"
+  type        = string
+  default     = "app-user"
+}
+
+variable "api_base_url" {
+  description = "API base URL"
+  type        = string
+  default     = "https://api.anthropic.com"
+}
+
+variable "official_base_url" {
+  description = "Official base URL"
+  type        = string
+  default     = "https://console.anthropic.com"
+}
+
+variable "enable_private_ip" {
+  description = "Enable private IP for Cloud SQL"
+  type        = bool
+  default     = false
+}
+
+# Generate secure random passwords - NOT stored in variables
+resource "random_password" "db_password" {
+  length  = 16
+  special = true
+}

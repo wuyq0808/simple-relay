@@ -1,0 +1,117 @@
+name: Deploy Infrastructure with Terraform
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:
+
+env:
+  TF_VERSION: '1.5.0'
+  TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+jobs:
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Google Auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Setup Google Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: |
+        terraform init \
+          -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+          -backend-config="prefix=simple-relay"
+
+    - name: Terraform Validate
+      working-directory: ./terraform
+      run: terraform validate
+
+    - name: Terraform Plan
+      working-directory: ./terraform
+      env:
+        TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
+        TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
+      run: terraform plan -no-color
+
+  terraform-deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Google Auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Setup Google Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Build and Push Docker Image
+      working-directory: ./apps/backend
+      run: |
+        # Configure Docker for GCR
+        gcloud auth configure-docker gcr.io
+        
+        # Build and push image
+        docker build -t "gcr.io/${{ secrets.GCP_PROJECT_ID }}/simple-relay:${{ github.sha }}" ./
+        docker push "gcr.io/${{ secrets.GCP_PROJECT_ID }}/simple-relay:${{ github.sha }}"
+
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: |
+        terraform init \
+          -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+          -backend-config="prefix=simple-relay"
+
+    - name: Terraform Apply
+      working-directory: ./terraform
+      env:
+        TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
+        TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
+      run: terraform apply -auto-approve -no-color
+
+    - name: Populate Secrets
+      run: |
+        # Populate API secret in Secret Manager
+        echo "${{ secrets.API_SECRET_KEY }}" | gcloud secrets versions add simple-relay-api-secret-key --data-file=-
+        
+        # Populate client secret in Secret Manager  
+        echo "${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}" | gcloud secrets versions add simple-relay-client-secret-key --data-file=-
+
+    - name: Get Service URL
+      working-directory: ./terraform
+      run: |
+        echo "Service deployed at: $(terraform output -raw service_url)"
