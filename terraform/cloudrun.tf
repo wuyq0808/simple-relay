@@ -118,13 +118,14 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         startup_cpu_boost = true
       }
 
-      # Security context
+      # Health checks
       startup_probe {
         initial_delay_seconds = 0
         timeout_seconds = 1
         period_seconds = 3
         failure_threshold = 1
-        tcp_socket {
+        http_get {
+          path = "/health"
           port = 8080
         }
       }
@@ -134,7 +135,8 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         timeout_seconds = 1
         period_seconds = 10
         failure_threshold = 3
-        tcp_socket {
+        http_get {
+          path = "/health"
           port = 8080
         }
       }
