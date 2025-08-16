@@ -19,11 +19,6 @@ type Config struct {
 	APIKey                   string
 	AllowedClientSecretKey   string
 	OfficialTarget           *url.URL
-	DatabaseConfig           DatabaseConfig
-}
-
-type DatabaseConfig struct {
-	ProjectID string
 }
 
 func loadConfig() *Config {
@@ -65,17 +60,11 @@ func loadConfig() *Config {
 		}
 	}
 
-	// Database configuration
-	dbConfig := DatabaseConfig{
-		ProjectID: os.Getenv("FIRESTORE_PROJECT_ID"),
-	}
-
 	return &Config{
 		Target:                   target,
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
 		OfficialTarget:           officialTarget,
-		DatabaseConfig:           dbConfig,
 	}
 }
 
