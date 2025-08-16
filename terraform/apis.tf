@@ -12,8 +12,8 @@ resource "google_project_service" "required_apis" {
   service            = each.value
   disable_on_destroy = false
   
-  # Prevent destruction of dependent resources
+  # Temporarily allow destruction for cleanup
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
