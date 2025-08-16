@@ -70,3 +70,15 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "api_secret_key" {
+  description = "API Secret Key"
+  type        = string
+  sensitive   = true
+}
+
+variable "client_secret_key" {
+  description = "Client Secret Key" 
+  type        = string
+  sensitive   = true
+}
+

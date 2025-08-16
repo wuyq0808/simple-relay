@@ -18,14 +18,10 @@ resource "google_secret_manager_secret" "api_secret_key" {
   }
 }
 
-# Create initial version with placeholder (will be updated by workflow)
+# Create version with actual secret value
 resource "google_secret_manager_secret_version" "api_secret_key" {
   secret      = google_secret_manager_secret.api_secret_key.id
-  secret_data = "placeholder-will-be-updated"
-  
-  lifecycle {
-    ignore_changes = [secret_data]
-  }
+  secret_data = var.api_secret_key
 }
 
 # Client Secret Key - create secret but populate externally
@@ -45,14 +41,10 @@ resource "google_secret_manager_secret" "client_secret_key" {
   }
 }
 
-# Create initial version with placeholder (will be updated by workflow)
+# Create version with actual secret value
 resource "google_secret_manager_secret_version" "client_secret_key" {
   secret      = google_secret_manager_secret.client_secret_key.id
-  secret_data = "placeholder-will-be-updated"
-  
-  lifecycle {
-    ignore_changes = [secret_data]
-  }
+  secret_data = var.client_secret_key
 }
 
 # IAM permissions for Cloud Run to access secrets

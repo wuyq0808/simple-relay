@@ -113,15 +113,9 @@ jobs:
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
         TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
+        TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
+        TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform apply -auto-approve -no-color
-
-    - name: Populate Secrets
-      run: |
-        # Update API secret in Secret Manager  
-        echo "${{ secrets.API_SECRET_KEY }}" | gcloud secrets versions add simple-relay-api-secret-key --data-file=-
-        
-        # Update client secret in Secret Manager  
-        echo "${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}" | gcloud secrets versions add simple-relay-client-secret-key --data-file=-
 
     - name: Get Service URL
       working-directory: ./terraform

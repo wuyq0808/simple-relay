@@ -12,7 +12,9 @@ resource "google_cloud_run_v2_service" "simple_relay" {
 
   depends_on = [
     google_firestore_database.oauth_database,
-    google_secret_manager_secret_iam_member.cloudrun_secret_access
+    google_secret_manager_secret_iam_member.cloudrun_secret_access,
+    google_secret_manager_secret_version.api_secret_key,
+    google_secret_manager_secret_version.client_secret_key
   ]
 
   template {
