@@ -45,23 +45,6 @@ variable "service_name" {
   default     = "simple-relay"
 }
 
-variable "db_instance_name" {
-  description = "Name of the Cloud SQL instance"
-  type        = string
-  default     = "oauth-tokens-db"
-}
-
-variable "db_name" {
-  description = "Name of the database"
-  type        = string
-  default     = "oauth_db"
-}
-
-variable "db_user" {
-  description = "Database user"
-  type        = string
-  default     = "app-user"
-}
 
 variable "api_base_url" {
   description = "API base URL"
@@ -87,8 +70,3 @@ variable "image_tag" {
   default     = "latest"
 }
 
-# Generate secure random passwords - NOT stored in variables
-resource "random_password" "db_password" {
-  length  = 16
-  special = true
-}

@@ -1,7 +1,7 @@
-# IAM binding for Cloud Run to access Cloud SQL
-resource "google_project_iam_member" "cloud_run_sql_client" {
+# IAM binding for Cloud Run to access Firestore
+resource "google_project_iam_member" "cloud_run_firestore_user" {
   project = var.project_id
-  role    = "roles/cloudsql.client"
+  role    = "roles/datastore.user"
   member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 
@@ -11,17 +11,13 @@ resource "google_cloud_run_v2_service" "simple_relay" {
   location = var.region
 
   depends_on = [
-    google_sql_database_instance.mysql_instance,
-    google_sql_database.oauth_database,
-    google_sql_user.app_user,
-    google_project_iam_member.cloud_run_sql_client,
+    google_firestore_database.oauth_database,
     google_secret_manager_secret_iam_member.cloudrun_secret_access
   ]
 
   template {
     # Security annotations
     annotations = {
-      "run.googleapis.com/cloudsql-instances" = google_sql_database_instance.mysql_instance.connection_name
       "run.googleapis.com/cpu-throttling"     = "false"
       "run.googleapis.com/execution-environment" = "gen2"
     }
@@ -55,23 +51,13 @@ resource "google_cloud_run_v2_service" "simple_relay" {
       }
 
       env {
-        name  = "DB_USER"
-        value = var.db_user
+        name  = "FIRESTORE_PROJECT_ID"
+        value = var.project_id
       }
 
       env {
-        name  = "DB_NAME"
-        value = var.db_name
-      }
-
-      env {
-        name  = "INSTANCE_CONNECTION_NAME"
-        value = google_sql_database_instance.mysql_instance.connection_name
-      }
-
-      env {
-        name  = "PRIVATE_IP"
-        value = var.enable_private_ip ? "true" : ""
+        name  = "DATABASE_TYPE"
+        value = "firestore"
       }
 
       # Secrets from Secret Manager
@@ -95,15 +81,6 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         }
       }
 
-      env {
-        name = "DB_PASS"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.db_password.secret_id
-            version = "latest"
-          }
-        }
-      }
 
       ports {
         container_port = 8080

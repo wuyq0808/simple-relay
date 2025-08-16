@@ -23,11 +23,7 @@ type Config struct {
 }
 
 type DatabaseConfig struct {
-	User                   string
-	Password               string
-	Database               string
-	InstanceConnectionName string
-	UsePrivateIP           bool
+	ProjectID string
 }
 
 func loadConfig() *Config {
@@ -71,11 +67,7 @@ func loadConfig() *Config {
 
 	// Database configuration
 	dbConfig := DatabaseConfig{
-		User:                   os.Getenv("DB_USER"),
-		Password:               os.Getenv("DB_PASS"),
-		Database:               os.Getenv("DB_NAME"),
-		InstanceConnectionName: os.Getenv("INSTANCE_CONNECTION_NAME"),
-		UsePrivateIP:           os.Getenv("PRIVATE_IP") != "",
+		ProjectID: os.Getenv("FIRESTORE_PROJECT_ID"),
 	}
 
 	return &Config{

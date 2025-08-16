@@ -2,7 +2,7 @@
 resource "google_project_service" "required_apis" {
   for_each = toset([
     "secretmanager.googleapis.com",
-    "sqladmin.googleapis.com", 
+    "firestore.googleapis.com", 
     "run.googleapis.com",
     "compute.googleapis.com",
     "servicenetworking.googleapis.com",
