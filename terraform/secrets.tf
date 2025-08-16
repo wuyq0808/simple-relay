@@ -1,7 +1,7 @@
 # Secret Manager for secure credential storage
 # Note: No database password needed for Firestore (uses IAM)
 
-# API Secret Key - to be created manually for security
+# API Secret Key - create secret but populate externally
 resource "google_secret_manager_secret" "api_secret_key" {
   secret_id = "${var.service_name}-api-secret-key"
   
@@ -18,7 +18,17 @@ resource "google_secret_manager_secret" "api_secret_key" {
   }
 }
 
-# Client Secret Key - to be created manually for security  
+# Create initial version with placeholder (will be updated by workflow)
+resource "google_secret_manager_secret_version" "api_secret_key" {
+  secret      = google_secret_manager_secret.api_secret_key.id
+  secret_data = "placeholder-will-be-updated"
+  
+  lifecycle {
+    ignore_changes = [secret_data]
+  }
+}
+
+# Client Secret Key - create secret but populate externally
 resource "google_secret_manager_secret" "client_secret_key" {
   secret_id = "${var.service_name}-client-secret-key"
   
@@ -32,6 +42,16 @@ resource "google_secret_manager_secret" "client_secret_key" {
     app         = var.service_name
     environment = "production"
     managed_by  = "terraform"
+  }
+}
+
+# Create initial version with placeholder (will be updated by workflow)
+resource "google_secret_manager_secret_version" "client_secret_key" {
+  secret      = google_secret_manager_secret.client_secret_key.id
+  secret_data = "placeholder-will-be-updated"
+  
+  lifecycle {
+    ignore_changes = [secret_data]
   }
 }
 
