@@ -5,11 +5,13 @@ on:
     branches: [ main ]
     paths:
       - 'terraform/**'
+      - 'apps/backend/**'
       - '.github/workflows/terraform-deploy.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'terraform/**'
+      - 'apps/backend/**'
   workflow_dispatch:
 
 env:
