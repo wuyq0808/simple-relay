@@ -99,10 +99,10 @@ resource "google_cloud_run_v2_service" "simple_relay" {
 
       # Health checks
       startup_probe {
-        initial_delay_seconds = 0
-        timeout_seconds = 1
-        period_seconds = 3
-        failure_threshold = 1
+        initial_delay_seconds = 10
+        timeout_seconds = 5
+        period_seconds = 10
+        failure_threshold = 30
         http_get {
           path = "/health"
           port = 8080
