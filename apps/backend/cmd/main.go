@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"simple-relay/backend/internal/services"
 	"strings"
 
+	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -19,6 +25,8 @@ type Config struct {
 	APIKey                   string
 	AllowedClientSecretKey   string
 	OfficialTarget           *url.URL
+	BillingEnabled           bool
+	ProjectID                string
 }
 
 func loadConfig() *Config {
@@ -60,22 +68,67 @@ func loadConfig() *Config {
 		}
 	}
 
+	// Get billing configuration
+	billingEnabled := os.Getenv("BILLING_ENABLED") == "true"
+	projectID := os.Getenv("GCP_PROJECT_ID")
+	if projectID == "" {
+		projectID = os.Getenv("PROJECT_ID") // 兼容不同的环境变量名
+	}
+
 	return &Config{
 		Target:                   target,
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
 		OfficialTarget:           officialTarget,
+		BillingEnabled:           billingEnabled,
+		ProjectID:                projectID,
 	}
 }
 
 func main() {
 	config := loadConfig()
 	
+	// Initialize billing service if enabled
+	var billingService *services.BillingService
+	if config.BillingEnabled && config.ProjectID != "" {
+		ctx := context.Background()
+		firestoreClient, err := firestore.NewClient(ctx, config.ProjectID)
+		if err != nil {
+			log.Printf("Warning: Failed to initialize Firestore client: %v", err)
+			log.Println("Billing will be disabled")
+			config.BillingEnabled = false
+		} else {
+			billingService = services.NewBillingService(firestoreClient, true)
+			defer billingService.Close()
+			log.Printf("Billing service initialized for project: %s", config.ProjectID)
+		}
+	} else {
+		log.Println("Billing service is disabled")
+	}
+	
 	// Create reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(config.Target)
 	
+	// Store request model for billing
+	var requestModel string
+	
 	// Set target URL for all requests and add API key
 	proxy.Director = func(req *http.Request) {
+		// Capture request body for billing if enabled
+		if config.BillingEnabled && billingService != nil && strings.Contains(req.URL.Path, "/messages") {
+			bodyBytes, err := io.ReadAll(req.Body)
+			if err == nil {
+				// 重新设置请求体
+				req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+				
+				// 尝试解析请求获取model
+				var apiReq services.ClaudeAPIRequest
+				if err := json.Unmarshal(bodyBytes, &apiReq); err == nil {
+					requestModel = apiReq.Model
+				}
+			}
+		}
+		
 		// Check for X-Official-Key header
 		officialKey := req.Header.Get("X-Official-Key")
 		
@@ -103,6 +156,59 @@ func main() {
 		
 		req.Header["X-Forwarded-For"] = nil
 		req.Header.Del("X-Official-Key")
+	}
+	
+	// Intercept response for billing
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		if config.BillingEnabled && billingService != nil && 
+		   resp.StatusCode == http.StatusOK && 
+		   strings.Contains(resp.Request.URL.Path, "/messages") {
+			
+			// Read response body
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Printf("Error reading response body for billing: %v", err)
+				return err
+			}
+			
+			// Process billing asynchronously
+			go func() {
+				ctx := context.Background()
+				
+				// Get user info from request headers
+				userID := resp.Request.Header.Get("X-User-ID")
+				if userID == "" {
+					// 可以从Authorization header或其他地方获取用户标识
+					userID = "anonymous"
+				}
+				
+				clientIP := resp.Request.RemoteAddr
+				requestID := resp.Header.Get("X-Request-Id")
+				if requestID == "" {
+					requestID = resp.Header.Get("CF-Ray") // Cloudflare Ray ID作为备选
+				}
+				
+				// Process response for billing
+				record, err := billingService.ProcessResponse(bodyBytes, requestModel, userID, clientIP, requestID)
+				if err != nil {
+					log.Printf("Error processing response for billing: %v", err)
+					return
+				}
+				
+				// Record usage
+				if err := billingService.RecordUsage(ctx, record); err != nil {
+					log.Printf("Error recording usage: %v", err)
+				} else {
+					log.Printf("Usage recorded: Model=%s, Input=%d, Output=%d, Cost=$%.4f", 
+						record.Model, record.InputTokens, record.OutputTokens, record.TotalCost)
+				}
+			}()
+			
+			// Reset response body
+			resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}
+		
+		return nil
 	}
 
 	r := mux.NewRouter()
