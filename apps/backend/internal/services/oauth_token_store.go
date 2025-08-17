@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -32,21 +31,21 @@ func NewTokenStore(db *DatabaseService) *TokenStore {
 	return &TokenStore{db: db}
 }
 
-func (ts *TokenStore) SaveToken(clientID string, tokenResp *TokenRefreshResponse) error {
+func (ts *TokenStore) SaveToken(clientID, accessToken, refreshToken string, expiresIn int, scope, orgUUID, orgName, accountUUID, accountEmail string) error {
 	ctx := context.Background()
-	expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
 	now := time.Now()
 	
 	token := TokenData{
 		ClientID:         clientID,
-		AccessToken:      tokenResp.AccessToken,
-		RefreshToken:     tokenResp.RefreshToken,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
 		ExpiresAt:        expiresAt,
-		Scope:            tokenResp.Scope,
-		OrganizationUUID: tokenResp.Organization.UUID,
-		OrganizationName: tokenResp.Organization.Name,
-		AccountUUID:      tokenResp.Account.UUID,
-		AccountEmail:     tokenResp.Account.EmailAddress,
+		Scope:            scope,
+		OrganizationUUID: orgUUID,
+		OrganizationName: orgName,
+		AccountUUID:      accountUUID,
+		AccountEmail:     accountEmail,
 		UpdatedAt:        now,
 	}
 
@@ -96,33 +95,6 @@ func (ts *TokenStore) GetToken(clientID string) (*TokenData, error) {
 	}
 
 	return &token, nil
-}
-
-func (ts *TokenStore) IsTokenExpired(token *TokenData) bool {
-	return time.Now().After(token.ExpiresAt.Add(-5 * time.Minute))
-}
-
-func (ts *TokenStore) GetValidToken(clientID string) (*TokenData, error) {
-	token, err := ts.GetToken(clientID)
-	if err != nil {
-		return nil, err
-	}
-
-	if ts.IsTokenExpired(token) {
-		return nil, fmt.Errorf("token expired for client_id: %s", clientID)
-	}
-
-	return token, nil
-}
-
-func (ts *TokenStore) DeleteToken(clientID string) error {
-	ctx := context.Background()
-	docRef := ts.db.client.Collection("oauth_tokens").Doc(clientID)
-	_, err := docRef.Delete(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to delete token: %w", err)
-	}
-	return nil
 }
 
 func (ts *TokenStore) GetExpiredTokens() ([]*TokenData, error) {

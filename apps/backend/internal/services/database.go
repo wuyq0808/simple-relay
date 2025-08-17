@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"cloud.google.com/go/firestore"
 )
@@ -15,9 +16,16 @@ type DatabaseConfig struct {
 	ProjectID string
 }
 
-func NewDatabaseService(config DatabaseConfig) (*DatabaseService, error) {
+func NewDatabaseService() (*DatabaseService, error) {
 	ctx := context.Background()
-	client, err := firestore.NewClient(ctx, config.ProjectID)
+	
+	// Get project ID from environment
+	projectID := os.Getenv("FIRESTORE_PROJECT_ID")
+	if projectID == "" {
+		return nil, fmt.Errorf("FIRESTORE_PROJECT_ID environment variable is required")
+	}
+	
+	client, err := firestore.NewClient(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("firestore.NewClient: %w", err)
 	}
