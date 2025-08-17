@@ -61,6 +61,16 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         name  = "DATABASE_TYPE"
         value = "firestore"
       }
+      
+      env {
+        name  = "BILLING_ENABLED"
+        value = "true"
+      }
+      
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
 
       # Secrets from Secret Manager
       env {

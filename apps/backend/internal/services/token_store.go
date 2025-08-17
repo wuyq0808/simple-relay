@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
