@@ -88,20 +88,19 @@ func loadConfig() *Config {
 func main() {
 	config := loadConfig()
 	
+	// Initialize database service
+	dbService, err := services.NewDatabaseService()
+	if err != nil {
+		log.Fatalf("Failed to initialize database service: %v", err)
+	}
+	defer dbService.Close()
+	
 	// Initialize billing service if enabled
 	var billingService *services.BillingService
-	if config.BillingEnabled && config.ProjectID != "" {
-		ctx := context.Background()
-		firestoreClient, err := firestore.NewClient(ctx, config.ProjectID)
-		if err != nil {
-			log.Printf("Warning: Failed to initialize Firestore client: %v", err)
-			log.Println("Billing will be disabled")
-			config.BillingEnabled = false
-		} else {
-			billingService = services.NewBillingService(firestoreClient, true)
-			defer billingService.Close()
-			log.Printf("Billing service initialized for project: %s", config.ProjectID)
-		}
+	if config.BillingEnabled {
+		billingService = services.NewBillingService(dbService, true)
+		defer billingService.Close()
+		log.Printf("Billing service initialized for project: %s", config.ProjectID)
 	} else {
 		log.Println("Billing service is disabled")
 	}

@@ -63,7 +63,7 @@ type Message struct {
 
 // BillingService 计费服务
 type BillingService struct {
-	db         *firestore.Client
+	dbService   *DatabaseService
 	batchWriter *BatchWriter
 	pricing     *PricingCalculator
 	mu          sync.RWMutex
@@ -71,16 +71,16 @@ type BillingService struct {
 }
 
 // NewBillingService 创建新的计费服务
-func NewBillingService(client *firestore.Client, enabled bool) *BillingService {
+func NewBillingService(dbService *DatabaseService, enabled bool) *BillingService {
 	service := &BillingService{
-		db:      client,
-		pricing: NewPricingCalculator(),
-		enabled: enabled,
+		dbService: dbService,
+		pricing:   NewPricingCalculator(),
+		enabled:   enabled,
 	}
 	
 	// 初始化批量写入器
-	if enabled && client != nil {
-		service.batchWriter = NewBatchWriter(client, 100, 5*time.Second)
+	if enabled && dbService != nil {
+		service.batchWriter = NewBatchWriter(dbService.client, 100, 5*time.Second)
 		service.batchWriter.Start()
 	}
 	
@@ -137,11 +137,11 @@ func (bs *BillingService) ProcessResponse(responseBody []byte, requestModel stri
 
 // GetUserUsage 获取用户使用统计
 func (bs *BillingService) GetUserUsage(ctx context.Context, userID string, startTime, endTime time.Time) ([]UsageRecord, error) {
-	if !bs.enabled || bs.db == nil {
+	if !bs.enabled || bs.dbService == nil {
 		return []UsageRecord{}, nil
 	}
 
-	query := bs.db.Collection("usage_records").
+	query := bs.dbService.client.Collection("usage_records").
 		Where("user_id", "==", userID).
 		Where("timestamp", ">=", startTime).
 		Where("timestamp", "<=", endTime).
@@ -167,7 +167,7 @@ func (bs *BillingService) GetUserUsage(ctx context.Context, userID string, start
 
 // GetDailyAggregate 获取每日聚合数据
 func (bs *BillingService) GetDailyAggregate(ctx context.Context, userID string, date time.Time) (map[string]interface{}, error) {
-	if !bs.enabled || bs.db == nil {
+	if !bs.enabled || bs.dbService == nil {
 		return nil, nil
 	}
 
