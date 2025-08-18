@@ -47,6 +47,7 @@ func NewOAuthRefresher(oauthStore *OAuthStore) *OAuthRefresher {
 	}
 }
 
+
 func (or *OAuthRefresher) RefreshExpiredCredentials() {
 	expiredCredentials, err := or.oauthStore.GetExpiredCredentials()
 	if err != nil {
@@ -95,7 +96,6 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 	req.Header.Set("Accept", "application/json, text/plain, */*")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "axios/1.8.4")
-	req.Header.Set("Accept-Encoding", "gzip, compress, deflate, br")
 	req.Header.Set("Connection", "close")
 
 	reqDump, err := httputil.DumpRequestOut(req, false)
@@ -111,13 +111,13 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 		log.Printf("OAuth refresh request failed: %v", err)
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
-	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("OAuth Refresh Response: Failed to read body: %v", err)
 		return fmt.Errorf("failed to read response body: %w", err)
 	}
+	defer resp.Body.Close()
 	
 	respDump, err := httputil.DumpResponse(resp, false)
 	if err != nil {
