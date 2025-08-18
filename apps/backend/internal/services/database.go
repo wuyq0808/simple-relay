@@ -16,14 +16,8 @@ type DatabaseConfig struct {
 	ProjectID string
 }
 
-func NewDatabaseService() (*DatabaseService, error) {
+func NewDatabaseService(projectID string) (*DatabaseService, error) {
 	ctx := context.Background()
-	
-	// Get project ID from environment
-	projectID := os.Getenv("FIRESTORE_PROJECT_ID")
-	if projectID == "" {
-		return nil, fmt.Errorf("FIRESTORE_PROJECT_ID environment variable is required")
-	}
 	
 	client, err := firestore.NewClient(ctx, projectID)
 	if err != nil {

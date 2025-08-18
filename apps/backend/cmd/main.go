@@ -21,7 +21,6 @@ import (
 const oauthBetaFlag = "oauth-2025-04-20"
 
 type Config struct {
-	Target                    *url.URL
 	APIKey                   string
 	AllowedClientSecretKey   string
 	OfficialTarget           *url.URL
@@ -33,17 +32,6 @@ func loadConfig() *Config {
 	// Load .env file for local development
 	godotenv.Load()
 	
-	// Get target URL from environment variable
-	apiBaseURL := os.Getenv("API_BASE_URL")
-	if apiBaseURL == "" {
-		log.Fatal("API_BASE_URL environment variable is required")
-	}
-	
-	// Parse target URL
-	target, err := url.Parse(apiBaseURL)
-	if err != nil {
-		log.Fatal("Failed to parse target URL:", err)
-	}
 
 	// Get API key from environment variable
 	apiKey := os.Getenv("API_SECRET_KEY")
@@ -72,11 +60,10 @@ func loadConfig() *Config {
 	billingEnabled := os.Getenv("BILLING_ENABLED") == "true"
 	projectID := os.Getenv("GCP_PROJECT_ID")
 	if projectID == "" {
-		projectID = os.Getenv("PROJECT_ID") // 兼容不同的环境变量名
+		log.Fatal("GCP_PROJECT_ID environment variable is required")
 	}
 
 	return &Config{
-		Target:                   target,
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
 		OfficialTarget:           officialTarget,
@@ -89,7 +76,7 @@ func main() {
 	config := loadConfig()
 	
 	// Initialize database service
-	dbService, err := services.NewDatabaseService()
+	dbService, err := services.NewDatabaseService(config.ProjectID)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}
@@ -109,7 +96,7 @@ func main() {
 	}
 	
 	// Create reverse proxy
-	proxy := httputil.NewSingleHostReverseProxy(config.Target)
+	proxy := httputil.NewSingleHostReverseProxy(config.OfficialTarget)
 	
 	// Store request model for billing
 	var requestModel string
@@ -226,7 +213,7 @@ func main() {
 	}
 	
 	log.Printf("Server starting on port %s", port)
-	log.Printf("Proxying to %s", config.Target.String())
+	log.Printf("Proxying to %s", config.OfficialTarget.String())
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 

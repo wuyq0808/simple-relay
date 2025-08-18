@@ -42,19 +42,10 @@ resource "google_cloud_run_v2_service" "simple_relay" {
       image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/${var.service_name}:${var.image_tag}"
 
       # Non-sensitive environment variables
-      env {
-        name  = "API_BASE_URL"
-        value = var.api_base_url
-      }
 
       env {
         name  = "OFFICIAL_BASE_URL"
         value = var.official_base_url
-      }
-
-      env {
-        name  = "FIRESTORE_PROJECT_ID"
-        value = var.project_id
       }
 
       env {
