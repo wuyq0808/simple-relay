@@ -12,6 +12,7 @@ import (
 type OAuthRefreshRequest struct {
 	GrantType    string `json:"grant_type"`
 	RefreshToken string `json:"refresh_token"`
+	ClientID     string `json:"client_id"`
 }
 
 type Organization struct {
@@ -73,10 +74,10 @@ func (or *OAuthRefresher) RefreshExpiredCredentials() {
 }
 
 func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials) error {
-	// Prepare refresh request
 	reqData := OAuthRefreshRequest{
 		GrantType:    "refresh_token",
 		RefreshToken: credentials.RefreshToken,
+		ClientID:     "9d1c250a-e61b-44d9-88ed-5944d1962f5e", // Claude Code's OAuth client ID
 	}
 
 	jsonData, err := json.Marshal(reqData)
@@ -84,16 +85,16 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Make refresh request to OAuth provider
-	// Note: This URL should be configurable or passed as parameter
-	req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/oauth/token", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", "https://console.anthropic.com/v1/oauth/token", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/plain, */*")
-	req.Header.Set("User-Agent", "simple-relay/1.0")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "axios/1.8.4")
+	req.Header.Set("Accept-Encoding", "gzip, compress, deflate, br")
+	req.Header.Set("Connection", "close")
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)

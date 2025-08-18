@@ -106,8 +106,9 @@ func main() {
 	proxy.Director = func(req *http.Request) {
 		// Get valid OAuth access token for each request
 		// TODO: add memory cache for the get access token method
-		credentials, err := oauthStore.GetValidAccessToken()
+		credentials, err := oauthStore.GetLatestAccessToken()
 		if err != nil {
+			log.Printf("Failed to get OAuth access token: %v", err)
 			// Fail the request if no valid OAuth token
 			return
 		}
@@ -115,20 +116,25 @@ func main() {
 		// Check if token is expired and refresh if needed
 		now := time.Now()
 		if credentials.ExpiresAt.Before(now) {
+			log.Printf("OAuth token expired at %v, refreshing...", credentials.ExpiresAt)
 			// Token is expired, refresh it
 			refresher := provider.NewOAuthRefresher(oauthStore)
 			err = refresher.RefreshSingleCredentials(credentials)
 			if err != nil {
+				log.Printf("Failed to refresh OAuth credentials: %v", err)
 				// Fail the request if refresh fails
 				return
 			}
+			log.Printf("OAuth token refreshed successfully")
 			
 			// Get the refreshed token
-			credentials, err = oauthStore.GetValidAccessToken()
+			credentials, err = oauthStore.GetLatestAccessToken()
 			if err != nil {
+				log.Printf("Failed to get refreshed OAuth access token: %v", err)
 				// Fail the request if can't get refreshed token
 				return
 			}
+			log.Printf("Retrieved refreshed OAuth token, expires at: %v", credentials.ExpiresAt)
 		}
 		// Capture request body for billing if enabled
 		if config.BillingEnabled && billingService != nil && strings.Contains(req.URL.Path, "/messages") {
