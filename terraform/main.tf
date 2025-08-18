@@ -45,6 +45,12 @@ variable "service_name" {
   default     = "simple-relay"
 }
 
+variable "billing_service_name" {
+  description = "Name of the billing Cloud Run service"
+  type        = string
+  default     = "simple-billing"
+}
+
 
 
 variable "official_base_url" {

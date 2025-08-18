@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -20,6 +21,43 @@ import (
 )
 
 const oauthBetaFlag = "oauth-2025-04-20"
+
+// getIdentityToken retrieves an identity token for service-to-service authentication
+func getIdentityToken(audience string) (string, error) {
+	// Use Google's metadata server to get identity token
+	metadataURL := "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
+	
+	req, err := http.NewRequest("GET", metadataURL, nil)
+	if err != nil {
+		return "", err
+	}
+	
+	// Add required metadata header and audience parameter
+	req.Header.Set("Metadata-Flavor", "Google")
+	q := req.URL.Query()
+	q.Add("audience", audience)
+	q.Add("format", "standard")
+	q.Add("include_email", "true")
+	req.URL.RawQuery = q.Encode()
+	
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("metadata server returned status %d", resp.StatusCode)
+	}
+	
+	token, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	
+	return string(token), nil
+}
 
 
 
@@ -59,8 +97,11 @@ func loadConfig() *Config {
 		}
 	}
 
-	// Get billing service URL (optional)
+	// Get billing service URL (required)
 	billingServiceURL := os.Getenv("BILLING_SERVICE_URL")
+	if billingServiceURL == "" {
+		log.Fatal("BILLING_SERVICE_URL environment variable is required")
+	}
 	
 	projectID := os.Getenv("GCP_PROJECT_ID")
 	if projectID == "" {
@@ -141,8 +182,7 @@ func main() {
 	
 	// Intercept response for billing
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		if config.BillingServiceURL != "" && 
-		   resp.StatusCode == http.StatusOK && 
+		if resp.StatusCode == http.StatusOK && 
 		   strings.Contains(resp.Request.URL.Path, "/messages") {
 			
 			// Read the entire response body first
@@ -156,12 +196,20 @@ func main() {
 			
 			// Send raw response body to billing service asynchronously
 			go func() {
+				// Get identity token for service-to-service authentication
+				idToken, err := getIdentityToken(config.BillingServiceURL)
+				if err != nil {
+					log.Printf("Error getting identity token: %v", err)
+					return
+				}
+
 				req, err := http.NewRequest("POST", config.BillingServiceURL, bytes.NewReader(bodyBytes))
 				if err != nil {
 					log.Printf("Error creating billing request: %v", err)
 					return
 				}
 				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Bearer "+idToken)
 				// TODO: implement subscription system - this hardcoded user ID will be replaced
 				// with actual user identification from subscription management
 				req.Header.Set("X-User-ID", "hardcoded-user-123")
