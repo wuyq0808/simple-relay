@@ -95,9 +95,8 @@ func main() {
 	}
 	defer dbService.Close()
 	
-	// Initialize OAuth store and refresher
+	// Initialize OAuth store
 	oauthStore := provider.NewOAuthStore(dbService)
-	oauthRefresher := provider.NewOAuthRefresher(oauthStore)
 	
 	// Initialize billing service if enabled
 	var billingService *services.BillingService
@@ -115,8 +114,15 @@ func main() {
 	// Store request model for billing
 	var requestModel string
 	
-	// Set target URL for all requests and add API key
+	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
+		// Get valid OAuth access token for each request
+		// TODO: add memory cache for the get access token method
+		credentials, err := oauthStore.GetValidAccessToken()
+		if err != nil {
+			// Fail the request if no valid OAuth token
+			return
+		}
 		// Capture request body for billing if enabled
 		if config.BillingEnabled && billingService != nil && strings.Contains(req.URL.Path, "/messages") {
 			bodyBytes, err := io.ReadAll(req.Body)
@@ -132,33 +138,21 @@ func main() {
 			}
 		}
 		
-		// Check for X-Official-Key header
-		officialKey := req.Header.Get("X-Official-Key")
+		// Use official target URL and OAuth token
+		req.URL.Scheme = config.OfficialTarget.Scheme
+		req.URL.Host = config.OfficialTarget.Host
+		req.Host = config.OfficialTarget.Host
 		
-		if officialKey != "" && config.OfficialTarget != nil {
-			// Use official target URL and X-Official-Key as bearer
-			log.Printf("Using official path: %s %s -> %s (with X-Official-Key)", req.Method, req.URL.Path, config.OfficialTarget.String())
-			req.URL.Scheme = config.OfficialTarget.Scheme
-			req.URL.Host = config.OfficialTarget.Host
-			req.Host = config.OfficialTarget.Host
-			req.Header.Set("Authorization", "Bearer "+officialKey)
-			
-			// Ensure host header matches target
-			req.Header.Set("Host", config.OfficialTarget.Host)
-			
-			// Add OAuth beta feature to anthropic-beta header if not already present
-			addOAuthBetaHeader(req)
-		} else {
-			// Use default target URL and API key
-			log.Printf("Using default path: %s %s -> %s", req.Method, req.URL.Path, config.Target.String())
-			req.URL.Scheme = config.Target.Scheme
-			req.URL.Host = config.Target.Host
-			req.Host = config.Target.Host
-			req.Header.Set("Authorization", "Bearer "+config.APIKey)
-		}
+		// Use the OAuth access token obtained at startup
+		req.Header.Set("Authorization", "Bearer "+credentials.AccessToken)
+		
+		// Ensure host header matches target
+		req.Header.Set("Host", config.OfficialTarget.Host)
+		
+		// Add OAuth beta feature to anthropic-beta header if not already present
+		addOAuthBetaHeader(req)
 		
 		req.Header["X-Forwarded-For"] = nil
-		req.Header.Del("X-Official-Key")
 	}
 	
 	// Intercept response for billing
@@ -222,13 +216,6 @@ func main() {
 		w.Write([]byte("OK"))
 	}).Methods("GET")
 	
-	// OAuth token refresh endpoint
-	r.HandleFunc("/refresh-tokens", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("🔄 OAuth token refresh endpoint triggered")
-		oauthRefresher.RefreshExpiredCredentials()
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OAuth token refresh completed"))
-	}).Methods("POST")
 	
 	// Proxy all requests with API key validation
 	r.PathPrefix("/").HandlerFunc(clientApiKeyValidationMiddleware(config.AllowedClientSecretKey, proxy.ServeHTTP))
