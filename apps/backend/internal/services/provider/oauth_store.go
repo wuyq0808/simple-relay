@@ -1,16 +1,16 @@
-package services
+package provider
 
 import (
 	"context"
 	"fmt"
 	"time"
 
+	"simple-relay/backend/internal/services"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type TokenData struct {
-	ClientID         string    `json:"client_id" firestore:"client_id"`
+type OAuthCredentials struct {
 	AccessToken      string    `json:"access_token" firestore:"access_token"`
 	RefreshToken     string    `json:"refresh_token" firestore:"refresh_token"`
 	ExpiresAt        time.Time `json:"expires_at" firestore:"expires_at"`
@@ -23,21 +23,20 @@ type TokenData struct {
 	UpdatedAt        time.Time `json:"updated_at" firestore:"updated_at"`
 }
 
-type TokenStore struct {
-	db *DatabaseService
+type OAuthStore struct {
+	db *services.DatabaseService
 }
 
-func NewTokenStore(db *DatabaseService) *TokenStore {
-	return &TokenStore{db: db}
+func NewOAuthStore(db *services.DatabaseService) *OAuthStore {
+	return &OAuthStore{db: db}
 }
 
-func (ts *TokenStore) SaveToken(clientID, accessToken, refreshToken string, expiresIn int, scope, orgUUID, orgName, accountUUID, accountEmail string) error {
+func (os *OAuthStore) SaveCredentials(accessToken, refreshToken string, expiresIn int, scope, orgUUID, orgName, accountUUID, accountEmail string) error {
 	ctx := context.Background()
 	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
 	now := time.Now()
 	
-	token := TokenData{
-		ClientID:         clientID,
+	credentials := OAuthCredentials{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		ExpiresAt:        expiresAt,
@@ -50,72 +49,75 @@ func (ts *TokenStore) SaveToken(clientID, accessToken, refreshToken string, expi
 	}
 
 	// Check if document exists to set CreatedAt
-	docRef := ts.db.client.Collection("oauth_tokens").Doc(clientID)
+	docRef := os.db.Client().Collection("oauth_tokens").Doc(accountUUID)
 	doc, err := docRef.Get(ctx)
 	if err != nil && status.Code(err) != codes.NotFound {
-		return fmt.Errorf("failed to check existing token: %w", err)
+		return fmt.Errorf("failed to check existing credentials: %w", err)
 	}
 
 	if !doc.Exists() {
-		token.CreatedAt = now
+		credentials.CreatedAt = now
 	} else {
 		// Preserve original creation time
 		if data := doc.Data(); data != nil {
 			if createdAt, ok := data["created_at"].(time.Time); ok {
-				token.CreatedAt = createdAt
+				credentials.CreatedAt = createdAt
 			} else {
-				token.CreatedAt = now
+				credentials.CreatedAt = now
 			}
 		}
 	}
 
-	_, err = docRef.Set(ctx, token)
+	_, err = docRef.Set(ctx, credentials)
 	if err != nil {
-		return fmt.Errorf("failed to save token: %w", err)
+		return fmt.Errorf("failed to save credentials: %w", err)
 	}
 
 	return nil
 }
 
-func (ts *TokenStore) GetToken(clientID string) (*TokenData, error) {
-	ctx := context.Background()
-	docRef := ts.db.client.Collection("oauth_tokens").Doc(clientID)
-	doc, err := docRef.Get(ctx)
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return nil, fmt.Errorf("token not found for client_id: %s", clientID)
-		}
-		return nil, fmt.Errorf("failed to get token: %w", err)
-	}
-
-	var token TokenData
-	err = doc.DataTo(&token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse token data: %w", err)
-	}
-
-	return &token, nil
-}
-
-func (ts *TokenStore) GetExpiredTokens() ([]*TokenData, error) {
+func (os *OAuthStore) GetValidAccessToken() (*OAuthCredentials, error) {
 	ctx := context.Background()
 	now := time.Now()
 	
-	query := ts.db.client.Collection("oauth_tokens").Where("expires_at", "<", now)
+	query := os.db.Client().Collection("oauth_tokens").Where("expires_at", ">", now).Limit(1)
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get expired tokens: %w", err)
+		return nil, fmt.Errorf("failed to get valid credentials: %w", err)
 	}
 
-	var tokens []*TokenData
+	if len(docs) == 0 {
+		return nil, fmt.Errorf("no valid (non-expired) credentials found")
+	}
+
+	var credentials OAuthCredentials
+	err = docs[0].DataTo(&credentials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse credentials data: %w", err)
+	}
+
+	return &credentials, nil
+}
+
+func (os *OAuthStore) GetExpiredCredentials() ([]*OAuthCredentials, error) {
+	ctx := context.Background()
+	now := time.Now()
+	
+	query := os.db.Client().Collection("oauth_tokens").Where("expires_at", "<", now)
+	docs, err := query.Documents(ctx).GetAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get expired credentials: %w", err)
+	}
+
+	var credentials []*OAuthCredentials
 	for _, doc := range docs {
-		var token TokenData
-		err := doc.DataTo(&token)
+		var cred OAuthCredentials
+		err := doc.DataTo(&cred)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse token data: %w", err)
+			return nil, fmt.Errorf("failed to parse credentials data: %w", err)
 		}
-		tokens = append(tokens, &token)
+		credentials = append(credentials, &cred)
 	}
 
-	return tokens, nil
+	return credentials, nil
 }

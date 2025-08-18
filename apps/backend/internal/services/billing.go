@@ -141,7 +141,7 @@ func (bs *BillingService) GetUserUsage(ctx context.Context, userID string, start
 		return []UsageRecord{}, nil
 	}
 
-	query := bs.dbService.client.Collection("usage_records").
+	query := bs.dbService.Client().Collection("usage_records").
 		Where("user_id", "==", userID).
 		Where("timestamp", ">=", startTime).
 		Where("timestamp", "<=", endTime).

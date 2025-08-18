@@ -11,9 +11,9 @@ import (
 	"net/url"
 	"os"
 	"simple-relay/backend/internal/services"
+	"simple-relay/backend/internal/services/provider"
 	"strings"
 
-	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -94,6 +94,10 @@ func main() {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}
 	defer dbService.Close()
+	
+	// Initialize OAuth store and refresher
+	oauthStore := provider.NewOAuthStore(dbService)
+	oauthRefresher := provider.NewOAuthRefresher(oauthStore)
 	
 	// Initialize billing service if enabled
 	var billingService *services.BillingService
@@ -212,11 +216,13 @@ func main() {
 
 	r := mux.NewRouter()
 	
-	// Health check endpoint
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	// OAuth token refresh endpoint
+	r.HandleFunc("/refresh-tokens", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("🔄 OAuth token refresh endpoint triggered")
+		oauthRefresher.RefreshExpiredCredentials()
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	}).Methods("GET")
+		w.Write([]byte("OAuth token refresh completed"))
+	}).Methods("POST")
 	
 	// Proxy all requests with API key validation
 	r.PathPrefix("/").HandlerFunc(clientApiKeyValidationMiddleware(config.AllowedClientSecretKey, proxy.ServeHTTP))
