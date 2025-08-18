@@ -13,6 +13,7 @@ import (
 	"simple-relay/backend/internal/services"
 	"simple-relay/backend/internal/services/provider"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -109,6 +110,25 @@ func main() {
 		if err != nil {
 			// Fail the request if no valid OAuth token
 			return
+		}
+		
+		// Check if token is expired and refresh if needed
+		now := time.Now()
+		if credentials.ExpiresAt.Before(now) {
+			// Token is expired, refresh it
+			refresher := provider.NewOAuthRefresher(oauthStore)
+			err = refresher.RefreshSingleCredentials(credentials)
+			if err != nil {
+				// Fail the request if refresh fails
+				return
+			}
+			
+			// Get the refreshed token
+			credentials, err = oauthStore.GetValidAccessToken()
+			if err != nil {
+				// Fail the request if can't get refreshed token
+				return
+			}
 		}
 		// Capture request body for billing if enabled
 		if config.BillingEnabled && billingService != nil && strings.Contains(req.URL.Path, "/messages") {
