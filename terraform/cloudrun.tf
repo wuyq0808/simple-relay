@@ -14,7 +14,8 @@ resource "google_cloud_run_v2_service" "simple_relay" {
     google_firestore_database.oauth_database,
     google_secret_manager_secret_iam_member.cloudrun_secret_access,
     google_secret_manager_secret_version.api_secret_key,
-    google_secret_manager_secret_version.client_secret_key
+    google_secret_manager_secret_version.client_secret_key,
+    google_cloud_run_v2_service.simple_billing  # Backend must wait for billing service
   ]
 
   template {
@@ -54,8 +55,8 @@ resource "google_cloud_run_v2_service" "simple_relay" {
       }
       
       env {
-        name  = "BILLING_ENABLED"
-        value = "true"
+        name  = "BILLING_SERVICE_URL"
+        value = google_cloud_run_v2_service.simple_billing.uri
       }
       
       env {
@@ -139,9 +140,106 @@ resource "google_cloud_run_service_iam_member" "public_access" {
   member   = "allUsers"
 }
 
-# Output the service URL
+# Billing Cloud Run Service (Internal Only)
+resource "google_cloud_run_v2_service" "simple_billing" {
+  name     = var.billing_service_name
+  location = var.region
+
+  depends_on = [
+    google_firestore_database.oauth_database,
+    google_project_iam_member.cloud_run_firestore_user
+  ]
+
+  template {
+    # Security annotations
+    annotations = {
+      "run.googleapis.com/cpu-throttling"     = "false"
+      "run.googleapis.com/execution-environment" = "gen2"
+    }
+    
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 5
+    }
+
+    containers {
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-billing:${var.image_tag}"
+
+      env {
+        name  = "BILLING_ENABLED"
+        value = "true"
+      }
+      
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+
+      ports {
+        container_port = 8081
+      }
+
+      resources {
+        limits = {
+          cpu    = "500m"
+          memory = "256Mi"
+        }
+        cpu_idle = true
+        startup_cpu_boost = true
+      }
+
+      # Health checks
+      startup_probe {
+        initial_delay_seconds = 10
+        timeout_seconds = 5
+        period_seconds = 10
+        failure_threshold = 30
+        http_get {
+          path = "/health"
+          port = 8081
+        }
+      }
+
+      liveness_probe {
+        initial_delay_seconds = 0
+        timeout_seconds = 1
+        period_seconds = 10
+        failure_threshold = 3
+        http_get {
+          path = "/health"
+          port = 8081
+        }
+      }
+    }
+
+    service_account = "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+  }
+
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+
+  # Configure for internal-only traffic
+  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+}
+
+# IAM policy for billing service - allow backend service to invoke billing service
+resource "google_cloud_run_service_iam_member" "billing_internal_access" {
+  service  = google_cloud_run_v2_service.simple_billing.name
+  location = google_cloud_run_v2_service.simple_billing.location
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+
+# Output the service URLs
 output "service_url" {
   value = google_cloud_run_v2_service.simple_relay.uri
+}
+
+output "billing_service_url" {
+  value = google_cloud_run_v2_service.simple_billing.uri
 }
 
 output "secrets_to_populate" {

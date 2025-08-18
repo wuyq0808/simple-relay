@@ -6,12 +6,14 @@ on:
     paths:
       - 'terraform/**'
       - 'apps/backend/**'
+      - 'apps/billing/**'
       - '.github/workflows/terraform-deploy.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'terraform/**'
       - 'apps/backend/**'
+      - 'apps/billing/**'
   workflow_dispatch:
 
 env:
@@ -94,11 +96,17 @@ jobs:
         username: _json_key
         password: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Build and Push Container
+    - name: Build and Push Backend Container
       working-directory: ./apps/backend
       run: |-
         docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}" ./
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}"
+
+    - name: Build and Push Billing Container
+      working-directory: ./apps/billing
+      run: |-
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}"
 
     - name: Terraform Init
       working-directory: ./terraform

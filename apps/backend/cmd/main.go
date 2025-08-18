@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -15,17 +13,26 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
 
 const oauthBetaFlag = "oauth-2025-04-20"
 
+// getIdentityToken retrieves an identity token for service-to-service authentication
+func getIdentityToken(audience string) (string, error) {
+	// Use Google's official metadata library
+	return metadata.Get("instance/service-accounts/default/identity?audience=" + audience)
+}
+
+
+
 type Config struct {
 	APIKey                   string
 	AllowedClientSecretKey   string
 	OfficialTarget           *url.URL
-	BillingEnabled           bool
+	BillingServiceURL        string
 	ProjectID                string
 }
 
@@ -57,8 +64,12 @@ func loadConfig() *Config {
 		}
 	}
 
-	// Get billing configuration
-	billingEnabled := os.Getenv("BILLING_ENABLED") == "true"
+	// Get billing service URL (required)
+	billingServiceURL := os.Getenv("BILLING_SERVICE_URL")
+	if billingServiceURL == "" {
+		log.Fatal("BILLING_SERVICE_URL environment variable is required")
+	}
+	
 	projectID := os.Getenv("GCP_PROJECT_ID")
 	if projectID == "" {
 		log.Fatal("GCP_PROJECT_ID environment variable is required")
@@ -68,7 +79,7 @@ func loadConfig() *Config {
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
 		OfficialTarget:           officialTarget,
-		BillingEnabled:           billingEnabled,
+		BillingServiceURL:        billingServiceURL,
 		ProjectID:                projectID,
 	}
 }
@@ -76,7 +87,7 @@ func loadConfig() *Config {
 func main() {
 	config := loadConfig()
 	
-	// Initialize database service
+	// Initialize database service for OAuth
 	dbService, err := services.NewDatabaseService(config.ProjectID)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
@@ -86,24 +97,12 @@ func main() {
 	// Initialize OAuth store
 	oauthStore := provider.NewOAuthStore(dbService)
 	
-	// Initialize billing service if enabled
-	var billingService *services.BillingService
-	if config.BillingEnabled {
-		billingService = services.NewBillingService(dbService, true)
-		defer billingService.Close()
-		log.Printf("Billing service initialized for project: %s", config.ProjectID)
-	} else {
-		log.Println("Billing service is disabled")
-	}
-	
 	// Create reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(config.OfficialTarget)
 	
-	// Store request model for billing
-	var requestModel string
-	
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
+		
 		// Get valid OAuth access token for each request
 		// TODO: add memory cache for the get access token method
 		credentials, err := oauthStore.GetLatestAccessToken()
@@ -138,20 +137,6 @@ func main() {
 			}
 			log.Printf("Retrieved refreshed OAuth token, expires at: %v", credentials.ExpiresAt)
 		}
-		// Capture request body for billing if enabled
-		if config.BillingEnabled && billingService != nil && strings.Contains(req.URL.Path, "/messages") {
-			bodyBytes, err := io.ReadAll(req.Body)
-			if err == nil {
-				// 重新设置请求体
-				req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-				
-				// 尝试解析请求获取model
-				var apiReq services.ClaudeAPIRequest
-				if err := json.Unmarshal(bodyBytes, &apiReq); err == nil {
-					requestModel = apiReq.Model
-				}
-			}
-		}
 		
 		// Use official target URL and OAuth token
 		req.URL.Scheme = config.OfficialTarget.Scheme
@@ -172,52 +157,57 @@ func main() {
 	
 	// Intercept response for billing
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		if config.BillingEnabled && billingService != nil && 
-		   resp.StatusCode == http.StatusOK && 
+		if resp.StatusCode == http.StatusOK && 
 		   strings.Contains(resp.Request.URL.Path, "/messages") {
 			
-			// Read response body
+			// Read the entire response body first
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
-				log.Printf("Error reading response body for billing: %v", err)
 				return err
 			}
 			
-			// Process billing asynchronously
+			// Replace response body with the original data for the client
+			resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			
+			// Send raw response body to billing service asynchronously
 			go func() {
-				ctx := context.Background()
-				
-				// Get user info from request headers
-				userID := resp.Request.Header.Get("X-User-ID")
-				if userID == "" {
-					// 可以从Authorization header或其他地方获取用户标识
-					userID = "anonymous"
-				}
-				
-				clientIP := resp.Request.RemoteAddr
-				requestID := resp.Header.Get("X-Request-Id")
-				if requestID == "" {
-					requestID = resp.Header.Get("CF-Ray") // Cloudflare Ray ID作为备选
-				}
-				
-				// Process response for billing
-				record, err := billingService.ProcessResponse(bodyBytes, requestModel, userID, clientIP, requestID)
+				// Get identity token for service-to-service authentication
+				idToken, err := getIdentityToken(config.BillingServiceURL)
 				if err != nil {
-					log.Printf("Error processing response for billing: %v", err)
+					log.Printf("Error getting identity token: %v", err)
 					return
 				}
+
+				req, err := http.NewRequest("POST", config.BillingServiceURL, bytes.NewReader(bodyBytes))
+				if err != nil {
+					log.Printf("Error creating billing request: %v", err)
+					return
+				}
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Authorization", "Bearer "+idToken)
+				// TODO: implement subscription system - this hardcoded user ID will be replaced
+				// with actual user identification from subscription management
+				req.Header.Set("X-User-ID", "hardcoded-user-123")
 				
-				// Record usage
-				if err := billingService.RecordUsage(ctx, record); err != nil {
-					log.Printf("Error recording usage: %v", err)
-				} else {
-					log.Printf("Usage recorded: Model=%s, Input=%d, Output=%d, Cost=$%.4f", 
-						record.Model, record.InputTokens, record.OutputTokens, record.TotalCost)
+				// Forward all response headers to billing service
+				for key, values := range resp.Header {
+					for _, value := range values {
+						req.Header.Add(key, value)
+					}
+				}
+				
+				client := &http.Client{Timeout: 10 * time.Second}
+				billingResp, err := client.Do(req)
+				if err != nil {
+					log.Printf("Error sending billing request: %v", err)
+					return
+				}
+				defer billingResp.Body.Close()
+				
+				if billingResp.StatusCode != http.StatusOK {
+					log.Printf("Billing service returned non-200 status: %d", billingResp.StatusCode)
 				}
 			}()
-			
-			// Reset response body
-			resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 		
 		return nil
