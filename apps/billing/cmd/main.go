@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"simple-relay/billing/internal/services"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
