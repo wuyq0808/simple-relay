@@ -2,9 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/compute/metadata"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -24,39 +22,8 @@ const oauthBetaFlag = "oauth-2025-04-20"
 
 // getIdentityToken retrieves an identity token for service-to-service authentication
 func getIdentityToken(audience string) (string, error) {
-	// Use Google's metadata server to get identity token
-	metadataURL := "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity"
-	
-	req, err := http.NewRequest("GET", metadataURL, nil)
-	if err != nil {
-		return "", err
-	}
-	
-	// Add required metadata header and audience parameter
-	req.Header.Set("Metadata-Flavor", "Google")
-	q := req.URL.Query()
-	q.Add("audience", audience)
-	q.Add("format", "standard")
-	q.Add("include_email", "true")
-	req.URL.RawQuery = q.Encode()
-	
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("metadata server returned status %d", resp.StatusCode)
-	}
-	
-	token, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	
-	return string(token), nil
+	// Use Google's official metadata library
+	return metadata.Get("instance/service-accounts/default/identity?audience=" + audience)
 }
 
 
