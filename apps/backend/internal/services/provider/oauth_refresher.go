@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"time"
 )
 
@@ -96,21 +98,44 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 	req.Header.Set("Accept-Encoding", "gzip, compress, deflate, br")
 	req.Header.Set("Connection", "close")
 
+	reqDump, err := httputil.DumpRequestOut(req, false)
+	if err != nil {
+		log.Printf("OAuth Refresh Request: %s %s | Body: %s | Headers: Failed to dump", req.Method, req.URL.String(), string(jsonData))
+	} else {
+		log.Printf("OAuth Refresh Request: %s %s | Body: %s | Headers: %s", req.Method, req.URL.String(), string(jsonData), string(reqDump))
+	}
+
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Printf("OAuth refresh request failed: %v", err)
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("OAuth Refresh Response: Failed to read body: %v", err)
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+	
+	respDump, err := httputil.DumpResponse(resp, false)
+	if err != nil {
+		log.Printf("OAuth Refresh Response: %d %s | Body: %s | Headers: Failed to dump", resp.StatusCode, resp.Status, string(respBody))
+	} else {
+		log.Printf("OAuth Refresh Response: %d %s | Body: %s | Headers: %s", resp.StatusCode, resp.Status, string(respBody), string(respDump))
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("credentials refresh failed with status: %d", resp.StatusCode)
 	}
 
 	var refreshResp OAuthRefreshResponse
-	if err := json.NewDecoder(resp.Body).Decode(&refreshResp); err != nil {
+	if err := json.Unmarshal(respBody, &refreshResp); err != nil {
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
+	
+	log.Printf("OAuth Refresh Success: Token %s..., ExpiresIn: %ds", refreshResp.AccessToken[:20], refreshResp.ExpiresIn)
 
 	// Save the new credentials
 	err = or.oauthStore.SaveCredentials(
