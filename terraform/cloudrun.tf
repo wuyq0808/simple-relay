@@ -114,7 +114,7 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         period_seconds = 10
         failure_threshold = 30
         http_get {
-          path = "/health"
+          path = "/"
           port = 8080
         }
       }
@@ -125,7 +125,7 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         period_seconds = 10
         failure_threshold = 3
         http_get {
-          path = "/health"
+          path = "/"
           port = 8080
         }
       }
