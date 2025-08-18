@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"simple-relay/backend/internal/services"
+	"cloud.google.com/go/firestore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -76,22 +77,19 @@ func (os *OAuthStore) SaveCredentials(accessToken, refreshToken string, expiresI
 	return nil
 }
 
-func (os *OAuthStore) GetValidAccessToken() (*OAuthCredentials, error) {
+func (os *OAuthStore) GetLatestAccessToken() (*OAuthCredentials, error) {
 	ctx := context.Background()
-	now := time.Now()
 	
-	query := os.db.Client().Collection("oauth_tokens").Where("expires_at", ">", now).Limit(1)
-	docs, err := query.Documents(ctx).GetAll()
+	query := os.db.Client().Collection("oauth_tokens").OrderBy("updated_at", firestore.Desc).Limit(1)
+	iter := query.Documents(ctx)
+	doc, err := iter.Next()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get valid credentials: %w", err)
+		return nil, fmt.Errorf("failed to get latest credentials: %w", err)
 	}
-
-	if len(docs) == 0 {
-		return nil, fmt.Errorf("no valid (non-expired) credentials found")
-	}
+	iter.Stop()
 
 	var credentials OAuthCredentials
-	err = docs[0].DataTo(&credentials)
+	err = doc.DataTo(&credentials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse credentials data: %w", err)
 	}
