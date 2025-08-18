@@ -60,7 +60,7 @@ func (or *OAuthRefresher) RefreshExpiredCredentials() {
 
 	successCount := 0
 	for _, credentials := range expiredCredentials {
-		err := or.refreshSingleCredentials(credentials)
+		err := or.RefreshSingleCredentials(credentials)
 		if err != nil {
 			log.Printf("❌ Failed to refresh credentials for account %s: %v", credentials.AccountUUID, err)
 		} else {
@@ -72,7 +72,7 @@ func (or *OAuthRefresher) RefreshExpiredCredentials() {
 	log.Printf("📊 OAuth refresh summary: %d/%d credentials refreshed successfully", successCount, len(expiredCredentials))
 }
 
-func (or *OAuthRefresher) refreshSingleCredentials(credentials *OAuthCredentials) error {
+func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials) error {
 	// Prepare refresh request
 	reqData := OAuthRefreshRequest{
 		GrantType:    "refresh_token",
