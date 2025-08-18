@@ -59,10 +59,9 @@ jobs:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
-        TF_VAR_db_user: ${{ vars.DB_USER }}
-        TF_VAR_db_name: ${{ vars.DB_NAME }}
         TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
-        TF_VAR_db_instance_name: ${{ vars.DB_INSTANCE_NAME }}
+        TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
+        TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform plan -no-color
 
   terraform-deploy:
