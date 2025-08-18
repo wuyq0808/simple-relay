@@ -12,7 +12,6 @@ import (
 type OAuthRefreshRequest struct {
 	GrantType    string `json:"grant_type"`
 	RefreshToken string `json:"refresh_token"`
-	ClientID     string `json:"client_id"`
 }
 
 type Organization struct {
@@ -63,9 +62,9 @@ func (or *OAuthRefresher) RefreshExpiredCredentials() {
 	for _, credentials := range expiredCredentials {
 		err := or.refreshSingleCredentials(credentials)
 		if err != nil {
-			log.Printf("❌ Failed to refresh credentials for client_id %s: %v", credentials.ClientID, err)
+			log.Printf("❌ Failed to refresh credentials for account %s: %v", credentials.AccountUUID, err)
 		} else {
-			log.Printf("✅ Successfully refreshed credentials for client_id %s", credentials.ClientID)
+			log.Printf("✅ Successfully refreshed credentials for account %s", credentials.AccountUUID)
 			successCount++
 		}
 	}
@@ -78,7 +77,6 @@ func (or *OAuthRefresher) refreshSingleCredentials(credentials *OAuthCredentials
 	reqData := OAuthRefreshRequest{
 		GrantType:    "refresh_token",
 		RefreshToken: credentials.RefreshToken,
-		ClientID:     credentials.ClientID,
 	}
 
 	jsonData, err := json.Marshal(reqData)
@@ -115,7 +113,6 @@ func (or *OAuthRefresher) refreshSingleCredentials(credentials *OAuthCredentials
 
 	// Save the new credentials
 	err = or.oauthStore.SaveCredentials(
-		credentials.ClientID,
 		refreshResp.AccessToken,
 		refreshResp.RefreshToken,
 		refreshResp.ExpiresIn,
