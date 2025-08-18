@@ -37,7 +37,7 @@ func (ds *DatabaseService) Close() error {
 	return ds.client.Close()
 }
 
-func (ds *DatabaseService) CreateTokensTable() error {
-	// No table creation needed in Firestore - collections are created automatically
-	return nil
+
+func (ds *DatabaseService) Client() *firestore.Client {
+	return ds.client
 }

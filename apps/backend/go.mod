@@ -5,8 +5,10 @@ go 1.18
 require (
 	cloud.google.com/go/firestore v1.14.0
 	github.com/gorilla/mux v1.8.1
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.57.0
 )
+
+require github.com/google/go-cmp v0.5.9 // indirect
 
 require (
 	cloud.google.com/go v0.110.7 // indirect
