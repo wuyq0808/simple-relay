@@ -46,11 +46,6 @@ variable "service_name" {
 }
 
 
-variable "api_base_url" {
-  description = "API base URL"
-  type        = string
-  default     = "https://api.anthropic.com"
-}
 
 variable "official_base_url" {
   description = "Official base URL"
