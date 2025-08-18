@@ -11,7 +11,6 @@ import (
 )
 
 type OAuthCredentials struct {
-	ClientID         string    `json:"client_id" firestore:"client_id"`
 	AccessToken      string    `json:"access_token" firestore:"access_token"`
 	RefreshToken     string    `json:"refresh_token" firestore:"refresh_token"`
 	ExpiresAt        time.Time `json:"expires_at" firestore:"expires_at"`
@@ -32,13 +31,12 @@ func NewOAuthStore(db *services.DatabaseService) *OAuthStore {
 	return &OAuthStore{db: db}
 }
 
-func (os *OAuthStore) SaveCredentials(clientID, accessToken, refreshToken string, expiresIn int, scope, orgUUID, orgName, accountUUID, accountEmail string) error {
+func (os *OAuthStore) SaveCredentials(accessToken, refreshToken string, expiresIn int, scope, orgUUID, orgName, accountUUID, accountEmail string) error {
 	ctx := context.Background()
 	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
 	now := time.Now()
 	
 	credentials := OAuthCredentials{
-		ClientID:         clientID,
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		ExpiresAt:        expiresAt,
@@ -51,7 +49,7 @@ func (os *OAuthStore) SaveCredentials(clientID, accessToken, refreshToken string
 	}
 
 	// Check if document exists to set CreatedAt
-	docRef := os.db.Client().Collection("oauth_tokens").Doc(clientID)
+	docRef := os.db.Client().Collection("oauth_tokens").Doc(accountUUID)
 	doc, err := docRef.Get(ctx)
 	if err != nil && status.Code(err) != codes.NotFound {
 		return fmt.Errorf("failed to check existing credentials: %w", err)
@@ -78,19 +76,22 @@ func (os *OAuthStore) SaveCredentials(clientID, accessToken, refreshToken string
 	return nil
 }
 
-func (os *OAuthStore) GetCredentials(clientID string) (*OAuthCredentials, error) {
+func (os *OAuthStore) GetValidAccessToken() (*OAuthCredentials, error) {
 	ctx := context.Background()
-	docRef := os.db.Client().Collection("oauth_tokens").Doc(clientID)
-	doc, err := docRef.Get(ctx)
+	now := time.Now()
+	
+	query := os.db.Client().Collection("oauth_tokens").Where("expires_at", ">", now).Limit(1)
+	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return nil, fmt.Errorf("credentials not found for client_id: %s", clientID)
-		}
-		return nil, fmt.Errorf("failed to get credentials: %w", err)
+		return nil, fmt.Errorf("failed to get valid credentials: %w", err)
+	}
+
+	if len(docs) == 0 {
+		return nil, fmt.Errorf("no valid (non-expired) credentials found")
 	}
 
 	var credentials OAuthCredentials
-	err = doc.DataTo(&credentials)
+	err = docs[0].DataTo(&credentials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse credentials data: %w", err)
 	}
