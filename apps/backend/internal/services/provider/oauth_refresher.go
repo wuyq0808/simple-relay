@@ -132,6 +132,7 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 
 	var refreshResp OAuthRefreshResponse
 	if err := json.Unmarshal(respBody, &refreshResp); err != nil {
+		log.Printf("OAuth Refresh JSON Parse Error: %v | Response Body: %s", err, string(respBody))
 		return fmt.Errorf("failed to decode response: %w", err)
 	}
 	
