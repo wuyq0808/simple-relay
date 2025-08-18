@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"cloud.google.com/go/firestore"
 )
