@@ -115,10 +115,8 @@ func main() {
 		
 		// Check if token is expired and refresh if needed
 		now := time.Now()
-		// TEMP DEBUG: Force expire tokens 1 minute after creation instead of using ExpiresAt
-		debugExpiration := credentials.CreatedAt.Add(1 * time.Minute)
-		if debugExpiration.Before(now) {
-			log.Printf("OAuth token debug-expired at %v (created %v + 1min), actual expires %v, refreshing...", debugExpiration, credentials.CreatedAt, credentials.ExpiresAt)
+		if credentials.ExpiresAt.Before(now) {
+			log.Printf("OAuth token expired at %v, refreshing...", credentials.ExpiresAt)
 			// Token is expired, refresh it
 			refresher := provider.NewOAuthRefresher(oauthStore)
 			err = refresher.RefreshSingleCredentials(credentials)
