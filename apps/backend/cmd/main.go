@@ -170,25 +170,10 @@ func main() {
 			// Send raw response body to billing service asynchronously
 			go func() {
 				// Get identity token for service-to-service authentication
-				log.Printf("Getting identity token for audience: %s", config.BillingServiceURL)
 				idToken, err := getIdentityToken(config.BillingServiceURL)
 				if err != nil {
 					log.Printf("Error getting identity token: %v", err)
 					return
-				}
-				log.Printf("Successfully obtained identity token")
-				
-				// First test connectivity with health endpoint
-				healthURL := config.BillingServiceURL + "/health"
-				healthReq, _ := http.NewRequest("GET", healthURL, nil)
-				healthReq.Header.Set("Authorization", "Bearer "+idToken)
-				healthResp, err := (&http.Client{Timeout: 5 * time.Second}).Do(healthReq)
-				if err != nil {
-					log.Printf("Health check failed: %v", err)
-				} else {
-					healthBody, _ := io.ReadAll(healthResp.Body)
-					log.Printf("Health check response: %d, body: %s", healthResp.StatusCode, string(healthBody))
-					healthResp.Body.Close()
 				}
 
 				req, err := http.NewRequest("POST", config.BillingServiceURL, bytes.NewReader(bodyBytes))
@@ -209,7 +194,6 @@ func main() {
 					}
 				}
 				
-				log.Printf("Sending billing request to: %s", config.BillingServiceURL)
 				client := &http.Client{Timeout: 10 * time.Second}
 				billingResp, err := client.Do(req)
 				if err != nil {
@@ -219,11 +203,7 @@ func main() {
 				defer billingResp.Body.Close()
 				
 				if billingResp.StatusCode != http.StatusOK {
-					// Read response body for detailed error information
-					respBody, _ := io.ReadAll(billingResp.Body)
-					log.Printf("Billing service returned non-200 status: %d, response: %s, URL: %s", billingResp.StatusCode, string(respBody), config.BillingServiceURL)
-				} else {
-					log.Printf("Billing request successful")
+					log.Printf("Billing service returned non-200 status: %d", billingResp.StatusCode)
 				}
 			}()
 		}
