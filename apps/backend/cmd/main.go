@@ -18,7 +18,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const oauthBetaFlag = "oauth-2025-04-20"
+const (
+	oauthBetaFlag = "oauth-2025-04-20"
+	// DefaultUserID is a temporary hardcoded user ID that will be replaced
+	// with actual user identification from subscription service
+	DefaultUserID = "hardcoded-user-123"
+)
 
 // getIdentityToken retrieves an identity token for service-to-service authentication
 func getIdentityToken(audience string) (string, error) {
@@ -104,8 +109,8 @@ func main() {
 	proxy.Director = func(req *http.Request) {
 		
 		// Get valid OAuth access token for each request
-		// TODO: add memory cache for the get access token method
-		credentials, err := oauthStore.GetLatestAccessToken()
+		// TODO: get user ID from subscription service when implemented
+		credentials, err := oauthStore.GetLatestAccessToken(DefaultUserID)
 		if err != nil {
 			log.Printf("Failed to get OAuth access token: %v", err)
 			// Fail the request if no valid OAuth token
@@ -127,7 +132,7 @@ func main() {
 			log.Printf("OAuth token refreshed successfully")
 			
 			// Get the refreshed token
-			credentials, err = oauthStore.GetLatestAccessToken()
+			credentials, err = oauthStore.GetLatestAccessToken(DefaultUserID)
 			if err != nil {
 				log.Printf("Failed to get refreshed OAuth access token: %v", err)
 				// Fail the request if can't get refreshed token
@@ -185,7 +190,7 @@ func main() {
 				req.Header.Set("Authorization", "Bearer "+idToken)
 				// TODO: implement subscription system - this hardcoded user ID will be replaced
 				// with actual user identification from subscription management
-				req.Header.Set("X-User-ID", "hardcoded-user-123")
+				req.Header.Set("X-User-ID", DefaultUserID)
 				
 				// Forward all response headers to billing service
 				for key, values := range resp.Header {

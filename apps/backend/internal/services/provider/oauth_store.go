@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"simple-relay/backend/internal/services"
@@ -24,15 +25,24 @@ type OAuthCredentials struct {
 	UpdatedAt        time.Time `json:"updated_at" firestore:"updated_at"`
 }
 
+type cacheEntry struct {
+	credentials *OAuthCredentials
+	expiry      time.Time
+}
+
 type OAuthStore struct {
-	db *services.DatabaseService
+	db    *services.DatabaseService
+	cache sync.Map // map[string]*cacheEntry
 }
 
 func NewOAuthStore(db *services.DatabaseService) *OAuthStore {
-	return &OAuthStore{db: db}
+	return &OAuthStore{
+		db:    db,
+		cache: sync.Map{},
+	}
 }
 
-func (os *OAuthStore) SaveCredentials(accessToken, refreshToken string, expiresIn int, scope, orgUUID, orgName, accountUUID, accountEmail string) error {
+func (store *OAuthStore) SaveCredentials(accessToken, refreshToken string, expiresIn int, scope, orgUUID, orgName, accountUUID, accountEmail string) error {
 	ctx := context.Background()
 	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
 	now := time.Now()
@@ -50,7 +60,7 @@ func (os *OAuthStore) SaveCredentials(accessToken, refreshToken string, expiresI
 	}
 
 	// Check if document exists to set CreatedAt
-	docRef := os.db.Client().Collection("oauth_tokens").Doc(accountUUID)
+	docRef := store.db.Client().Collection("oauth_tokens").Doc(accountUUID)
 	doc, err := docRef.Get(ctx)
 	if err != nil && status.Code(err) != codes.NotFound {
 		return fmt.Errorf("failed to check existing credentials: %w", err)
@@ -74,13 +84,32 @@ func (os *OAuthStore) SaveCredentials(accessToken, refreshToken string, expiresI
 		return fmt.Errorf("failed to save credentials: %w", err)
 	}
 
+	// Invalidate cache when credentials are updated
+	// Note: accountUUID is the user identifier for cache invalidation
+	store.cache.Delete(accountUUID)
+
 	return nil
 }
 
-func (os *OAuthStore) GetLatestAccessToken() (*OAuthCredentials, error) {
+func (store *OAuthStore) GetLatestAccessToken(userID string) (*OAuthCredentials, error) {
+	// Use user ID as cache key
+	cacheKey := userID
+	
+	// Check cache first
+	if cached, ok := store.cache.Load(cacheKey); ok {
+		entry := cached.(*cacheEntry)
+		// Check if cache entry is still valid (5 minutes cache TTL)
+		if time.Now().Before(entry.expiry) {
+			return entry.credentials, nil
+		}
+		// Cache expired, remove it
+		store.cache.Delete(cacheKey)
+	}
+	
+	// Cache miss or expired, fetch from database
 	ctx := context.Background()
 	
-	query := os.db.Client().Collection("oauth_tokens").OrderBy("updated_at", firestore.Desc).Limit(1)
+	query := store.db.Client().Collection("oauth_tokens").OrderBy("updated_at", firestore.Desc).Limit(1)
 	iter := query.Documents(ctx)
 	doc, err := iter.Next()
 	if err != nil {
@@ -94,15 +123,21 @@ func (os *OAuthStore) GetLatestAccessToken() (*OAuthCredentials, error) {
 		return nil, fmt.Errorf("failed to parse credentials data: %w", err)
 	}
 
+	// Cache the result for 5 minutes
+	store.cache.Store(cacheKey, &cacheEntry{
+		credentials: &credentials,
+		expiry:      time.Now().Add(5 * time.Minute),
+	})
+
 	return &credentials, nil
 }
 
 
-func (os *OAuthStore) GetExpiredCredentials() ([]*OAuthCredentials, error) {
+func (store *OAuthStore) GetExpiredCredentials() ([]*OAuthCredentials, error) {
 	ctx := context.Background()
 	now := time.Now()
 	
-	query := os.db.Client().Collection("oauth_tokens").Where("expires_at", "<", now)
+	query := store.db.Client().Collection("oauth_tokens").Where("expires_at", "<", now)
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get expired credentials: %w", err)
