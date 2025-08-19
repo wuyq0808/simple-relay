@@ -220,8 +220,8 @@ resource "google_cloud_run_v2_service" "simple_billing" {
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
   }
 
-  # Configure for internal-only traffic
-  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+  # Configure for all traffic to allow service-to-service communication
+  ingress = "INGRESS_TRAFFIC_ALL"
 }
 
 # IAM policy for billing service - allow backend service to invoke billing service
