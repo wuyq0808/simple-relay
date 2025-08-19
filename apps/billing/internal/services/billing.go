@@ -108,11 +108,29 @@ func (bs *BillingService) RecordUsage(ctx context.Context, record *UsageRecord) 
 
 // ProcessResponse 处理Claude API响应并提取计费信息
 func (bs *BillingService) ProcessResponse(responseBody []byte, userID string, clientIP string, requestID string) (*UsageRecord, error) {
+	// Log the first 200 characters for debugging (to avoid huge logs)
+	bodyPreview := string(responseBody)
+	if len(bodyPreview) > 200 {
+		bodyPreview = bodyPreview[:200] + "..."
+	}
+	log.Printf("Processing response body (preview): %s", bodyPreview)
+	
+	// Skip processing if response is empty or too small to be valid
+	if len(responseBody) < 10 {
+		return nil, fmt.Errorf("response body too small: %d bytes", len(responseBody))
+	}
+	
 	var response ClaudeAPIResponse
 	if err := json.Unmarshal(responseBody, &response); err != nil {
+		log.Printf("Failed to parse JSON response: %v, body preview: %s", err, bodyPreview)
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
+	// Validate that we have usage information
+	if response.Usage.InputTokens == 0 && response.Usage.OutputTokens == 0 {
+		log.Printf("Warning: No usage tokens found in response for request %s", requestID)
+	}
+	
 	record := &UsageRecord{
 		ID:               fmt.Sprintf("%s_%d", requestID, time.Now().UnixNano()),
 		UserID:           userID,
@@ -126,6 +144,9 @@ func (bs *BillingService) ProcessResponse(responseBody []byte, userID string, cl
 		Timestamp:        time.Now(),
 		Status:           "success",
 	}
+
+	log.Printf("Successfully parsed usage: Model=%s, Input=%d, Output=%d", 
+		record.Model, record.InputTokens, record.OutputTokens)
 
 	return record, nil
 }
