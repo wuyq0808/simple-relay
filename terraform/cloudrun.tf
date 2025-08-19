@@ -182,7 +182,7 @@ resource "google_cloud_run_v2_service" "simple_billing" {
       resources {
         limits = {
           cpu    = "1000m"
-          memory = "256Mi"
+          memory = "512Mi"
         }
         cpu_idle = true
         startup_cpu_boost = true
