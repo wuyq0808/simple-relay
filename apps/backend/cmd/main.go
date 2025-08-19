@@ -31,6 +31,40 @@ func getIdentityToken(audience string) (string, error) {
 	return metadata.Get("instance/service-accounts/default/identity?audience=" + audience)
 }
 
+// getValidOAuthToken retrieves and validates OAuth access token, refreshing if needed
+func getValidOAuthToken(oauthStore *provider.OAuthStore, userID string) (*provider.OAuthCredentials, error) {
+	// Get valid OAuth access token for each request
+	credentials, err := oauthStore.GetLatestAccessToken(userID)
+	if err != nil {
+		log.Printf("Failed to get OAuth access token: %v", err)
+		return nil, err
+	}
+	
+	// Check if token is expired and refresh if needed
+	now := time.Now()
+	if credentials.ExpiresAt.Before(now) {
+		log.Printf("OAuth token expired at %v, refreshing...", credentials.ExpiresAt)
+		// Token is expired, refresh it
+		refresher := provider.NewOAuthRefresher(oauthStore)
+		err = refresher.RefreshSingleCredentials(credentials)
+		if err != nil {
+			log.Printf("Failed to refresh OAuth credentials: %v", err)
+			return nil, err
+		}
+		log.Printf("OAuth token refreshed successfully")
+		
+		// Get the refreshed token
+		credentials, err = oauthStore.GetLatestAccessToken(userID)
+		if err != nil {
+			log.Printf("Failed to get refreshed OAuth access token: %v", err)
+			return nil, err
+		}
+		log.Printf("Retrieved refreshed OAuth token, expires at: %v", credentials.ExpiresAt)
+	}
+	
+	return credentials, nil
+}
+
 
 
 type Config struct {
@@ -108,37 +142,11 @@ func main() {
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
 		
-		// Get valid OAuth access token for each request
 		// TODO: get user ID from subscription service when implemented
-		credentials, err := oauthStore.GetLatestAccessToken(DefaultUserID)
+		credentials, err := getValidOAuthToken(oauthStore, DefaultUserID)
 		if err != nil {
-			log.Printf("Failed to get OAuth access token: %v", err)
 			// Fail the request if no valid OAuth token
 			return
-		}
-		
-		// Check if token is expired and refresh if needed
-		now := time.Now()
-		if credentials.ExpiresAt.Before(now) {
-			log.Printf("OAuth token expired at %v, refreshing...", credentials.ExpiresAt)
-			// Token is expired, refresh it
-			refresher := provider.NewOAuthRefresher(oauthStore)
-			err = refresher.RefreshSingleCredentials(credentials)
-			if err != nil {
-				log.Printf("Failed to refresh OAuth credentials: %v", err)
-				// Fail the request if refresh fails
-				return
-			}
-			log.Printf("OAuth token refreshed successfully")
-			
-			// Get the refreshed token
-			credentials, err = oauthStore.GetLatestAccessToken(DefaultUserID)
-			if err != nil {
-				log.Printf("Failed to get refreshed OAuth access token: %v", err)
-				// Fail the request if can't get refreshed token
-				return
-			}
-			log.Printf("Retrieved refreshed OAuth token, expires at: %v", credentials.ExpiresAt)
 		}
 		
 		// Use official target URL and OAuth token
@@ -163,6 +171,11 @@ func main() {
 		if resp.StatusCode == http.StatusOK && 
 		   strings.Contains(resp.Request.URL.Path, "/messages") {
 			
+			// Check if this is a streaming response
+			contentType := resp.Header.Get("Content-Type")
+			isStreaming := strings.Contains(contentType, "text/event-stream") || 
+						  strings.Contains(contentType, "text/plain")
+			
 			// Read the entire response body first
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -171,6 +184,16 @@ func main() {
 			
 			// Replace response body with the original data for the client
 			resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			
+			// Also check if response body starts with "event:" or "data:" (SSE format)
+			bodyStr := string(bodyBytes)
+			isSSE := strings.HasPrefix(bodyStr, "event:") || strings.HasPrefix(bodyStr, "data:")
+			
+			// Skip billing for streaming responses (they don't contain complete JSON)
+			if isStreaming || isSSE {
+				log.Printf("Skipping billing for streaming response (Content-Type: %s, SSE: %v)", contentType, isSSE)
+				return nil
+			}
 			
 			// Send raw response body to billing service asynchronously
 			go func() {
