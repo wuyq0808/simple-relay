@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -32,6 +31,23 @@ type UsageRecord struct {
 
 // ClaudeAPIResponse Claude API响应结构
 type ClaudeAPIResponse struct {
+	ID      string `json:"id"`
+	Model   string `json:"model"`
+	Content []struct {
+		Text string `json:"text"`
+		Type string `json:"type"`
+	} `json:"content"`
+	Usage struct {
+		InputTokens             int `json:"input_tokens"`
+		OutputTokens            int `json:"output_tokens"`
+		CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
+		CacheReadInputTokens    int `json:"cache_read_input_tokens,omitempty"`
+	} `json:"usage"`
+	StopReason string `json:"stop_reason"`
+}
+
+// ClaudeMessage represents the message from message_stop event
+type ClaudeMessage struct {
 	ID      string `json:"id"`
 	Model   string `json:"model"`
 	Content []struct {
@@ -107,39 +123,26 @@ func (bs *BillingService) RecordUsage(ctx context.Context, record *UsageRecord) 
 }
 
 // ProcessResponse 处理Claude API响应并提取计费信息
-func (bs *BillingService) ProcessResponse(responseBody []byte, userID string, clientIP string, requestID string) (*UsageRecord, error) {
-	// Log the first 200 characters for debugging (to avoid huge logs)
-	bodyPreview := string(responseBody)
-	if len(bodyPreview) > 200 {
-		bodyPreview = bodyPreview[:200] + "..."
-	}
-	log.Printf("Processing response body (preview): %s", bodyPreview)
-	
-	// Skip processing if response is empty or too small to be valid
-	if len(responseBody) < 10 {
-		return nil, fmt.Errorf("response body too small: %d bytes", len(responseBody))
-	}
-	
-	var response ClaudeAPIResponse
-	if err := json.Unmarshal(responseBody, &response); err != nil {
-		log.Printf("Failed to parse JSON response: %v, body preview: %s", err, bodyPreview)
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
+func (bs *BillingService) ProcessResponse(message *ClaudeMessage, userID string, clientIP string, requestID string) (*UsageRecord, error) {
 	// Validate that we have usage information
-	if response.Usage.InputTokens == 0 && response.Usage.OutputTokens == 0 {
-		log.Printf("Warning: No usage tokens found in response for request %s", requestID)
+	if message.Usage.InputTokens == 0 && message.Usage.OutputTokens == 0 {
+		log.Printf("Warning: No usage tokens found in message for request %s", requestID)
+	}
+	
+	// Use message ID as requestID if not provided
+	if requestID == "" {
+		requestID = message.ID
 	}
 	
 	record := &UsageRecord{
 		ID:               fmt.Sprintf("%s_%d", requestID, time.Now().UnixNano()),
 		UserID:           userID,
 		ClientIP:         clientIP,
-		Model:            response.Model,
-		InputTokens:      response.Usage.InputTokens,
-		OutputTokens:     response.Usage.OutputTokens,
-		CacheReadTokens:  response.Usage.CacheReadInputTokens,
-		CacheWriteTokens: response.Usage.CacheCreationInputTokens,
+		Model:            message.Model,
+		InputTokens:      message.Usage.InputTokens,
+		OutputTokens:     message.Usage.OutputTokens,
+		CacheReadTokens:  message.Usage.CacheReadInputTokens,
+		CacheWriteTokens: message.Usage.CacheCreationInputTokens,
 		RequestID:        requestID,
 		Timestamp:        time.Now(),
 		Status:           "success",
@@ -151,16 +154,17 @@ func (bs *BillingService) ProcessResponse(responseBody []byte, userID string, cl
 	return record, nil
 }
 
+
 // ProcessRequest 处理请求并计算账单
-func (bs *BillingService) ProcessRequest(responseBody []byte, userID string, requestID string) error {
+func (bs *BillingService) ProcessRequest(message *ClaudeMessage, userID string, requestID string) error {
 	if !bs.enabled {
 		return nil
 	}
 
 	// 处理响应获取usage信息
-	record, err := bs.ProcessResponse(responseBody, userID, "", requestID)
+	record, err := bs.ProcessResponse(message, userID, "", requestID)
 	if err != nil {
-		return fmt.Errorf("error processing response: %w", err)
+		return fmt.Errorf("error processing message: %w", err)
 	}
 
 	// 记录使用情况

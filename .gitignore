@@ -45,3 +45,4 @@ Thumbs.db
 key.json
 apps/backend/.env
 apps/backend/main
+apps/billing/main
