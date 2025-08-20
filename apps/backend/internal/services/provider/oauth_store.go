@@ -20,6 +20,7 @@ type OAuthCredentials struct {
 	AccountUUID      string    `json:"account_uuid" firestore:"account_uuid"`
 	AccountEmail     string    `json:"account_email" firestore:"account_email"`
 	UpdatedAt        time.Time `json:"updated_at" firestore:"updated_at"`
+	RefreshStartedAt time.Time `json:"refresh_started_at" firestore:"refresh_started_at"` // zero time = active, timestamp = refreshing
 }
 
 type OAuthStore struct {
