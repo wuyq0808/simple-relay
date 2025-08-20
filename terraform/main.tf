@@ -25,8 +25,6 @@ provider "google" {
   region  = var.region
 }
 
-# Get current project information
-data "google_project" "project" {}
 
 # Variables
 variable "project_id" {
