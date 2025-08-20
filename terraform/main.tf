@@ -15,7 +15,8 @@ terraform {
   backend "gcs" {
     # Configure via backend config file or environment variables
     # bucket = "your-terraform-state-bucket"
-    # prefix = "simple-relay"
+    # prefix will be set via -backend-config during terraform init
+    # Example: terraform init -backend-config="prefix=simple-relay-production"
   }
 }
 
@@ -86,5 +87,14 @@ variable "client_secret_key" {
   description = "Client Secret Key" 
   type        = string
   sensitive   = true
+}
+
+variable "environment" {
+  description = "Environment (production or staging)"
+  type        = string
+  validation {
+    condition     = contains(["production", "staging"], var.environment)
+    error_message = "Environment must be either 'production' or 'staging'."
+  }
 }
 
