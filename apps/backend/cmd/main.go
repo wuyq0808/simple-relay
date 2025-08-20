@@ -43,7 +43,6 @@ func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredent
 	// Check if token is expired and refresh if needed
 	now := time.Now()
 	if credentials.ExpiresAt.Before(now) {
-		log.Printf("OAuth token expired at %v, refreshing...", credentials.ExpiresAt)
 		// Token is expired, refresh it
 		refresher := provider.NewOAuthRefresher(oauthStore)
 		err = refresher.RefreshSingleCredentials(credentials)
@@ -51,7 +50,6 @@ func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredent
 			log.Printf("Failed to refresh OAuth credentials: %v", err)
 			return nil, err
 		}
-		log.Printf("OAuth token refreshed successfully")
 		
 		// Get the refreshed token
 		credentials, err = oauthStore.GetLatestAccessToken()
@@ -59,7 +57,6 @@ func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredent
 			log.Printf("Failed to get refreshed OAuth access token: %v", err)
 			return nil, err
 		}
-		log.Printf("Retrieved refreshed OAuth token, expires at: %v", credentials.ExpiresAt)
 	}
 	
 	return credentials, nil

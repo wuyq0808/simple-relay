@@ -77,32 +77,43 @@ func (or *OAuthRefresher) RefreshExpiredCredentials() {
 func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials) error {
 	ctx := context.Background()
 	
-	// Use Firestore transaction to ensure only one process refreshes credentials
 	return or.oauthStore.db.Client().RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
-		// Read current credentials from Firestore
+		// Read current credentials
 		docRef := or.oauthStore.db.Client().Collection("oauth_tokens").Doc(credentials.AccountUUID)
 		doc, err := tx.Get(docRef)
 		if err != nil && status.Code(err) != codes.NotFound {
 			return fmt.Errorf("failed to read credentials: %w", err)
 		}
 		
-		// Check if credentials still exist and are expired
-		if doc.Exists() {
-			var currentCreds OAuthCredentials
-			if err := doc.DataTo(&currentCreds); err != nil {
-				return fmt.Errorf("failed to parse current credentials: %w", err)
-			}
-			
-			// If credentials are not expired anymore, another process already refreshed them
-			if time.Now().Before(currentCreds.ExpiresAt) {
-				log.Printf("Credentials for account %s were already refreshed by another process", credentials.AccountUUID)
-				return nil
-			}
+		if !doc.Exists() {
+			return fmt.Errorf("credentials document not found")
 		}
 		
-		// Credentials are still expired, proceed with refresh
+		var currentCreds OAuthCredentials
+		if err := doc.DataTo(&currentCreds); err != nil {
+			return fmt.Errorf("failed to parse current credentials: %w", err)
+		}
+		
+		now := time.Now()
+		
+		// Check if credentials are not expired anymore
+		if now.Before(currentCreds.ExpiresAt) {
+			log.Printf("Credentials for account %s were already refreshed by another process", credentials.AccountUUID)
+			return nil
+		}
+		
+		// Write to acquire lock
+		refreshStartedAt := now
+		currentCreds.RefreshStartedAt = refreshStartedAt
+		
+		err = tx.Set(docRef, currentCreds)
+		if err != nil {
+			return fmt.Errorf("failed to acquire refresh lock: %w", err)
+		}
+		
 		log.Printf("Refreshing credentials for account %s", credentials.AccountUUID)
 		
+		// HTTP request within transaction
 		reqData := OAuthRefreshRequest{
 			GrantType:    "refresh_token",
 			RefreshToken: credentials.RefreshToken,
@@ -145,8 +156,8 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 			return fmt.Errorf("failed to decode response: %w", err)
 		}
 
-		// Save the new credentials within the transaction
-		now := time.Now()
+		// Write updated credentials
+		now = time.Now()
 		expiresAt := now.Add(time.Duration(refreshResp.ExpiresIn) * time.Second)
 		
 		newCredentials := OAuthCredentials{
@@ -159,15 +170,15 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 			AccountUUID:      refreshResp.Account.UUID,
 			AccountEmail:     refreshResp.Account.EmailAddress,
 			UpdatedAt:        now,
+			RefreshStartedAt: refreshStartedAt,
 		}
 		
-		// Set the new credentials within the transaction
 		err = tx.Set(docRef, newCredentials)
 		if err != nil {
 			return fmt.Errorf("failed to save refreshed credentials: %w", err)
 		}
 		
-		// Invalidate cache after successful transaction
+		// Invalidate cache after successful update
 		or.oauthStore.cachedCredentials.Store(nil)
 		
 		log.Printf("Successfully refreshed credentials for account %s", refreshResp.Account.UUID)
