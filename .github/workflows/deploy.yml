@@ -25,7 +25,7 @@ env:
 
 jobs:
   terraform-plan:
-    name: Terraform Plan (${{ inputs.environment }})
+    name: Terraform Plan
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     environment: ${{ inputs.environment }}
@@ -78,7 +78,7 @@ jobs:
       run: terraform plan -no-color
 
   terraform-deploy:
-    name: Deploy to ${{ inputs.environment }}
+    name: Deploy
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     environment: ${{ inputs.environment }}
