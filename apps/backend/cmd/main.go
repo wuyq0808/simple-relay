@@ -43,7 +43,6 @@ func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredent
 	// Check if token is expired and refresh if needed
 	now := time.Now()
 	if credentials.ExpiresAt.Before(now) {
-		log.Printf("OAuth token expired at %v, refreshing...", credentials.ExpiresAt)
 		// Token is expired, refresh it
 		refresher := provider.NewOAuthRefresher(oauthStore)
 		err = refresher.RefreshSingleCredentials(credentials)
@@ -51,7 +50,6 @@ func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredent
 			log.Printf("Failed to refresh OAuth credentials: %v", err)
 			return nil, err
 		}
-		log.Printf("OAuth token refreshed successfully")
 		
 		// Get the refreshed token
 		credentials, err = oauthStore.GetLatestAccessToken()
@@ -59,7 +57,6 @@ func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredent
 			log.Printf("Failed to get refreshed OAuth access token: %v", err)
 			return nil, err
 		}
-		log.Printf("Retrieved refreshed OAuth token, expires at: %v", credentials.ExpiresAt)
 	}
 	
 	return credentials, nil
@@ -73,6 +70,7 @@ type Config struct {
 	OfficialTarget           *url.URL
 	BillingServiceURL        string
 	ProjectID                string
+	DatabaseName             string
 }
 
 func loadConfig() *Config {
@@ -114,12 +112,18 @@ func loadConfig() *Config {
 		log.Fatal("GCP_PROJECT_ID environment variable is required")
 	}
 
+	databaseName := os.Getenv("FIRESTORE_DATABASE_NAME")
+	if databaseName == "" {
+		log.Fatal("FIRESTORE_DATABASE_NAME environment variable is required")
+	}
+
 	return &Config{
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
 		OfficialTarget:           officialTarget,
 		BillingServiceURL:        billingServiceURL,
 		ProjectID:                projectID,
+		DatabaseName:             databaseName,
 	}
 }
 
@@ -127,7 +131,7 @@ func main() {
 	config := loadConfig()
 	
 	// Initialize database service for OAuth
-	dbService, err := services.NewDatabaseService(config.ProjectID)
+	dbService, err := services.NewDatabaseService(config.ProjectID, config.DatabaseName)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}

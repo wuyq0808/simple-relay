@@ -15,7 +15,8 @@ terraform {
   backend "gcs" {
     # Configure via backend config file or environment variables
     # bucket = "your-terraform-state-bucket"
-    # prefix = "simple-relay"
+    # prefix will be set via -backend-config during terraform init
+    # Example: terraform init -backend-config="prefix=simple-relay-production"
   }
 }
 
@@ -24,8 +25,6 @@ provider "google" {
   region  = var.region
 }
 
-# Get current project information
-data "google_project" "project" {}
 
 # Variables
 variable "project_id" {
@@ -49,6 +48,11 @@ variable "billing_service_name" {
   description = "Name of the billing Cloud Run service"
   type        = string
   default     = "simple-billing"
+}
+
+variable "firestore_database_name" {
+  description = "Firestore database name"
+  type        = string
 }
 
 
@@ -81,5 +85,14 @@ variable "client_secret_key" {
   description = "Client Secret Key" 
   type        = string
   sensitive   = true
+}
+
+variable "deploy_environment" {
+  description = "Environment (production or staging)"
+  type        = string
+  validation {
+    condition     = contains(["production", "staging"], var.deploy_environment)
+    error_message = "Environment must be either 'production' or 'staging'."
+  }
 }
 

@@ -1,20 +1,12 @@
-name: Deploy Infrastructure with Terraform
+name: Reusable Deploy Workflow
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'terraform/**'
-      - 'apps/backend/**'
-      - 'apps/billing/**'
-      - '.github/workflows/terraform-deploy.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'terraform/**'
-      - 'apps/backend/**'
-      - 'apps/billing/**'
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      deploy_environment:
+        required: true
+        type: string
+        description: 'Environment to deploy to (production or staging)'
 
 env:
   TF_VERSION: '1.5.0'
@@ -26,6 +18,7 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    environment: ${{ inputs.deploy_environment }}
     
     steps:
     - name: Checkout
@@ -48,8 +41,9 @@ jobs:
       working-directory: ./terraform
       run: |
         terraform init \
-          -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-          -backend-config="prefix=simple-relay"
+          -backend-config="bucket=simple-relay-${{ inputs.deploy_environment }}" \
+          -backend-config="prefix=terraform-state"
+
 
     - name: Terraform Validate
       working-directory: ./terraform
@@ -61,15 +55,22 @@ jobs:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
-        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
+        TF_VAR_service_name: simple-relay
+        TF_VAR_billing_service_name: simple-relay-billing
+        TF_VAR_firestore_database_name: simple-relay-db
+        TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
-      run: terraform plan -no-color
+      run: terraform plan -input=false -no-color
 
   terraform-deploy:
-    name: Deploy to Production
+    name: Deploy
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ inputs.deploy_environment }}
+    concurrency: 
+      group: deploy-${{ inputs.deploy_environment }}
+      cancel-in-progress: false
     
     steps:
     - name: Checkout
@@ -112,8 +113,9 @@ jobs:
       working-directory: ./terraform
       run: |
         terraform init \
-          -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-          -backend-config="prefix=simple-relay"
+          -backend-config="bucket=simple-relay-${{ inputs.deploy_environment }}" \
+          -backend-config="prefix=terraform-state"
+
 
     - name: Terraform Apply
       working-directory: ./terraform
@@ -121,12 +123,10 @@ jobs:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
-        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
+        TF_VAR_service_name: simple-relay
+        TF_VAR_billing_service_name: simple-relay-billing
+        TF_VAR_firestore_database_name: simple-relay-db
+        TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
-      run: terraform apply -auto-approve -no-color
-
-    - name: Get Service URL
-      working-directory: ./terraform
-      run: |
-        echo "Service deployed at: $(terraform output -raw service_url)"
+      run: terraform apply -input=false -auto-approve -no-color

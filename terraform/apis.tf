@@ -1,12 +1,12 @@
 # Enable required APIs - Best practice: explicit API enablement
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "secretmanager.googleapis.com",
     "firestore.googleapis.com", 
     "run.googleapis.com",
     "compute.googleapis.com",
     "servicenetworking.googleapis.com",
-    "cloudbuild.googleapis.com"
+    "cloudbuild.googleapis.com",
+    "artifactregistry.googleapis.com"
   ])
   
   service            = each.value
