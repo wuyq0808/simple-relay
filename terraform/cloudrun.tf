@@ -63,6 +63,11 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         name  = "GCP_PROJECT_ID"
         value = var.project_id
       }
+      
+      env {
+        name  = "FIRESTORE_DATABASE_NAME"
+        value = var.firestore_database_name
+      }
 
       # Secrets from Secret Manager
       env {
@@ -163,7 +168,7 @@ resource "google_cloud_run_v2_service" "simple_billing" {
     }
 
     containers {
-      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-billing:${var.image_tag}"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/simple-relay/${var.billing_service_name}:${var.image_tag}"
 
       env {
         name  = "BILLING_ENABLED"
@@ -173,6 +178,11 @@ resource "google_cloud_run_v2_service" "simple_billing" {
       env {
         name  = "GCP_PROJECT_ID"
         value = var.project_id
+      }
+      
+      env {
+        name  = "FIRESTORE_DATABASE_NAME"
+        value = var.firestore_database_name
       }
 
       ports {

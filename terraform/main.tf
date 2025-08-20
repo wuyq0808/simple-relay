@@ -51,6 +51,11 @@ variable "billing_service_name" {
   default     = "simple-billing"
 }
 
+variable "firestore_database_name" {
+  description = "Firestore database name"
+  type        = string
+}
+
 
 
 variable "official_base_url" {

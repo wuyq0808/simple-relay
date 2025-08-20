@@ -1,0 +1,26 @@
+name: Production
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - 'apps/backend/**'
+      - 'apps/billing/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/**'
+      - 'apps/backend/**'
+      - 'apps/billing/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      service_suffix: ''
+      terraform_workspace: default
+    secrets: inherit

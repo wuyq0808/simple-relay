@@ -1,20 +1,22 @@
-name: Deploy Infrastructure with Terraform
+name: Reusable Deploy Workflow
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'terraform/**'
-      - 'apps/backend/**'
-      - 'apps/billing/**'
-      - '.github/workflows/terraform-deploy.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'terraform/**'
-      - 'apps/backend/**'
-      - 'apps/billing/**'
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Environment to deploy to (production or staging)'
+      service_suffix:
+        required: false
+        type: string
+        default: ''
+        description: 'Suffix for service names (e.g., -staging)'
+      terraform_workspace:
+        required: false
+        type: string
+        default: 'default'
+        description: 'Terraform workspace to use'
 
 env:
   TF_VERSION: '1.5.0'
@@ -23,9 +25,10 @@ env:
 
 jobs:
   terraform-plan:
-    name: Terraform Plan
+    name: Terraform Plan (${{ inputs.environment }})
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    environment: ${{ inputs.environment }}
     
     steps:
     - name: Checkout
@@ -49,7 +52,13 @@ jobs:
       run: |
         terraform init \
           -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-          -backend-config="prefix=simple-relay"
+          -backend-config="prefix=simple-relay-${{ inputs.environment }}"
+
+    - name: Terraform Workspace
+      working-directory: ./terraform
+      if: inputs.terraform_workspace != 'default'
+      run: |
+        terraform workspace select ${{ inputs.terraform_workspace }} || terraform workspace new ${{ inputs.terraform_workspace }}
 
     - name: Terraform Validate
       working-directory: ./terraform
@@ -61,15 +70,21 @@ jobs:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
-        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
+        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}
+        TF_VAR_billing_service_name: ${{ vars.SERVICE_NAME }}-billing${{ inputs.service_suffix }}
+        TF_VAR_firestore_database_name: ${{ inputs.environment == 'production' && 'production' || 'staging' }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform plan -no-color
 
   terraform-deploy:
-    name: Deploy to Production
+    name: Deploy to ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ inputs.environment }}
+    concurrency: 
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
     
     steps:
     - name: Checkout
@@ -99,21 +114,27 @@ jobs:
     - name: Build and Push Backend Container
       working-directory: ./apps/backend
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}" ./
-        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}"
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay${{ inputs.service_suffix }}:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay${{ inputs.service_suffix }}:${{ github.sha }}"
 
     - name: Build and Push Billing Container
       working-directory: ./apps/billing
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
-        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}"
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing${{ inputs.service_suffix }}:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing${{ inputs.service_suffix }}:${{ github.sha }}"
 
     - name: Terraform Init
       working-directory: ./terraform
       run: |
         terraform init \
           -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-          -backend-config="prefix=simple-relay"
+          -backend-config="prefix=simple-relay-${{ inputs.environment }}"
+
+    - name: Terraform Workspace
+      working-directory: ./terraform
+      if: inputs.terraform_workspace != 'default'
+      run: |
+        terraform workspace select ${{ inputs.terraform_workspace }} || terraform workspace new ${{ inputs.terraform_workspace }}
 
     - name: Terraform Apply
       working-directory: ./terraform
@@ -121,7 +142,9 @@ jobs:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
-        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}
+        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}
+        TF_VAR_billing_service_name: ${{ vars.SERVICE_NAME }}-billing${{ inputs.service_suffix }}
+        TF_VAR_firestore_database_name: ${{ inputs.environment == 'production' && 'production' || 'staging' }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform apply -auto-approve -no-color
@@ -129,4 +152,4 @@ jobs:
     - name: Get Service URL
       working-directory: ./terraform
       run: |
-        echo "Service deployed at: $(terraform output -raw service_url)"
+        echo "${{ inputs.environment }} service deployed at: $(terraform output -raw service_url)"
