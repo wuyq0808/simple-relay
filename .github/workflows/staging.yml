@@ -1,19 +1,6 @@
 name: Staging
 
 on:
-  push:
-    branches: [ staging ]
-    paths:
-      - 'terraform/**'
-      - 'apps/backend/**'
-      - 'apps/billing/**'
-      - '.github/workflows/**'
-  pull_request:
-    branches: [ staging ]
-    paths:
-      - 'terraform/**'
-      - 'apps/backend/**'
-      - 'apps/billing/**'
   workflow_dispatch:
 
 jobs:

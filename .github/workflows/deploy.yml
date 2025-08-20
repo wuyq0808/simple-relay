@@ -112,6 +112,13 @@ jobs:
         username: _json_key
         password: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Create Artifact Registry Repository
+      run: |
+        gcloud artifacts repositories create simple-relay-${{ inputs.environment }} \
+          --repository-format=docker \
+          --location=${{ env.REGION }} \
+          --description="Docker repository for simple-relay ${{ inputs.environment }}" || true
+
     - name: Build and Push Backend Container
       working-directory: ./apps/backend
       run: |-
