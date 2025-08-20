@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"simple-relay/billing/internal/services"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -42,6 +44,82 @@ func loadConfig() *Config {
 		BillingEnabled: billingEnabled,
 	}
 }
+
+// parseSSEForUsageData extracts model and usage data from message_start and message_delta events
+func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
+	lines := strings.Split(sseData, "\n")
+	
+	var messageID, model string
+	var finalUsage map[string]interface{}
+	
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		
+		if strings.HasPrefix(line, "data: ") {
+			jsonData := strings.TrimPrefix(line, "data: ")
+			if jsonData == "[DONE]" {
+				continue
+			}
+			
+			var event map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
+				continue
+			}
+			
+			eventType, _ := event["type"].(string)
+			
+			// Handle different event types
+			if eventType == "message_start" {
+				// Extract message ID and model from message_start event
+				if message, ok := event["message"].(map[string]interface{}); ok {
+					if id, ok := message["id"].(string); ok {
+						messageID = id
+					}
+					if m, ok := message["model"].(string); ok {
+						model = m
+					}
+					// Also check for initial usage in message_start
+					if usage, ok := message["usage"].(map[string]interface{}); ok {
+						finalUsage = usage
+					}
+				}
+			} else if eventType == "message_delta" {
+				// Extract cumulative usage data from message_delta event (final counts are here)
+				if delta, ok := event["delta"].(map[string]interface{}); ok {
+					if usage, ok := delta["usage"].(map[string]interface{}); ok {
+						finalUsage = usage
+					}
+				}
+			}
+		}
+	}
+	
+	// Ensure we have all required data
+	if messageID == "" || model == "" || finalUsage == nil || len(finalUsage) == 0 {
+		return nil, fmt.Errorf("missing required data: messageID=%s, model=%s, usage=%v", messageID, model, finalUsage)
+	}
+	
+	// Create message with extracted data
+	messageData := map[string]interface{}{
+		"id":    messageID,
+		"model": model,
+		"usage": finalUsage,
+	}
+	
+	// Convert to ClaudeMessage struct
+	messageJSON, err := json.Marshal(messageData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal message: %w", err)
+	}
+	
+	var message services.ClaudeMessage
+	if err := json.Unmarshal(messageJSON, &message); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal into ClaudeMessage: %w", err)
+	}
+	
+	return &message, nil
+}
+
 
 func main() {
 	config := loadConfig()
@@ -101,13 +179,26 @@ func main() {
 		// Extract additional metadata from headers if available
 		requestID := r.Header.Get("X-Request-Id") // From Claude API response
 
-		// Process billing request with raw response body
-		err = billingService.ProcessRequest(
-			responseBody,
-			userID,
-			requestID,
-		)
+		// Process SSE data - extract message_stop and pass to ProcessResponse
+		bodyStr := string(responseBody)
 		
+		// Only process SSE streams - use guard clause for early return
+		if !strings.HasPrefix(bodyStr, "event:") && !strings.HasPrefix(bodyStr, "data:") {
+			log.Printf("Skipping non-SSE response for billing")
+			http.Error(w, "Only SSE streams are supported for billing", http.StatusBadRequest)
+			return
+		}
+		
+		// Parse SSE stream to extract usage data from message_start and message_delta events
+		message, err := parseSSEForUsageData(bodyStr)
+		if err != nil {
+			log.Printf("Error parsing SSE stream for user %s: %v", userID, err)
+			http.Error(w, "Error parsing SSE stream", http.StatusBadRequest)
+			return
+		}
+		
+		// Use ProcessRequest with the parsed message
+		err = billingService.ProcessRequest(message, userID, requestID)
 		if err != nil {
 			log.Printf("Error processing billing request for user %s: %v", userID, err)
 			http.Error(w, "Error processing billing", http.StatusInternalServerError)

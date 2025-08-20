@@ -174,11 +174,6 @@ func main() {
 		if resp.StatusCode == http.StatusOK && 
 		   strings.Contains(resp.Request.URL.Path, "/messages") {
 			
-			// Check if this is a streaming response
-			contentType := resp.Header.Get("Content-Type")
-			isStreaming := strings.Contains(contentType, "text/event-stream") || 
-						  strings.Contains(contentType, "text/plain")
-			
 			// Read the entire response body first
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -187,16 +182,6 @@ func main() {
 			
 			// Replace response body with the original data for the client
 			resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-			
-			// Also check if response body starts with "event:" or "data:" (SSE format)
-			bodyStr := string(bodyBytes)
-			isSSE := strings.HasPrefix(bodyStr, "event:") || strings.HasPrefix(bodyStr, "data:")
-			
-			// Skip billing for streaming responses (they don't contain complete JSON)
-			if isStreaming || isSSE {
-				log.Printf("Skipping billing for streaming response (Content-Type: %s, SSE: %v)", contentType, isSSE)
-				return nil
-			}
 			
 			// Send raw response body to billing service asynchronously
 			go func() {
