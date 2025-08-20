@@ -4,6 +4,7 @@
 
 - **GCS Bucket**: Create bucket for Terraform state storage
 - **Service Account**: GitHub Actions service account with key stored in `GCP_SA_KEY` secret
+- **Artifact Registry**: Create `simple-relay` Docker repository in us-central1
 
 ## Required IAM Roles
 

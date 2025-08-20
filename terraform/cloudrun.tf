@@ -58,7 +58,7 @@ resource "google_cloud_run_v2_service" "simple_relay" {
       
       env {
         name  = "FIRESTORE_DATABASE_NAME"
-        value = var.firestore_database_name
+        value = "${var.firestore_database_name}-${var.deploy_environment}"
       }
 
       # Secrets passed as environment variables
@@ -164,7 +164,7 @@ resource "google_cloud_run_v2_service" "simple_billing" {
       
       env {
         name  = "FIRESTORE_DATABASE_NAME"
-        value = var.firestore_database_name
+        value = "${var.firestore_database_name}-${var.deploy_environment}"
       }
 
       ports {

@@ -97,20 +97,6 @@ jobs:
         username: _json_key
         password: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Create Artifact Registry Repository
-      run: |
-        echo "Checking if repository simple-relay exists..."
-        if ! gcloud artifacts repositories describe simple-relay --location=${{ env.REGION }} 2>/dev/null; then
-          echo "Repository does not exist. Creating repository simple-relay..."
-          gcloud artifacts repositories create simple-relay \
-            --repository-format=docker \
-            --location=${{ env.REGION }} \
-            --description="Docker repository for simple-relay"
-          echo "Repository created successfully"
-        else
-          echo "Repository simple-relay already exists"
-        fi
-
     - name: Build and Push Backend Container
       working-directory: ./apps/backend
       run: |-
@@ -144,8 +130,3 @@ jobs:
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform apply -input=false -auto-approve -no-color
-
-    - name: Get Service URL
-      working-directory: ./terraform
-      run: |
-        echo "${{ inputs.deploy_environment }} service deployed at: $(terraform output -raw service_url)"
