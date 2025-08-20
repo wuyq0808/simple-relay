@@ -114,29 +114,29 @@ jobs:
 
     - name: Create Artifact Registry Repository
       run: |
-        echo "Checking if repository simple-relay-${{ inputs.environment }} exists..."
-        if ! gcloud artifacts repositories describe simple-relay-${{ inputs.environment }} --location=${{ env.REGION }} 2>/dev/null; then
-          echo "Repository does not exist. Creating repository simple-relay-${{ inputs.environment }}..."
-          gcloud artifacts repositories create simple-relay-${{ inputs.environment }} \
+        echo "Checking if repository ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} exists..."
+        if ! gcloud artifacts repositories describe ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} --location=${{ env.REGION }} 2>/dev/null; then
+          echo "Repository does not exist. Creating repository ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}..."
+          gcloud artifacts repositories create ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} \
             --repository-format=docker \
             --location=${{ env.REGION }} \
-            --description="Docker repository for simple-relay ${{ inputs.environment }}"
+            --description="Docker repository for ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}"
           echo "Repository created successfully"
         else
-          echo "Repository simple-relay-${{ inputs.environment }} already exists"
+          echo "Repository ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} already exists"
         fi
 
     - name: Build and Push Backend Container
       working-directory: ./apps/backend
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay-${{ inputs.environment }}/simple-relay:${{ github.sha }}" ./
-        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay-${{ inputs.environment }}/simple-relay:${{ github.sha }}"
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-relay:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-relay:${{ github.sha }}"
 
     - name: Build and Push Billing Container
       working-directory: ./apps/billing
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay-${{ inputs.environment }}/simple-billing:${{ github.sha }}" ./
-        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay-${{ inputs.environment }}/simple-billing:${{ github.sha }}"
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-billing:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-billing:${{ github.sha }}"
 
     - name: Terraform Init
       working-directory: ./terraform

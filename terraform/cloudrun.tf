@@ -32,7 +32,7 @@ resource "google_cloud_run_v2_service" "simple_relay" {
     }
 
     containers {
-      image = "us-central1-docker.pkg.dev/${var.project_id}/simple-relay-${var.environment}/simple-relay:${var.image_tag}"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-relay:${var.image_tag}"
 
       # Non-sensitive environment variables
 
@@ -150,7 +150,7 @@ resource "google_cloud_run_v2_service" "simple_billing" {
     }
 
     containers {
-      image = "us-central1-docker.pkg.dev/${var.project_id}/simple-relay-${var.environment}/simple-billing:${var.image_tag}"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-billing:${var.image_tag}"
 
       env {
         name  = "BILLING_ENABLED"
