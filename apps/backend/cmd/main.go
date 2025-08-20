@@ -32,9 +32,9 @@ func getIdentityToken(audience string) (string, error) {
 }
 
 // getValidOAuthToken retrieves and validates OAuth access token, refreshing if needed
-func getValidOAuthToken(oauthStore *provider.OAuthStore, userID string) (*provider.OAuthCredentials, error) {
+func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredentials, error) {
 	// Get valid OAuth access token for each request
-	credentials, err := oauthStore.GetLatestAccessToken(userID)
+	credentials, err := oauthStore.GetLatestAccessToken()
 	if err != nil {
 		log.Printf("Failed to get OAuth access token: %v", err)
 		return nil, err
@@ -54,7 +54,7 @@ func getValidOAuthToken(oauthStore *provider.OAuthStore, userID string) (*provid
 		log.Printf("OAuth token refreshed successfully")
 		
 		// Get the refreshed token
-		credentials, err = oauthStore.GetLatestAccessToken(userID)
+		credentials, err = oauthStore.GetLatestAccessToken()
 		if err != nil {
 			log.Printf("Failed to get refreshed OAuth access token: %v", err)
 			return nil, err
@@ -142,8 +142,7 @@ func main() {
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
 		
-		// TODO: get user ID from subscription service when implemented
-		credentials, err := getValidOAuthToken(oauthStore, DefaultUserID)
+		credentials, err := getValidOAuthToken(oauthStore)
 		if err != nil {
 			// Fail the request if no valid OAuth token
 			return
