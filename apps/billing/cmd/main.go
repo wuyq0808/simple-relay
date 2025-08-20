@@ -55,6 +55,14 @@ func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 	
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
+		
+		// Log first 100 characters of every line
+		if len(line) > 100 {
+			log.Printf("Line: %.100s...", line)
+		} else {
+			log.Printf("Line: %s", line)
+		}
+		
 		if strings.HasPrefix(line, "data: ") {
 			jsonData := strings.TrimPrefix(line, "data: ")
 			if jsonData == "[DONE]" {
@@ -67,8 +75,10 @@ func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 				continue
 			}
 			
-			// Only look for message_delta events with usage data
-			if eventType, _ := event["type"].(string); eventType == "message_delta" {
+			// Handle different event types
+			if eventType, _ := event["type"].(string); eventType == "message_start" {
+				log.Printf("Found message_start event")
+			} else if eventType == "message_delta" {
 				if usage, ok := event["usage"].(map[string]interface{}); ok {
 					log.Printf("Found usage data: input=%v, output=%v", 
 						usage["input_tokens"], usage["output_tokens"])
@@ -93,6 +103,8 @@ func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 					
 					return &message, nil
 				}
+			} else if eventType == "message_stop" {
+				log.Printf("Found message_stop event")
 			}
 		}
 	}
