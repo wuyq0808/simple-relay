@@ -1,20 +1,12 @@
-# IAM binding for Cloud Run to access Firestore
-resource "google_project_iam_member" "cloud_run_firestore_user" {
-  project = var.project_id
-  role    = "roles/datastore.user"
-  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
-}
+# IAM binding moved to iam.tf for better organization
 
 # Cloud Run Service with Secret Manager integration
 resource "google_cloud_run_v2_service" "simple_relay" {
-  name     = var.service_name
+  name     = "${var.service_name}-${var.deploy_environment}"
   location = var.region
 
   depends_on = [
     google_firestore_database.oauth_database,
-    google_secret_manager_secret_iam_member.cloudrun_secret_access,
-    google_secret_manager_secret_version.api_secret_key,
-    google_secret_manager_secret_version.client_secret_key,
     google_cloud_run_v2_service.simple_billing  # Backend must wait for billing service
   ]
 
@@ -40,7 +32,7 @@ resource "google_cloud_run_v2_service" "simple_relay" {
     }
 
     containers {
-      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/${var.service_name}:${var.image_tag}"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-relay:${var.image_tag}"
 
       # Non-sensitive environment variables
 
@@ -69,25 +61,15 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         value = var.firestore_database_name
       }
 
-      # Secrets from Secret Manager
+      # Secrets passed as environment variables
       env {
-        name = "API_SECRET_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.api_secret_key.secret_id
-            version = "latest"
-          }
-        }
+        name  = "API_SECRET_KEY"
+        value = var.api_secret_key
       }
 
       env {
-        name = "ALLOWED_CLIENT_SECRET_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.client_secret_key.secret_id
-            version = "latest"
-          }
-        }
+        name  = "ALLOWED_CLIENT_SECRET_KEY"
+        value = var.client_secret_key
       }
 
 
@@ -147,7 +129,7 @@ resource "google_cloud_run_service_iam_member" "public_access" {
 
 # Billing Cloud Run Service (Internal Only)
 resource "google_cloud_run_v2_service" "simple_billing" {
-  name     = var.billing_service_name
+  name     = "${var.billing_service_name}-${var.deploy_environment}"
   location = var.region
 
   depends_on = [
@@ -168,7 +150,7 @@ resource "google_cloud_run_v2_service" "simple_billing" {
     }
 
     containers {
-      image = "us-central1-docker.pkg.dev/${var.project_id}/simple-relay/${var.billing_service_name}:${var.image_tag}"
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-billing:${var.image_tag}"
 
       env {
         name  = "BILLING_ENABLED"
@@ -252,10 +234,3 @@ output "billing_service_url" {
   value = google_cloud_run_v2_service.simple_billing.uri
 }
 
-output "secrets_to_populate" {
-  value = {
-    api_secret_key    = google_secret_manager_secret.api_secret_key.secret_id
-    client_secret_key = google_secret_manager_secret.client_secret_key.secret_id
-  }
-  description = "Secret Manager secrets that need to be populated manually"
-}

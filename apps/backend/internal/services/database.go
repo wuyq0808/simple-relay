@@ -16,7 +16,7 @@ type DatabaseConfig struct {
 	DatabaseName string
 }
 
-func NewDatabaseServiceWithDatabase(projectID, databaseName string) (*DatabaseService, error) {
+func NewDatabaseService(projectID, databaseName string) (*DatabaseService, error) {
 	ctx := context.Background()
 	
 	var client *firestore.Client

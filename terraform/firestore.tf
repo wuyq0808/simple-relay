@@ -1,7 +1,7 @@
 # Firestore Database
 resource "google_firestore_database" "oauth_database" {
   project     = var.project_id
-  name        = var.firestore_database_name
+  name        = "${var.firestore_database_name}-${var.deploy_environment}"
   location_id = var.region
   type        = "FIRESTORE_NATIVE"
   

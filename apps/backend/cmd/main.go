@@ -131,7 +131,7 @@ func main() {
 	config := loadConfig()
 	
 	// Initialize database service for OAuth
-	dbService, err := services.NewDatabaseServiceWithDatabase(config.ProjectID, config.DatabaseName)
+	dbService, err := services.NewDatabaseService(config.ProjectID, config.DatabaseName)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}
