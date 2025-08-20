@@ -70,6 +70,7 @@ type Config struct {
 	OfficialTarget           *url.URL
 	BillingServiceURL        string
 	ProjectID                string
+	DatabaseName             string
 }
 
 func loadConfig() *Config {
@@ -111,12 +112,18 @@ func loadConfig() *Config {
 		log.Fatal("GCP_PROJECT_ID environment variable is required")
 	}
 
+	databaseName := os.Getenv("FIRESTORE_DATABASE_NAME")
+	if databaseName == "" {
+		log.Fatal("FIRESTORE_DATABASE_NAME environment variable is required")
+	}
+
 	return &Config{
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
 		OfficialTarget:           officialTarget,
 		BillingServiceURL:        billingServiceURL,
 		ProjectID:                projectID,
+		DatabaseName:             databaseName,
 	}
 }
 
@@ -124,7 +131,7 @@ func main() {
 	config := loadConfig()
 	
 	// Initialize database service for OAuth
-	dbService, err := services.NewDatabaseService(config.ProjectID)
+	dbService, err := services.NewDatabaseServiceWithDatabase(config.ProjectID, config.DatabaseName)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}

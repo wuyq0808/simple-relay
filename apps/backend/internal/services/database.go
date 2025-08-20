@@ -12,13 +12,19 @@ type DatabaseService struct {
 }
 
 type DatabaseConfig struct {
-	ProjectID string
+	ProjectID    string
+	DatabaseName string
 }
 
-func NewDatabaseService(projectID string) (*DatabaseService, error) {
+func NewDatabaseServiceWithDatabase(projectID, databaseName string) (*DatabaseService, error) {
 	ctx := context.Background()
 	
-	client, err := firestore.NewClient(ctx, projectID)
+	var client *firestore.Client
+	var err error
+	
+	// Always use named database - no more implicit defaults
+	client, err = firestore.NewClientWithDatabase(ctx, projectID, databaseName)
+	
 	if err != nil {
 		return nil, fmt.Errorf("firestore.NewClient: %w", err)
 	}

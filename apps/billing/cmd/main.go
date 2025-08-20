@@ -12,8 +12,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
+
 type Config struct {
 	ProjectID      string
+	DatabaseName   string
 	BillingEnabled bool
 }
 
@@ -27,10 +29,16 @@ func loadConfig() *Config {
 		log.Fatal("GCP_PROJECT_ID environment variable is required")
 	}
 
+	databaseName := os.Getenv("FIRESTORE_DATABASE_NAME")
+	if databaseName == "" {
+		log.Fatal("FIRESTORE_DATABASE_NAME environment variable is required")
+	}
+
 	billingEnabled := os.Getenv("BILLING_ENABLED") == "true"
 
 	return &Config{
 		ProjectID:      projectID,
+		DatabaseName:   databaseName,
 		BillingEnabled: billingEnabled,
 	}
 }
@@ -39,7 +47,7 @@ func main() {
 	config := loadConfig()
 
 	// Initialize database service
-	dbService, err := services.NewDatabaseService(config.ProjectID)
+	dbService, err := services.NewDatabaseServiceWithDatabase(config.ProjectID, config.DatabaseName)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}
