@@ -63,12 +63,10 @@ func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 			
 			var event map[string]interface{}
 			if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
-				log.Printf("Failed to parse SSE JSON: %v, data: %s", err, jsonData)
 				continue
 			}
 			
 			eventType, _ := event["type"].(string)
-			log.Printf("Processing SSE event type: %s", eventType)
 			
 			// Handle different event types
 			if eventType == "message_start" {
@@ -83,17 +81,13 @@ func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 					// Also check for initial usage in message_start
 					if usage, ok := message["usage"].(map[string]interface{}); ok {
 						finalUsage = usage
-						log.Printf("Found usage in message_start: %+v", usage)
 					}
 				}
 			} else if eventType == "message_delta" {
-				log.Printf("Found message_delta event: %+v", event)
 				// Extract cumulative usage data from message_delta event (final counts are here)
 				if delta, ok := event["delta"].(map[string]interface{}); ok {
-					log.Printf("Delta object: %+v", delta)
 					if usage, ok := delta["usage"].(map[string]interface{}); ok {
 						finalUsage = usage
-						log.Printf("Found usage in message_delta: %+v", usage)
 					}
 				}
 			}
