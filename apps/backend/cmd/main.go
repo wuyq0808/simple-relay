@@ -90,7 +90,7 @@ func loadConfig() *Config {
 		log.Fatal("ALLOWED_CLIENT_SECRET_KEY environment variable is required")
 	}
 
-	// Get official base URL from environment variable (optional)
+	// Get official base URL from environment variable
 	var officialTarget *url.URL
 	officialBaseURL := os.Getenv("OFFICIAL_BASE_URL")
 	if officialBaseURL != "" {

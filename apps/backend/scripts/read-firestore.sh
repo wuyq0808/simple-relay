@@ -8,7 +8,7 @@ set -e  # Exit on any error
 
 # Default values
 COLLECTION="oauth_tokens"
-ENVIRONMENT="production"
+ENVIRONMENT="staging"
 OUTPUT_FILE=""
 
 # Function to show usage
@@ -17,7 +17,7 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  -c, --collection COLLECTION    Firestore collection to query (default: oauth_tokens)"
-    echo "  -e, --environment ENV          Environment: production, staging (default: production)"
+    echo "  -e, --environment ENV          Environment: production, staging (default: staging)"
     echo "  -o, --output FILE              Save output to file"
     echo "  -h, --help                     Show this help message"
     echo ""
