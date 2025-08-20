@@ -9,7 +9,7 @@
 
 Service account needs these roles:
 
-- `roles/artifactregistry.repoAdmin` - Artifact Registry management
+- `roles/artifactregistry.admin` - Artifact Registry repository creation and management
 - `roles/run.admin` - Cloud Run deployment
 - `roles/datastore.owner` - Firestore database management
 - `roles/compute.networkAdmin` - VPC and networking
