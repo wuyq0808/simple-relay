@@ -2,7 +2,7 @@
 
 # Cloud Run Service with Secret Manager integration
 resource "google_cloud_run_v2_service" "simple_relay" {
-  name     = "${var.service_name}-${var.environment}"
+  name     = var.service_name
   location = var.region
 
   depends_on = [
@@ -129,7 +129,7 @@ resource "google_cloud_run_service_iam_member" "public_access" {
 
 # Billing Cloud Run Service (Internal Only)
 resource "google_cloud_run_v2_service" "simple_billing" {
-  name     = "${var.billing_service_name}-${var.environment}"
+  name     = var.billing_service_name
   location = var.region
 
   depends_on = [
