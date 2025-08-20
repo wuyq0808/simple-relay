@@ -145,7 +145,3 @@ jobs:
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform apply -input=false -auto-approve -no-color
 
-    - name: Get Service URL
-      working-directory: ./terraform
-      run: |
-        echo "${{ inputs.deploy_environment }} service deployed at: $(terraform output -raw service_url)"
