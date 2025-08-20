@@ -114,10 +114,17 @@ jobs:
 
     - name: Create Artifact Registry Repository
       run: |
-        gcloud artifacts repositories create simple-relay-${{ inputs.environment }} \
-          --repository-format=docker \
-          --location=${{ env.REGION }} \
-          --description="Docker repository for simple-relay ${{ inputs.environment }}" || true
+        echo "Checking if repository simple-relay-${{ inputs.environment }} exists..."
+        if ! gcloud artifacts repositories describe simple-relay-${{ inputs.environment }} --location=${{ env.REGION }} 2>/dev/null; then
+          echo "Repository does not exist. Creating repository simple-relay-${{ inputs.environment }}..."
+          gcloud artifacts repositories create simple-relay-${{ inputs.environment }} \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --description="Docker repository for simple-relay ${{ inputs.environment }}"
+          echo "Repository created successfully"
+        else
+          echo "Repository simple-relay-${{ inputs.environment }} already exists"
+        fi
 
     - name: Build and Push Backend Container
       working-directory: ./apps/backend
