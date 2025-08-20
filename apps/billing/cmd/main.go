@@ -9,7 +9,6 @@ import (
 	"os"
 	"simple-relay/billing/internal/services"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -46,22 +45,15 @@ func loadConfig() *Config {
 	}
 }
 
-// parseSSEForUsageData extracts usage data from message_delta events only (simplified)
-// TODO: Add message_start parsing to get proper message ID and model information
-// TODO: For now using placeholder values - model field will be "unknown-model" 
-// TODO: This affects billing records but usage data (tokens) is accurate
+// parseSSEForUsageData extracts model and usage data from message_start and message_delta events
 func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 	lines := strings.Split(sseData, "\n")
 	
+	var messageID, model string
+	var finalUsage map[string]interface{}
+	
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
-		// Log first 100 characters of every line
-		if len(line) > 100 {
-			log.Printf("Line: %.100s...", line)
-		} else {
-			log.Printf("Line: %s", line)
-		}
 		
 		if strings.HasPrefix(line, "data: ") {
 			jsonData := strings.TrimPrefix(line, "data: ")
@@ -71,45 +63,55 @@ func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 			
 			var event map[string]interface{}
 			if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
-				log.Printf("Failed to parse SSE event: %v, data: %s", err, jsonData)
 				continue
 			}
 			
 			// Handle different event types
 			if eventType, _ := event["type"].(string); eventType == "message_start" {
-				log.Printf("Found message_start event")
-			} else if eventType == "message_delta" {
-				if usage, ok := event["usage"].(map[string]interface{}); ok {
-					log.Printf("Found usage data: input=%v, output=%v", 
-						usage["input_tokens"], usage["output_tokens"])
-					
-					// Create minimal message with just usage data
-					messageData := map[string]interface{}{
-						"id":    fmt.Sprintf("msg-%d", time.Now().UnixNano()), // TODO: get real ID from message_start
-						"model": "unknown-model", // TODO: get real model from message_start  
-						"usage": usage,
+				// Extract message ID and model from message_start event
+				if message, ok := event["message"].(map[string]interface{}); ok {
+					if id, ok := message["id"].(string); ok {
+						messageID = id
 					}
-					
-					// Convert to ClaudeMessage struct
-					messageJSON, err := json.Marshal(messageData)
-					if err != nil {
-						return nil, fmt.Errorf("failed to marshal message: %w", err)
+					if m, ok := message["model"].(string); ok {
+						model = m
 					}
-					
-					var message services.ClaudeMessage
-					if err := json.Unmarshal(messageJSON, &message); err != nil {
-						return nil, fmt.Errorf("failed to unmarshal into ClaudeMessage: %w", err)
-					}
-					
-					return &message, nil
 				}
-			} else if eventType == "message_stop" {
-				log.Printf("Found message_stop event")
+			} else if eventType == "message_delta" {
+				// Extract final usage data from message_delta event
+				if delta, ok := event["delta"].(map[string]interface{}); ok {
+					if usage, ok := delta["usage"].(map[string]interface{}); ok {
+						finalUsage = usage
+					}
+				}
 			}
 		}
 	}
 	
-	return nil, fmt.Errorf("no message_delta event with usage data found")
+	// Ensure we have all required data
+	if messageID == "" || model == "" || finalUsage == nil {
+		return nil, fmt.Errorf("missing required data: messageID=%s, model=%s, usage=%v", messageID, model, finalUsage)
+	}
+	
+	// Create message with extracted data
+	messageData := map[string]interface{}{
+		"id":    messageID,
+		"model": model,
+		"usage": finalUsage,
+	}
+	
+	// Convert to ClaudeMessage struct
+	messageJSON, err := json.Marshal(messageData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal message: %w", err)
+	}
+	
+	var message services.ClaudeMessage
+	if err := json.Unmarshal(messageJSON, &message); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal into ClaudeMessage: %w", err)
+	}
+	
+	return &message, nil
 }
 
 
