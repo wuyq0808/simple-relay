@@ -20,7 +20,5 @@ jobs:
   deploy:
     uses: ./.github/workflows/deploy.yml
     with:
-      environment: production
-      service_suffix: ''
-      terraform_workspace: default
+      deploy_environment: production
     secrets: inherit

@@ -3,20 +3,10 @@ name: Reusable Deploy Workflow
 on:
   workflow_call:
     inputs:
-      environment:
+      deploy_environment:
         required: true
         type: string
         description: 'Environment to deploy to (production or staging)'
-      service_suffix:
-        required: false
-        type: string
-        default: ''
-        description: 'Suffix for service names (e.g., -staging)'
-      terraform_workspace:
-        required: false
-        type: string
-        default: 'default'
-        description: 'Terraform workspace to use'
 
 env:
   TF_VERSION: '1.5.0'
@@ -28,7 +18,7 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.deploy_environment }}
     
     steps:
     - name: Checkout
@@ -51,14 +41,9 @@ jobs:
       working-directory: ./terraform
       run: |
         terraform init \
-          -backend-config="bucket=simple-relay-${{ inputs.environment }}" \
+          -backend-config="bucket=simple-relay-${{ inputs.deploy_environment }}" \
           -backend-config="prefix=terraform-state"
 
-    - name: Terraform Workspace
-      working-directory: ./terraform
-      if: inputs.terraform_workspace != 'default'
-      run: |
-        terraform workspace select ${{ inputs.terraform_workspace }} || terraform workspace new ${{ inputs.terraform_workspace }}
 
     - name: Terraform Validate
       working-directory: ./terraform
@@ -70,10 +55,10 @@ jobs:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
-        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}
-        TF_VAR_billing_service_name: ${{ vars.SERVICE_NAME }}-billing${{ inputs.service_suffix }}
-        TF_VAR_firestore_database_name: ${{ inputs.environment == 'production' && 'production' || 'staging' }}
-        TF_VAR_environment: ${{ inputs.environment }}
+        TF_VAR_service_name: simple-relay
+        TF_VAR_billing_service_name: simple-relay-billing
+        TF_VAR_firestore_database_name: simple-relay-db
+        TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform plan -input=false -no-color
@@ -82,9 +67,9 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.deploy_environment }}
     concurrency: 
-      group: deploy-${{ inputs.environment }}
+      group: deploy-${{ inputs.deploy_environment }}
       cancel-in-progress: false
     
     steps:
@@ -114,42 +99,37 @@ jobs:
 
     - name: Create Artifact Registry Repository
       run: |
-        echo "Checking if repository ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} exists..."
-        if ! gcloud artifacts repositories describe ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} --location=${{ env.REGION }} 2>/dev/null; then
-          echo "Repository does not exist. Creating repository ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}..."
-          gcloud artifacts repositories create ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} \
+        echo "Checking if repository simple-relay exists..."
+        if ! gcloud artifacts repositories describe simple-relay --location=${{ env.REGION }} 2>/dev/null; then
+          echo "Repository does not exist. Creating repository simple-relay..."
+          gcloud artifacts repositories create simple-relay \
             --repository-format=docker \
             --location=${{ env.REGION }} \
-            --description="Docker repository for ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}"
+            --description="Docker repository for simple-relay"
           echo "Repository created successfully"
         else
-          echo "Repository ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }} already exists"
+          echo "Repository simple-relay already exists"
         fi
 
     - name: Build and Push Backend Container
       working-directory: ./apps/backend
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-relay:${{ github.sha }}" ./
-        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-relay:${{ github.sha }}"
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}"
 
     - name: Build and Push Billing Container
       working-directory: ./apps/billing
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-billing:${{ github.sha }}" ./
-        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}/simple-billing:${{ github.sha }}"
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}"
 
     - name: Terraform Init
       working-directory: ./terraform
       run: |
         terraform init \
-          -backend-config="bucket=simple-relay-${{ inputs.environment }}" \
+          -backend-config="bucket=simple-relay-${{ inputs.deploy_environment }}" \
           -backend-config="prefix=terraform-state"
 
-    - name: Terraform Workspace
-      working-directory: ./terraform
-      if: inputs.terraform_workspace != 'default'
-      run: |
-        terraform workspace select ${{ inputs.terraform_workspace }} || terraform workspace new ${{ inputs.terraform_workspace }}
 
     - name: Terraform Apply
       working-directory: ./terraform
@@ -157,10 +137,10 @@ jobs:
         TF_VAR_api_base_url: ${{ secrets.API_BASE_URL }}
         TF_VAR_official_base_url: ${{ secrets.OFFICIAL_BASE_URL }}
         TF_VAR_image_tag: ${{ github.sha }}
-        TF_VAR_service_name: ${{ vars.SERVICE_NAME }}${{ inputs.service_suffix }}
-        TF_VAR_billing_service_name: ${{ vars.SERVICE_NAME }}-billing${{ inputs.service_suffix }}
-        TF_VAR_firestore_database_name: ${{ inputs.environment == 'production' && 'production' || 'staging' }}
-        TF_VAR_environment: ${{ inputs.environment }}
+        TF_VAR_service_name: simple-relay
+        TF_VAR_billing_service_name: simple-relay-billing
+        TF_VAR_firestore_database_name: simple-relay-db
+        TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
       run: terraform apply -input=false -auto-approve -no-color
@@ -168,4 +148,4 @@ jobs:
     - name: Get Service URL
       working-directory: ./terraform
       run: |
-        echo "${{ inputs.environment }} service deployed at: $(terraform output -raw service_url)"
+        echo "${{ inputs.deploy_environment }} service deployed at: $(terraform output -raw service_url)"

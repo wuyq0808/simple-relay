@@ -87,11 +87,11 @@ variable "client_secret_key" {
   sensitive   = true
 }
 
-variable "environment" {
+variable "deploy_environment" {
   description = "Environment (production or staging)"
   type        = string
   validation {
-    condition     = contains(["production", "staging"], var.environment)
+    condition     = contains(["production", "staging"], var.deploy_environment)
     error_message = "Environment must be either 'production' or 'staging'."
   }
 }
