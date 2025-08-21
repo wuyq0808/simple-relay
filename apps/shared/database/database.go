@@ -1,4 +1,4 @@
-package services
+package database
 
 import (
 	"context"
@@ -7,16 +7,16 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
-type DatabaseService struct {
+type Service struct {
 	client *firestore.Client
 }
 
-type DatabaseConfig struct {
+type Config struct {
 	ProjectID    string
 	DatabaseName string
 }
 
-func NewDatabaseService(projectID, databaseName string) (*DatabaseService, error) {
+func NewService(projectID, databaseName string) (*Service, error) {
 	ctx := context.Background()
 	
 	var client *firestore.Client
@@ -29,14 +29,13 @@ func NewDatabaseService(projectID, databaseName string) (*DatabaseService, error
 		return nil, fmt.Errorf("firestore.NewClient: %w", err)
 	}
 
-	return &DatabaseService{client: client}, nil
+	return &Service{client: client}, nil
 }
 
-func (ds *DatabaseService) Close() error {
-	return ds.client.Close()
+func (s *Service) Close() error {
+	return s.client.Close()
 }
 
-
-func (ds *DatabaseService) Client() *firestore.Client {
-	return ds.client
+func (s *Service) Client() *firestore.Client {
+	return s.client
 }

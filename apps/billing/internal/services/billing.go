@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"simple-relay/shared/database"
 )
 
 // UsageRecord 记录单次API调用的使用情况
@@ -79,7 +80,7 @@ type Message struct {
 
 // BillingService 计费服务
 type BillingService struct {
-	dbService   *DatabaseService
+	dbService   *database.Service
 	batchWriter *BatchWriter
 	pricing     *PricingCalculator
 	mu          sync.RWMutex
@@ -87,7 +88,7 @@ type BillingService struct {
 }
 
 // NewBillingService 创建新的计费服务
-func NewBillingService(dbService *DatabaseService, enabled bool) *BillingService {
+func NewBillingService(dbService *database.Service, enabled bool) *BillingService {
 	service := &BillingService{
 		dbService: dbService,
 		pricing:   NewPricingCalculator(),
@@ -96,7 +97,7 @@ func NewBillingService(dbService *DatabaseService, enabled bool) *BillingService
 	
 	// 初始化批量写入器
 	if enabled && dbService != nil {
-		service.batchWriter = NewBatchWriter(dbService.client, 100, 5*time.Second)
+		service.batchWriter = NewBatchWriter(dbService.Client(), 100, 5*time.Second)
 		service.batchWriter.Start()
 	}
 	

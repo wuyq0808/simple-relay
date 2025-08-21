@@ -7,13 +7,13 @@ WORKDIR /app
 COPY apps/shared ./apps/shared
 
 # Copy service files
-COPY apps/backend/go.mod apps/backend/go.sum ./apps/backend/
-WORKDIR /app/apps/backend
+COPY apps/access/go.mod apps/access/go.sum ./apps/access/
+WORKDIR /app/apps/access
 RUN go mod download
 
 # Copy source code
-COPY apps/backend ./
-WORKDIR /app/apps/backend
+COPY apps/access ./
+WORKDIR /app/apps/access
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/main.go
@@ -25,7 +25,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the binary from builder stage
-COPY --from=builder /app/apps/backend/main .
+COPY --from=builder /app/apps/access/main .
 
 # Expose port
 EXPOSE 8080
