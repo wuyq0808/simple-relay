@@ -109,11 +109,6 @@ jobs:
         docker build -f apps/billing/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}"
 
-    - name: Build and Push Access Container
-      working-directory: ./
-      run: |-
-        docker build -f apps/access/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-access:${{ github.sha }}" ./
-        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-access:${{ github.sha }}"
 
     - name: Terraform Init
       working-directory: ./terraform
