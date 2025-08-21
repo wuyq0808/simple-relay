@@ -8,8 +8,8 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"simple-relay/backend/internal/services"
 	"simple-relay/backend/internal/services/provider"
+	"simple-relay/shared/database"
 	"strings"
 	"time"
 
@@ -131,7 +131,7 @@ func main() {
 	config := loadConfig()
 	
 	// Initialize database service for OAuth
-	dbService, err := services.NewDatabaseService(config.ProjectID, config.DatabaseName)
+	dbService, err := database.NewService(config.ProjectID, config.DatabaseName)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}

@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"simple-relay/backend/internal/services"
+	"simple-relay/shared/database"
 	"cloud.google.com/go/firestore"
 )
 
@@ -24,11 +24,11 @@ type OAuthCredentials struct {
 }
 
 type OAuthStore struct {
-	db                *services.DatabaseService
+	db                *database.Service
 	cachedCredentials atomic.Pointer[OAuthCredentials]
 }
 
-func NewOAuthStore(db *services.DatabaseService) *OAuthStore {
+func NewOAuthStore(db *database.Service) *OAuthStore {
 	return &OAuthStore{
 		db: db,
 	}

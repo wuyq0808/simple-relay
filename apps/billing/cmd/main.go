@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"simple-relay/billing/internal/services"
+	"simple-relay/shared/database"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -125,7 +126,7 @@ func main() {
 	config := loadConfig()
 
 	// Initialize database service
-	dbService, err := services.NewDatabaseService(config.ProjectID, config.DatabaseName)
+	dbService, err := database.NewService(config.ProjectID, config.DatabaseName)
 	if err != nil {
 		log.Fatalf("Failed to initialize database service: %v", err)
 	}
