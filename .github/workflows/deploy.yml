@@ -98,16 +98,22 @@ jobs:
         password: ${{ secrets.GCP_SA_KEY }}
 
     - name: Build and Push Backend Container
-      working-directory: ./apps/backend
+      working-directory: ./
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}" ./
+        docker build -f apps/backend/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}" ./
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}"
 
     - name: Build and Push Billing Container
-      working-directory: ./apps/billing
+      working-directory: ./
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
+        docker build -f apps/billing/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}"
+
+    - name: Build and Push Access Container
+      working-directory: ./
+      run: |-
+        docker build -f apps/access/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-access:${{ github.sha }}" ./
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-access:${{ github.sha }}"
 
     - name: Terraform Init
       working-directory: ./terraform
