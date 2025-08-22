@@ -31,38 +31,6 @@ func getIdentityToken(audience string) (string, error) {
 	return metadata.Get("instance/service-accounts/default/identity?audience=" + audience)
 }
 
-// getValidOAuthToken retrieves and validates OAuth access token, refreshing if needed
-func getValidOAuthToken(oauthStore *provider.OAuthStore) (*provider.OAuthCredentials, error) {
-	// Get valid OAuth access token for each request
-	credentials, err := oauthStore.GetLatestAccessToken()
-	if err != nil {
-		log.Printf("Failed to get OAuth access token: %v", err)
-		return nil, err
-	}
-	
-	// Check if token is expired and refresh if needed
-	now := time.Now()
-	if credentials.ExpiresAt.Before(now) {
-		// Token is expired, refresh it
-		refresher := provider.NewOAuthRefresher(oauthStore)
-		err = refresher.RefreshSingleCredentials(credentials)
-		if err != nil {
-			log.Printf("Failed to refresh OAuth credentials: %v", err)
-			return nil, err
-		}
-		
-		// Get the refreshed token
-		credentials, err = oauthStore.GetLatestAccessToken()
-		if err != nil {
-			log.Printf("Failed to get refreshed OAuth access token: %v", err)
-			return nil, err
-		}
-	}
-	
-	return credentials, nil
-}
-
-
 
 type Config struct {
 	APIKey                   string
@@ -145,8 +113,11 @@ func main() {
 	
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
+		// TODO: Extract actual user ID from request context/headers/authentication
+		// For now, using the default hardcoded user ID
+		userID := DefaultUserID
 		
-		credentials, err := getValidOAuthToken(oauthStore)
+		tokenBinding, err := oauthStore.GetValidTokenForUser(userID)
 		if err != nil {
 			// Fail the request if no valid OAuth token
 			return
@@ -157,8 +128,8 @@ func main() {
 		req.URL.Host = config.OfficialTarget.Host
 		req.Host = config.OfficialTarget.Host
 		
-		// Use the OAuth access token obtained at startup
-		req.Header.Set("Authorization", "Bearer "+credentials.AccessToken)
+		// Use the OAuth access token for this user
+		req.Header.Set("Authorization", "Bearer "+tokenBinding.AccessToken)
 		
 		// Ensure host header matches target
 		req.Header.Set("Host", config.OfficialTarget.Host)

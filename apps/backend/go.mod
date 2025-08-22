@@ -5,6 +5,7 @@ go 1.24
 require (
 	cloud.google.com/go/firestore v1.14.0
 	github.com/gorilla/mux v1.8.1
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	google.golang.org/grpc v1.57.0
 	simple-relay/shared v0.0.0
 )

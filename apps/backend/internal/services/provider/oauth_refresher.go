@@ -52,32 +52,12 @@ func NewOAuthRefresher(oauthStore *OAuthStore) *OAuthRefresher {
 }
 
 
-func (or *OAuthRefresher) RefreshExpiredCredentials() {
-	expiredCredentials, err := or.oauthStore.GetExpiredCredentials()
-	if err != nil {
-		log.Printf("Failed to get expired credentials: %v", err)
-		return
-	}
 
-	if len(expiredCredentials) == 0 {
-		return
-	}
-
-
-	successCount := 0
-	for _, credentials := range expiredCredentials {
-		err := or.RefreshSingleCredentials(credentials)
-		if err == nil {
-			successCount++
-		}
-	}
-	
-}
-
-func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials) error {
+func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials) (*OAuthCredentials, error) {
 	ctx := context.Background()
 	
-	return or.oauthStore.db.Client().RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+	var refreshedCredentials *OAuthCredentials
+	err := or.oauthStore.db.Client().RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		// Read current credentials
 		docRef := or.oauthStore.db.Client().Collection("oauth_tokens").Doc(credentials.AccountUUID)
 		doc, err := tx.Get(docRef)
@@ -99,6 +79,7 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 		// Check if credentials are not expired anymore
 		if now.Before(currentCreds.ExpiresAt) {
 			log.Printf("Credentials for account %s were already refreshed by another process", credentials.AccountUUID)
+			refreshedCredentials = &currentCreds
 			return nil
 		}
 		
@@ -178,10 +159,16 @@ func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials
 			return fmt.Errorf("failed to save refreshed credentials: %w", err)
 		}
 		
-		// Invalidate cache after successful update
-		or.oauthStore.cachedCredentials.Store(nil)
+		// Store refreshed credentials to return
+		refreshedCredentials = &newCredentials
 		
 		log.Printf("Successfully refreshed credentials for account %s", refreshResp.Account.UUID)
 		return nil
 	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return refreshedCredentials, nil
 }
