@@ -160,7 +160,7 @@ func main() {
 					return
 				}
 
-				req, err := http.NewRequest("POST", config.BillingServiceURL, bytes.NewReader(buf.Bytes()))
+				req, err := http.NewRequest("POST", config.BillingServiceURL, &buf)
 				if err != nil {
 					log.Printf("Error creating billing request: %v", err)
 					return
