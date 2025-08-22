@@ -45,4 +45,6 @@ Thumbs.db
 key.json
 apps/backend/.env
 apps/backend/main
+apps/backend/backend
 apps/billing/main
+CLAUDE.md
