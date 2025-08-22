@@ -145,16 +145,13 @@ func main() {
 		if resp.StatusCode == http.StatusOK && 
 		   strings.Contains(resp.Request.URL.Path, "/messages") {
 			
-			// Read the entire response body first
-			bodyBytes, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return err
-			}
+			// Create a buffer to capture the response body for billing
+			var buf bytes.Buffer
 			
-			// Replace response body with the original data for the client
-			resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			// Use TeeReader to duplicate the stream - one copy goes to client, one to buffer
+			resp.Body = io.NopCloser(io.TeeReader(resp.Body, &buf))
 			
-			// Send raw response body to billing service asynchronously
+			// Send buffered response body to billing service asynchronously
 			go func() {
 				// Get identity token for service-to-service authentication
 				idToken, err := getIdentityToken(config.BillingServiceURL)
@@ -163,7 +160,7 @@ func main() {
 					return
 				}
 
-				req, err := http.NewRequest("POST", config.BillingServiceURL, bytes.NewReader(bodyBytes))
+				req, err := http.NewRequest("POST", config.BillingServiceURL, bytes.NewReader(buf.Bytes()))
 				if err != nil {
 					log.Printf("Error creating billing request: %v", err)
 					return
