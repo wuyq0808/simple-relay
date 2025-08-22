@@ -53,7 +53,7 @@ func NewOAuthRefresher(oauthStore *OAuthStore) *OAuthRefresher {
 
 
 
-func (or *OAuthRefresher) RefreshSingleCredentials(credentials *OAuthCredentials) (*OAuthCredentials, error) {
+func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OAuthCredentials, error) {
 	ctx := context.Background()
 	
 	var refreshedCredentials *OAuthCredentials

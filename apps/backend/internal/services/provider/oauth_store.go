@@ -84,7 +84,7 @@ func (store *OAuthStore) GetValidCredentials() (*OAuthCredentials, error) {
 	}
 	
 	refresher := NewOAuthRefresher(store)
-	refreshedCredentials, err := refresher.RefreshSingleCredentials(credentials)
+	refreshedCredentials, err := refresher.RefreshCredentials(credentials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to refresh OAuth credentials: %w", err)
 	}
