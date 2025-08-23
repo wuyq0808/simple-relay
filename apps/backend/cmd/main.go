@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
+	"cloud.google.com/go/storage"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -39,6 +42,7 @@ type Config struct {
 	BillingServiceURL        string
 	ProjectID                string
 	DatabaseName             string
+	APIResponsesBucket       string
 }
 
 func loadConfig() *Config {
@@ -85,6 +89,11 @@ func loadConfig() *Config {
 		log.Fatal("FIRESTORE_DATABASE_NAME environment variable is required")
 	}
 
+	apiResponsesBucket := os.Getenv("API_RESPONSES_BUCKET")
+	if apiResponsesBucket == "" {
+		log.Fatal("API_RESPONSES_BUCKET environment variable is required")
+	}
+
 	return &Config{
 		APIKey:                   apiKey,
 		AllowedClientSecretKey:   allowedClientSecretKey,
@@ -92,6 +101,7 @@ func loadConfig() *Config {
 		BillingServiceURL:        billingServiceURL,
 		ProjectID:                projectID,
 		DatabaseName:             databaseName,
+		APIResponsesBucket:       apiResponsesBucket,
 	}
 }
 
@@ -140,19 +150,26 @@ func main() {
 		req.Header["X-Forwarded-For"] = nil
 	}
 	
-	// Intercept response for billing
+	// Intercept response for billing and storage
 	proxy.ModifyResponse = func(resp *http.Response) error {
-		if resp.StatusCode == http.StatusOK && 
-		   strings.Contains(resp.Request.URL.Path, "/messages") {
-			
-			// Create a buffer to capture the response body for billing
+		if strings.Contains(resp.Request.URL.Path, "/messages") {
+			// Create a buffer to capture the response body
 			var buf bytes.Buffer
 			
 			// Use TeeReader to duplicate the stream - one copy goes to client, one to buffer
 			resp.Body = io.NopCloser(io.TeeReader(resp.Body, &buf))
 			
-			// Send buffered response body to billing service asynchronously
-			go sendToBillingService(&buf, resp, config)
+			// Send all responses to cloud storage asynchronously
+			go func() {
+				// Read the buffered body for storage
+				bodyBytes := buf.Bytes()
+				sendResponseToStorage(bodyBytes, resp, config)
+			}()
+			
+			// Send successful responses to billing service as well
+			if resp.StatusCode == http.StatusOK {
+				go sendToBillingService(&buf, resp, config)
+			}
 		}
 		
 		return nil
@@ -218,6 +235,54 @@ func sendToBillingService(buf *bytes.Buffer, resp *http.Response, config *Config
 	if billingResp.StatusCode != http.StatusOK {
 		log.Printf("Billing service returned non-200 status: %d", billingResp.StatusCode)
 	}
+}
+
+func sendResponseToStorage(body []byte, resp *http.Response, config *Config) {
+	ctx := context.Background()
+	
+	// Create a storage client
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		log.Printf("Error creating storage client: %v", err)
+		return
+	}
+	defer client.Close()
+	
+	// Generate object name with timestamp and status code
+	objectName := fmt.Sprintf("api-responses/%d/%d-%s.json", 
+		resp.StatusCode, 
+		time.Now().Unix(), 
+		DefaultUserID)
+	
+	// Get bucket handle
+	bucket := client.Bucket(config.APIResponsesBucket)
+	obj := bucket.Object(objectName)
+	
+	// Create writer
+	writer := obj.NewWriter(ctx)
+	writer.ContentType = "application/json"
+	
+	// Add metadata
+	writer.Metadata = map[string]string{
+		"user-id":     DefaultUserID,
+		"status-code": fmt.Sprintf("%d", resp.StatusCode),
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		"url":         resp.Request.URL.String(),
+	}
+	
+	// Write the response body
+	if _, err := writer.Write(body); err != nil {
+		log.Printf("Error writing to storage: %v", err)
+		writer.Close()
+		return
+	}
+	
+	if err := writer.Close(); err != nil {
+		log.Printf("Error closing storage writer: %v", err)
+		return
+	}
+	
+	log.Printf("API response saved to storage: %s", objectName)
 }
 
 func addOAuthBetaHeader(req *http.Request) {
