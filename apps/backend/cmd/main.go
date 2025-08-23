@@ -152,44 +152,7 @@ func main() {
 			resp.Body = io.NopCloser(io.TeeReader(resp.Body, &buf))
 			
 			// Send buffered response body to billing service asynchronously
-			go func() {
-				// Get identity token for service-to-service authentication
-				idToken, err := getIdentityToken(config.BillingServiceURL)
-				if err != nil {
-					log.Printf("Error getting identity token: %v", err)
-					return
-				}
-
-				req, err := http.NewRequest("POST", config.BillingServiceURL, &buf)
-				if err != nil {
-					log.Printf("Error creating billing request: %v", err)
-					return
-				}
-				req.Header.Set("Content-Type", "application/json")
-				req.Header.Set("Authorization", "Bearer "+idToken)
-				// TODO: implement subscription system - this hardcoded user ID will be replaced
-				// with actual user identification from subscription management
-				req.Header.Set("X-User-ID", DefaultUserID)
-				
-				// Forward all response headers to billing service
-				for key, values := range resp.Header {
-					for _, value := range values {
-						req.Header.Add(key, value)
-					}
-				}
-				
-				client := &http.Client{Timeout: 10 * time.Second}
-				billingResp, err := client.Do(req)
-				if err != nil {
-					log.Printf("Error sending billing request: %v", err)
-					return
-				}
-				defer billingResp.Body.Close()
-				
-				if billingResp.StatusCode != http.StatusOK {
-					log.Printf("Billing service returned non-200 status: %d", billingResp.StatusCode)
-				}
-			}()
+			go sendToBillingService(&buf, resp, config)
 		}
 		
 		return nil
@@ -217,6 +180,45 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
+
+func sendToBillingService(buf *bytes.Buffer, resp *http.Response, config *Config) {
+	// Get identity token for service-to-service authentication
+	idToken, err := getIdentityToken(config.BillingServiceURL)
+	if err != nil {
+		log.Printf("Error getting identity token: %v", err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", config.BillingServiceURL, buf)
+	if err != nil {
+		log.Printf("Error creating billing request: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+idToken)
+	// TODO: implement subscription system - this hardcoded user ID will be replaced
+	// with actual user identification from subscription management
+	req.Header.Set("X-User-ID", DefaultUserID)
+	
+	// Forward all response headers to billing service
+	for key, values := range resp.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+	
+	client := &http.Client{Timeout: 10 * time.Second}
+	billingResp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error sending billing request: %v", err)
+		return
+	}
+	defer billingResp.Body.Close()
+	
+	if billingResp.StatusCode != http.StatusOK {
+		log.Printf("Billing service returned non-200 status: %d", billingResp.StatusCode)
+	}
+}
 
 func addOAuthBetaHeader(req *http.Request) {
 	existingBeta := req.Header.Get("anthropic-beta")
