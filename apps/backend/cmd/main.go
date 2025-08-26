@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -160,11 +161,7 @@ func main() {
 			resp.Body = io.NopCloser(io.TeeReader(resp.Body, &buf))
 			
 			// Send all responses to cloud storage asynchronously
-			go func() {
-				// Read the buffered body for storage
-				bodyBytes := buf.Bytes()
-				sendResponseToStorage(bodyBytes, resp, config)
-			}()
+			go sendResponseToStorage(&buf, resp, config)
 			
 			// Send successful responses to billing service as well
 			if resp.StatusCode == http.StatusOK {
@@ -206,6 +203,7 @@ func sendToBillingService(buf *bytes.Buffer, resp *http.Response, config *Config
 		return
 	}
 
+	// Stream the response body directly from buffer (memory efficient)
 	req, err := http.NewRequest("POST", config.BillingServiceURL, buf)
 	if err != nil {
 		log.Printf("Error creating billing request: %v", err)
@@ -237,7 +235,7 @@ func sendToBillingService(buf *bytes.Buffer, resp *http.Response, config *Config
 	}
 }
 
-func sendResponseToStorage(body []byte, resp *http.Response, config *Config) {
+func sendResponseToStorage(buf *bytes.Buffer, resp *http.Response, config *Config) {
 	ctx := context.Background()
 	
 	// Create a storage client
@@ -262,16 +260,25 @@ func sendResponseToStorage(body []byte, resp *http.Response, config *Config) {
 	writer := obj.NewWriter(ctx)
 	writer.ContentType = "application/json"
 	
-	// Add metadata
-	writer.Metadata = map[string]string{
+	// Add metadata with JSON-encoded headers
+	metadata := map[string]string{
 		"user-id":     DefaultUserID,
 		"status-code": fmt.Sprintf("%d", resp.StatusCode),
 		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		"url":         resp.Request.URL.String(),
 	}
 	
-	// Write the response body
-	if _, err := writer.Write(body); err != nil {
+	// JSON encode all response headers as a single metadata value
+	if headersJSON, err := json.Marshal(resp.Header); err == nil {
+		metadata["headers"] = string(headersJSON)
+	} else {
+		log.Printf("Error marshaling headers to JSON: %v", err)
+	}
+	
+	writer.Metadata = metadata
+	
+	// Stream the response body directly from buffer (memory efficient)
+	if _, err := buf.WriteTo(writer); err != nil {
 		log.Printf("Error writing to storage: %v", err)
 		writer.Close()
 		return
