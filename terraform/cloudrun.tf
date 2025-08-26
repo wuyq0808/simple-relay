@@ -60,6 +60,11 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         name  = "FIRESTORE_DATABASE_NAME"
         value = "${var.firestore_database_name}-${var.deploy_environment}"
       }
+      
+      env {
+        name  = "API_RESPONSES_BUCKET"
+        value = google_storage_bucket.api_responses.name
+      }
 
       # Secrets passed as environment variables
       env {
