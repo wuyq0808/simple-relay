@@ -231,10 +231,7 @@ func sendToBillingService(reader io.Reader, resp *http.Response, config *Config)
 	}
 	
 	client := &http.Client{
-		Transport: &http.Transport{
-			IdleConnTimeout: 30 * time.Second, // Close idle connections after 30s
-			// No overall timeout - let streaming responses complete
-		},
+		// No timeouts at all - let's see what happens
 	}
 	billingResp, err := client.Do(req)
 	if err != nil {
@@ -304,6 +301,7 @@ func sendResponseToStorage(reader io.Reader, resp *http.Response, config *Config
 	
 	log.Printf("API response saved to storage: %s", objectName)
 }
+
 
 func addOAuthBetaHeader(req *http.Request) {
 	existingBeta := req.Header.Get("anthropic-beta")
