@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"simple-relay/backend/internal/services/provider"
 	"simple-relay/shared/database"
 	"strings"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
