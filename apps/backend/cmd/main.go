@@ -14,6 +14,7 @@ import (
 	"simple-relay/backend/internal/services/provider"
 	"simple-relay/shared/database"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
@@ -154,19 +155,28 @@ func main() {
 	// Intercept response for billing and storage
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		if strings.Contains(resp.Request.URL.Path, "/messages") {
-			// Create a buffer to capture the response body
-			var buf bytes.Buffer
+			// Store original body before modification
+			originalBody := resp.Body
 			
-			// Use TeeReader to duplicate the stream - one copy goes to client, one to buffer
-			resp.Body = io.NopCloser(io.TeeReader(resp.Body, &buf))
+			// Create pipes for streaming to both GCS and billing
+			gcsPR, gcsPW := io.Pipe()
+			billingPR, billingPW := io.Pipe()
 			
-			// Send all responses to cloud storage asynchronously
-			go sendResponseToStorage(&buf, resp, config)
+			// Use MultiWriter to send to both pipes
+			multiWriter := io.MultiWriter(gcsPW, billingPW)
 			
-			// Send successful responses to billing service as well
-			if resp.StatusCode == http.StatusOK {
-				go sendToBillingService(&buf, resp, config)
+			// Replace response body with teed version
+			resp.Body = &struct {
+				io.Reader
+				io.Closer
+			}{
+				Reader: io.TeeReader(originalBody, multiWriter),
+				Closer: &multiCloser{gcsPW, billingPW}, // Close both pipes
 			}
+			
+			// Start streaming to both services
+			go sendResponseToStorage(gcsPR, resp, config)
+			go sendToBillingService(billingPR, resp, config)
 		}
 		
 		return nil
@@ -195,7 +205,7 @@ func main() {
 }
 
 
-func sendToBillingService(buf *bytes.Buffer, resp *http.Response, config *Config) {
+func sendToBillingService(reader io.Reader, resp *http.Response, config *Config) {
 	// Get identity token for service-to-service authentication
 	idToken, err := getIdentityToken(config.BillingServiceURL)
 	if err != nil {
@@ -203,8 +213,8 @@ func sendToBillingService(buf *bytes.Buffer, resp *http.Response, config *Config
 		return
 	}
 
-	// Stream the response body directly from buffer (memory efficient)
-	req, err := http.NewRequest("POST", config.BillingServiceURL, buf)
+	// Stream the response body directly from pipe reader
+	req, err := http.NewRequest("POST", config.BillingServiceURL, reader)
 	if err != nil {
 		log.Printf("Error creating billing request: %v", err)
 		return
@@ -235,7 +245,7 @@ func sendToBillingService(buf *bytes.Buffer, resp *http.Response, config *Config
 	}
 }
 
-func sendResponseToStorage(buf *bytes.Buffer, resp *http.Response, config *Config) {
+func sendResponseToStorage(reader io.Reader, resp *http.Response, config *Config) {
 	ctx := context.Background()
 	
 	// Create a storage client
@@ -277,8 +287,8 @@ func sendResponseToStorage(buf *bytes.Buffer, resp *http.Response, config *Confi
 	
 	writer.Metadata = metadata
 	
-	// Stream the response body directly from buffer (memory efficient)
-	if _, err := buf.WriteTo(writer); err != nil {
+	// Stream directly from pipe reader - this blocks until EOF!
+	if _, err := io.Copy(writer, reader); err != nil {
 		log.Printf("Error writing to storage: %v", err)
 		writer.Close()
 		return
@@ -320,6 +330,16 @@ func clientApiKeyValidationMiddleware(allowedClientSecretKey string, next http.H
 		
 		next(w, r)
 	}
+}
+
+// multiCloser closes multiple io.Closers
+type multiCloser []io.Closer
+
+func (mc multiCloser) Close() error {
+	for _, closer := range mc {
+		closer.Close() // Ignore individual errors for simplicity
+	}
+	return nil
 }
 
 

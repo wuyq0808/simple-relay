@@ -186,7 +186,7 @@ func main() {
 		// Only process SSE streams - use guard clause for early return
 		if !strings.HasPrefix(bodyStr, "event:") && !strings.HasPrefix(bodyStr, "data:") {
 			log.Printf("Skipping non-SSE response for billing")
-			http.Error(w, "Only SSE streams are supported for billing", http.StatusBadRequest)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 		
@@ -209,12 +209,7 @@ func main() {
 		log.Printf("Billing processed successfully for user: %s", userID)
 
 		// Return success response
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{
-			"status":  "success",
-			"message": "Billing processed successfully",
-		})
 	}).Methods("POST")
 
 	port := os.Getenv("PORT")
