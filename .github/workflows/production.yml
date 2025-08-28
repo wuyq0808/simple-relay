@@ -7,6 +7,7 @@ on:
       - 'terraform/**'
       - 'apps/backend/**'
       - 'apps/billing/**'
+      - 'apps/frontend/**'
       - '.github/workflows/**'
   pull_request:
     branches: [ main ]
@@ -14,6 +15,7 @@ on:
       - 'terraform/**'
       - 'apps/backend/**'
       - 'apps/billing/**'
+      - 'apps/frontend/**'
   workflow_dispatch:
 
 jobs:
