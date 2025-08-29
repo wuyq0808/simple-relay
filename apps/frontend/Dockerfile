@@ -24,7 +24,6 @@ RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
 COPY --from=builder /app/services ./services
 COPY --from=builder /app/templates ./templates
 
@@ -45,4 +44,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     req.end();"
 
 # Start the server
-CMD ["node", "server/index.js"]
+CMD ["node", "dist/server/server/index.js"]
