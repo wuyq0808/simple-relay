@@ -13,7 +13,14 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../..')));
+// Serve static files from dist directory
+// Development (tsx): __dirname = apps/frontend/server, static = ../dist
+// Production (built): __dirname = /app/dist/server, static = ../..
+const isDevelopment = process.env.NODE_ENV === 'development';
+const staticPath = isDevelopment 
+  ? path.join(__dirname, '../dist')   // Dev: serve from apps/frontend/dist
+  : path.join(__dirname, '../..');    // Prod: serve from /app/dist
+app.use(express.static(staticPath));
 
 // In-memory storage for verification codes (use a database in production)
 const verificationCodes = new Map<string, { code: string; timestamp: number }>();
@@ -104,7 +111,10 @@ app.post('/api/relay', (req, res) => {
 
 // Serve React app for all other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../index.html'));
+  const htmlPath = isDevelopment
+    ? path.join(__dirname, '../dist/index.html')   // Dev: apps/frontend/dist/index.html
+    : path.join(__dirname, '../../index.html');    // Prod: /app/dist/index.html
+  res.sendFile(htmlPath);
 });
 
 app.listen(PORT, () => {

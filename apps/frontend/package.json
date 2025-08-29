@@ -7,6 +7,7 @@
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:server\"",
     "dev:vite": "vite",
     "dev:server": "tsx watch server/index.ts",
+    "dev:server:built": "npm run build:server && node dist/server/index.js",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "tsc server/index.ts --outDir dist --module ESNext --target ES2022 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
@@ -25,11 +26,11 @@
     "sass": "^1.91.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
+    "@types/node": "^22.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@types/cors": "^2.8.17",
-    "@types/node": "^22.0.0",
     "@vitejs/plugin-react": "^4.3.1",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
