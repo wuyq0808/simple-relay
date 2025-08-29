@@ -3,7 +3,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { rateLimit } from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import { sendVerificationEmail } from '../services/email.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,9 +19,7 @@ app.set('trust proxy', 1);
 const ipRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 30, // 30 requests per hour per IP
-  message: { error: 'Too many requests from this IP. Try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
+  message: 'Too many requests from this IP. Try again later.',
 });
 
 app.use(cors());
