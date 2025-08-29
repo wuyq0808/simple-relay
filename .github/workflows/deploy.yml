@@ -57,10 +57,13 @@ jobs:
         TF_VAR_image_tag: ${{ github.sha }}
         TF_VAR_service_name: simple-relay
         TF_VAR_billing_service_name: simple-relay-billing
+        TF_VAR_frontend_service_name: simple-relay-frontend
         TF_VAR_firestore_database_name: simple-relay-db
         TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
+        TF_VAR_resend_api_key: ${{ inputs.deploy_environment == 'production' && secrets.RESEND_API_KEY_PRODUCTION || secrets.RESEND_API_KEY_STAGING }}
+        TF_VAR_resend_from_email: ${{ secrets.RESEND_FROM_EMAIL }}
       run: terraform plan -input=false -no-color
 
   terraform-deploy:
@@ -109,6 +112,12 @@ jobs:
         docker build -f apps/billing/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}"
 
+    - name: Build and Push Frontend Container
+      working-directory: ./apps/frontend
+      run: |-
+        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
+        docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}"
+
 
     - name: Terraform Init
       working-directory: ./terraform
@@ -126,8 +135,11 @@ jobs:
         TF_VAR_image_tag: ${{ github.sha }}
         TF_VAR_service_name: simple-relay
         TF_VAR_billing_service_name: simple-relay-billing
+        TF_VAR_frontend_service_name: simple-relay-frontend
         TF_VAR_firestore_database_name: simple-relay-db
         TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
         TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
+        TF_VAR_resend_api_key: ${{ inputs.deploy_environment == 'production' && secrets.RESEND_API_KEY_PRODUCTION || secrets.RESEND_API_KEY_STAGING }}
+        TF_VAR_resend_from_email: ${{ secrets.RESEND_FROM_EMAIL }}
       run: terraform apply -input=false -auto-approve -no-color

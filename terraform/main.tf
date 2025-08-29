@@ -50,12 +50,23 @@ variable "billing_service_name" {
   default     = "simple-billing"
 }
 
+variable "frontend_service_name" {
+  description = "Name of the frontend Cloud Run service"
+  type        = string
+  default     = "simple-relay-frontend"
+}
+
 variable "firestore_database_name" {
   description = "Firestore database name"
   type        = string
 }
 
 
+
+variable "api_base_url" {
+  description = "API base URL"
+  type        = string
+}
 
 variable "official_base_url" {
   description = "Official base URL"
@@ -85,6 +96,18 @@ variable "client_secret_key" {
   description = "Client Secret Key" 
   type        = string
   sensitive   = true
+}
+
+variable "resend_api_key" {
+  description = "Resend API Key for email service"
+  type        = string
+  sensitive   = true
+}
+
+variable "resend_from_email" {
+  description = "Resend From Email address"
+  type        = string
+  default     = "noreply@aifastlane.net"
 }
 
 variable "deploy_environment" {

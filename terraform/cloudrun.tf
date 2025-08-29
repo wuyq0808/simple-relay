@@ -35,6 +35,10 @@ resource "google_cloud_run_v2_service" "simple_relay" {
       image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-relay:${var.image_tag}"
 
       # Non-sensitive environment variables
+      env {
+        name  = "API_BASE_URL"
+        value = var.api_base_url
+      }
 
       env {
         name  = "OFFICIAL_BASE_URL"
@@ -237,5 +241,103 @@ output "service_url" {
 
 output "billing_service_url" {
   value = google_cloud_run_v2_service.simple_billing.uri
+}
+
+# Frontend Cloud Run Service (Public)
+resource "google_cloud_run_v2_service" "simple_frontend" {
+  name     = "${var.frontend_service_name}-${var.deploy_environment}"
+  location = var.region
+
+  depends_on = [
+    google_firestore_database.oauth_database
+  ]
+
+  template {
+    # Security annotations
+    annotations = {
+      "run.googleapis.com/cpu-throttling"     = "false"
+      "run.googleapis.com/execution-environment" = "gen2"
+    }
+    
+    scaling {
+      min_instance_count = 0
+      max_instance_count = var.deploy_environment == "production" ? 20 : 10
+    }
+
+    containers {
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${var.service_name}/simple-frontend:${var.image_tag}"
+
+      # Environment variables for frontend
+      env {
+        name  = "NODE_ENV"
+        value = "production"
+      }
+
+      env {
+        name  = "RESEND_API_KEY"
+        value = var.resend_api_key
+      }
+
+      env {
+        name  = "RESEND_FROM_EMAIL"
+        value = var.resend_from_email
+      }
+
+      ports {
+        container_port = 3000
+      }
+
+      resources {
+        limits = {
+          cpu    = "1000m"
+          memory = "1Gi"
+        }
+        cpu_idle = true
+        startup_cpu_boost = true
+      }
+
+      # Health checks
+      startup_probe {
+        initial_delay_seconds = 10
+        timeout_seconds = 5
+        period_seconds = 10
+        failure_threshold = 30
+        http_get {
+          path = "/api/health"
+          port = 3000
+        }
+      }
+
+      liveness_probe {
+        initial_delay_seconds = 0
+        timeout_seconds = 1
+        period_seconds = 10
+        failure_threshold = 3
+        http_get {
+          path = "/api/health"
+          port = 3000
+        }
+      }
+    }
+
+    service_account = "${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+  }
+
+  traffic {
+    percent = 100
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+}
+
+# IAM policy to allow unauthenticated access to frontend
+resource "google_cloud_run_service_iam_member" "frontend_public_access" {
+  service  = google_cloud_run_v2_service.simple_frontend.name
+  location = google_cloud_run_v2_service.simple_frontend.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+output "frontend_service_url" {
+  value = google_cloud_run_v2_service.simple_frontend.uri
 }
 
