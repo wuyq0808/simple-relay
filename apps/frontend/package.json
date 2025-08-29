@@ -9,7 +9,7 @@
     "dev:server": "tsx watch server/index.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
-    "build:server": "tsc server/index.ts --outDir dist/server --module ESNext --target ES2022 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
+    "build:server": "tsc server/index.ts --outDir dist --module ESNext --target ES2022 --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
     "start": "node dist/server/index.js"
   },
   "dependencies": {

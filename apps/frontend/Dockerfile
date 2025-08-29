@@ -44,4 +44,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     req.end();"
 
 # Start the server
-CMD ["node", "dist/server/server/index.js"]
+CMD ["node", "dist/server/index.js"]
