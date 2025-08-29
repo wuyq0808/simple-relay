@@ -13,16 +13,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-// Serve static files from dist directory
-// Development (tsx): __dirname = apps/frontend/server, static = ../dist
-// Production (built): __dirname = /app/dist/server, static = ../..
-const isDevelopment = process.env.NODE_ENV === 'development';
-const staticPath = isDevelopment 
-  ? path.join(__dirname, '../dist')   // Dev: serve from apps/frontend/dist
-  : path.join(__dirname, '../..');    // Prod: serve from /app/dist
-app.use(express.static(staticPath));
+// Serve static files from dist directory (same for dev and prod)
+app.use(express.static(path.join(process.cwd(), 'dist')));
 
-// In-memory storage for verification codes (use a database in production)
+// In-memory storage for verification codes (use a database in production)  
 const verificationCodes = new Map<string, { code: string; timestamp: number }>();
 
 // Generate random 6-digit verification code
@@ -111,10 +105,7 @@ app.post('/api/relay', (req, res) => {
 
 // Serve React app for all other routes
 app.get('*', (req, res) => {
-  const htmlPath = isDevelopment
-    ? path.join(__dirname, '../dist/index.html')   // Dev: apps/frontend/dist/index.html
-    : path.join(__dirname, '../../index.html');    // Prod: /app/dist/index.html
-  res.sendFile(htmlPath);
+  res.sendFile(path.join(process.cwd(), 'dist/index.html'));
 });
 
 app.listen(PORT, () => {
