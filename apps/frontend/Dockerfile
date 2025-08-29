@@ -24,8 +24,7 @@ RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/services ./services
-COPY --from=builder /app/templates ./templates
+COPY --from=builder /app/templates ./dist/templates
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
