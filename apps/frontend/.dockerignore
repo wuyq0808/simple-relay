@@ -9,7 +9,3 @@ npm-debug.log
 README.md
 .eslintrc.cjs
 .prettierrc
-tsconfig.json
-vite.config.ts
-src
-public
