@@ -44,6 +44,7 @@ Thumbs.db
 .github/instructions/nx.instructions.md
 key.json
 apps/backend/.env
+apps/frontend/.env
 apps/backend/main
 apps/backend/backend
 apps/billing/main
