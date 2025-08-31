@@ -48,4 +48,3 @@ apps/frontend/.env
 apps/backend/main
 apps/backend/backend
 apps/billing/main
-CLAUDE.md
