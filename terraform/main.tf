@@ -110,6 +110,12 @@ variable "resend_from_email" {
   default     = "noreply@aifastlane.net"
 }
 
+variable "cookie_secret" {
+  description = "Secret key for signing cookies"
+  type        = string
+  sensitive   = true
+}
+
 variable "deploy_environment" {
   description = "Environment (production or staging)"
   type        = string

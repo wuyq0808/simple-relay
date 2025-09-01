@@ -274,6 +274,21 @@ resource "google_cloud_run_v2_service" "simple_frontend" {
       }
 
       env {
+        name  = "DEPLOYMENT_ENV"
+        value = var.deploy_environment
+      }
+
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+
+      env {
+        name  = "FIRESTORE_DATABASE_NAME"
+        value = "${var.firestore_database_name}-${var.deploy_environment}"
+      }
+
+      env {
         name  = "RESEND_API_KEY"
         value = var.resend_api_key
       }
@@ -281,6 +296,11 @@ resource "google_cloud_run_v2_service" "simple_frontend" {
       env {
         name  = "RESEND_FROM_EMAIL"
         value = var.resend_from_email
+      }
+
+      env {
+        name  = "COOKIE_SECRET"
+        value = var.cookie_secret
       }
 
       ports {
