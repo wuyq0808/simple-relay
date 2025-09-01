@@ -21,7 +21,7 @@ export default function VerifyCode({
   return (
     <>
       <p className="description">
-        Enter the verification code sent to:
+        Enter the verification code sent to
       </p>
       <p className="email-display">
         {email}
