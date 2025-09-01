@@ -1,4 +1,5 @@
 import React from 'react';
+import './SignInForm.scss';
 
 interface SignInFormProps {
   email: string;

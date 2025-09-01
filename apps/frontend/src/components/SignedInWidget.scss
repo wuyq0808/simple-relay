@@ -1,0 +1,23 @@
+.signed-in-email {
+  font-size: 16px;
+  color: #333;
+  margin: 0 0 30px 0;
+  font-weight: bold;
+}
+
+.primary-button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #333;
+  color: white;
+
+  &:disabled {
+    background-color: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+  }
+}

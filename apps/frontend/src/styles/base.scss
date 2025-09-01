@@ -1,0 +1,49 @@
+// Base styles
+body, html {
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  font-family: Arial, sans-serif;
+}
+
+.app-content {
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+
+.app-title {
+  font-size: 24px;
+  margin: 0 0 30px 0;
+  color: #333;
+  font-weight: normal;
+}
+
+.description {
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 30px 0;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 20px 0;
+}
+
+.message {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+
+  &.error {
+    color: #e74c3c;
+  }
+}

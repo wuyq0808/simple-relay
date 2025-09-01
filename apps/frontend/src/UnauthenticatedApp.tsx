@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import './App.scss';
+import './styles/base.scss';
 import AuthFlow from './components/AuthFlow';
 
 function UnauthenticatedApp() {

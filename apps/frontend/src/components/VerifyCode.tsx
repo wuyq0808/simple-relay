@@ -1,4 +1,5 @@
 import React from 'react';
+import './VerifyCode.scss';
 
 interface VerifyCodeProps {
   email: string;

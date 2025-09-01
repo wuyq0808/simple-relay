@@ -179,16 +179,15 @@ app.get('*', async (req: Request, res: Response) => {
     }
     
     // Serve different HTML based on authentication state
-    const templatePath = isAuthenticated 
-      ? path.join(process.cwd(), 'templates/authenticated.html')
-      : path.join(process.cwd(), 'templates/unauthenticated.html');
+    const htmlFile = isAuthenticated 
+      ? path.join(process.cwd(), 'dist/public/authenticated.html')
+      : path.join(process.cwd(), 'dist/public/unauthenticated.html');
     
-    const html = readFileSync(templatePath, 'utf-8');
-    res.send(html);
+    res.sendFile(htmlFile);
   } catch (error) {
     console.error('Error serving HTML:', error);
     // Fallback to unauthenticated template
-    const fallbackPath = path.join(process.cwd(), 'templates/unauthenticated.html');
+    const fallbackPath = path.join(process.cwd(), 'dist/public/unauthenticated.html');
     res.sendFile(fallbackPath);
   }
 });

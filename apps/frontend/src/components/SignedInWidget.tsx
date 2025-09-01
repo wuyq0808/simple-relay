@@ -1,4 +1,5 @@
 import React from 'react';
+import './SignedInWidget.scss';
 
 interface SignedInWidgetProps {
   email: string;
