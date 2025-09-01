@@ -13,12 +13,6 @@ function App() {
   // Check authentication status on page load
   useEffect(() => {
     const checkAuthStatus = async () => {
-      // Check if any cookies exist before making the request
-      if (!document.cookie) {
-        setState('signin');
-        return;
-      }
-      
       try {
         const response = await fetch('/api/profile', {
           credentials: 'include' // Include cookies in request
