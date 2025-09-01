@@ -3,19 +3,15 @@ import './VerifyCode.scss';
 
 interface VerifyCodeProps {
   email: string;
-  verificationCode: string;
   loading: boolean;
-  onCodeChange: (code: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onCodeComplete: (code: string) => void;
   onBack: () => void;
 }
 
 export default function VerifyCode({ 
   email, 
-  verificationCode, 
   loading, 
-  onCodeChange, 
-  onSubmit, 
+  onCodeComplete, 
   onBack 
 }: VerifyCodeProps) {
   return (
@@ -29,33 +25,29 @@ export default function VerifyCode({
 
       <hr className="divider" />
 
-      <form onSubmit={onSubmit}>
-        <input
-          type="text"
-          placeholder="6-digit code"
-          value={verificationCode}
-          onChange={(e) => onCodeChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          disabled={loading}
-          className="verification-input"
-          maxLength={6}
-        />
-        
-        <button
-          type="submit"
-          disabled={loading}
-          className="primary-button verify-button"
-        >
-          {loading ? 'Verifying...' : 'Verify'}
-        </button>
-
-        <button
-          type="button"
-          onClick={onBack}
-          className="secondary-button"
-        >
-          Back
-        </button>
-      </form>
+      <input
+        type="text"
+        placeholder="6-digit code"
+        onChange={(e) => {
+          const code = e.target.value.replace(/\D/g, '').slice(0, 6);
+          e.target.value = code;
+          if (code.length === 6 && !loading) {
+            onCodeComplete(code);
+          }
+        }}
+        disabled={loading}
+        className="verification-input"
+        maxLength={6}
+      />
+      
+      
+      <button
+        type="button"
+        onClick={onBack}
+        className="secondary-button"
+      >
+        Back
+      </button>
     </>
   );
 }

@@ -158,6 +158,24 @@ app.get('/api/profile', requireAuth, async (req, res) => {
   });
 });
 
+app.get('/api/auth', async (req, res) => {
+  const email = req.signedCookies.user_email;
+  let user = null;
+  
+  if (email) {
+    try {
+      user = await UserDatabase.findByEmail(email);
+    } catch (error) {
+      console.error('Error checking user authentication:', error);
+    }
+  }
+  
+  res.json({
+    isAuthenticated: !!user,
+    email: user?.email || null
+  });
+});
+
 app.post('/api/logout', (req, res) => {
   res.clearCookie('user_email');
   res.json({ message: 'Logged out successfully' });
@@ -166,42 +184,11 @@ app.post('/api/logout', (req, res) => {
 
 app.get('*', async (req: Request, res: Response) => {
   try {
-    // Check if user is authenticated via signed cookie
-    const email = req.signedCookies.user_email;
-    let user = null;
-    
-    if (email) {
-      try {
-        user = await UserDatabase.findByEmail(email);
-      } catch (error) {
-        console.error('Error checking user authentication:', error);
-      }
-    }
-    
-    if (user) {
-      // User is authenticated - serve authenticated HTML with user data injected
-      const htmlPath = path.join(process.cwd(), 'dist/public/authenticated.html');
-      let html = readFileSync(htmlPath, 'utf-8');
-      
-      // Inject user email into HTML
-      const userScript = `
-        <script>
-          window.__USER_EMAIL__ = ${JSON.stringify(user.email)};
-        </script>
-      `;
-      
-      html = html.replace('</body>', `${userScript}</body>`);
-      res.send(html);
-    } else {
-      // User is not authenticated - serve unauthenticated HTML
-      const htmlFile = path.join(process.cwd(), 'dist/public/unauthenticated.html');
-      res.sendFile(htmlFile);
-    }
+    const htmlPath = path.join(process.cwd(), 'dist/index.html');
+    res.sendFile(htmlPath);
   } catch (error) {
     console.error('Error serving HTML:', error);
-    // Fallback to unauthenticated template
-    const fallbackPath = path.join(process.cwd(), 'dist/public/unauthenticated.html');
-    res.sendFile(fallbackPath);
+    res.status(500).send('Server error');
   }
 });
 

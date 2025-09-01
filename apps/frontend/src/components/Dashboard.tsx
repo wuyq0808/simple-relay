@@ -1,33 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import SignedInWidget from './SignedInWidget';
 
-declare global {
-  interface Window {
-    __USER_EMAIL__?: string;
-  }
-}
-
 interface DashboardProps {
+  userEmail: string;
   onMessage: (message: string) => void;
 }
 
-export default function Dashboard({ onMessage }: DashboardProps) {
-  const [email, setEmail] = useState('');
-
-  useEffect(() => {
-    // Get email from server-injected data
-    const userEmail = window.__USER_EMAIL__;
-    
-    if (userEmail) {
-      setEmail(userEmail);
-    } else {
-      // No user email found, user shouldn't be on this page
-      onMessage('Authentication error - please sign in again');
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    }
-  }, [onMessage]);
+export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
 
   const handleSignOut = async () => {
     try {
@@ -45,9 +24,17 @@ export default function Dashboard({ onMessage }: DashboardProps) {
   };
 
   return (
-    <SignedInWidget
-      email={email}
-      onSignOut={handleSignOut}
-    />
+    <div className="app-container">
+      <div className="app-content">
+        <h1 className="app-title">
+          AI Fastlane
+        </h1>
+
+        <SignedInWidget
+          email={userEmail}
+          onSignOut={handleSignOut}
+        />
+      </div>
+    </div>
   );
 }

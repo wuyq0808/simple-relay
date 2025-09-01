@@ -12,7 +12,6 @@ interface AuthFlowProps {
 export default function AuthFlow({ onMessage }: AuthFlowProps) {
   const [state, setState] = useState<AuthState>('signin');
   const [email, setEmail] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
@@ -43,21 +42,20 @@ export default function AuthFlow({ onMessage }: AuthFlowProps) {
     }
   };
 
-  const handleVerificationSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!verificationCode || verificationCode.length !== 6) {
+  const handleVerificationSubmit = async (code: string) => {
+    if (!code || code.length !== 6) {
       onMessage('Please enter a 6-digit verification code', 'error');
       return;
     }
 
     setLoading(true);
-    onMessage('');
+    onMessage('Verifying...');
 
     try {
       const response = await fetch('/api/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code: verificationCode })
+        body: JSON.stringify({ email, code })
       });
 
       const data = await response.json();
@@ -89,10 +87,8 @@ export default function AuthFlow({ onMessage }: AuthFlowProps) {
       {state === 'verify' && (
         <VerifyCode
           email={email}
-          verificationCode={verificationCode}
           loading={loading}
-          onCodeChange={setVerificationCode}
-          onSubmit={handleVerificationSubmit}
+          onCodeComplete={handleVerificationSubmit}
           onBack={() => setState('signin')}
         />
       )}

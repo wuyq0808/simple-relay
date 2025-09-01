@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import './styles/base.scss';
-import AuthFlow from './components/AuthFlow';
+import '../styles/base.scss';
+import AuthFlow from './AuthFlow';
 
 type MessageType = 'success' | 'error' | '';
 
-function UnauthenticatedApp() {
+function LoginPanel() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<MessageType>('');
 
@@ -37,4 +37,4 @@ function UnauthenticatedApp() {
   );
 }
 
-export default UnauthenticatedApp;
+export default LoginPanel;
