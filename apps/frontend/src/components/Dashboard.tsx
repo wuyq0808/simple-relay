@@ -1,37 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import SignedInWidget from './SignedInWidget';
 
+declare global {
+  interface Window {
+    __USER_EMAIL__?: string;
+  }
+}
+
 interface DashboardProps {
   onMessage: (message: string) => void;
 }
 
 export default function Dashboard({ onMessage }: DashboardProps) {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch user profile data
-    const fetchProfile = async () => {
-      try {
-        const response = await fetch('/api/profile', {
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setEmail(data.email);
-        } else {
-          // User is not authenticated, reload to get auth flow
-          window.location.reload();
-        }
-      } catch (error) {
-        onMessage('Failed to load user profile');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
+    // Get email from server-injected data
+    const userEmail = window.__USER_EMAIL__;
+    
+    if (userEmail) {
+      setEmail(userEmail);
+    } else {
+      // No user email found, user shouldn't be on this page
+      onMessage('Authentication error - please sign in again');
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
   }, [onMessage]);
 
   const handleSignOut = async () => {
@@ -48,14 +43,6 @@ export default function Dashboard({ onMessage }: DashboardProps) {
       window.location.reload();
     }
   };
-
-  if (loading) {
-    return (
-      <p className="description">
-        Loading...
-      </p>
-    );
-  }
 
   return (
     <SignedInWidget

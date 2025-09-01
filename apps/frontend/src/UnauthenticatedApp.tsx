@@ -2,8 +2,16 @@ import React, { useState } from 'react';
 import './styles/base.scss';
 import AuthFlow from './components/AuthFlow';
 
+type MessageType = 'success' | 'error' | '';
+
 function UnauthenticatedApp() {
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<MessageType>('');
+
+  const handleMessage = (msg: string, type: MessageType = '') => {
+    setMessage(msg);
+    setMessageType(type);
+  };
 
   return (
     <div className="app-container">
@@ -13,12 +21,12 @@ function UnauthenticatedApp() {
           AI Fastlane
         </h1>
 
-        <AuthFlow onMessage={setMessage} />
+        <AuthFlow onMessage={handleMessage} />
 
         {message && (
           <>
             <hr className="divider" />
-            <p className={`message ${message.includes('error') || message.includes('Invalid') || message.includes('Failed') ? 'error' : ''}`}>
+            <p className={`message ${messageType}`}>
               {message}
             </p>
           </>

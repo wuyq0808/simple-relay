@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import rateLimit from 'express-rate-limit';
+import validator from 'validator';
 import { sendVerificationEmail } from '../services/email.js';
 import { UserDatabase } from '../services/database.js';
 
@@ -61,8 +62,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.post('/api/signin', ipRateLimit, async (req, res) => {
   const { email } = req.body;
   
-  if (!email || !email.includes('@')) {
-    return res.status(400).json({ error: 'Valid email is required' });
+  if (!email || !validator.isEmail(email)) {
+    return res.status(400).json({ error: 'Valid email address is required' });
   }
 
   const existingUser = await UserDatabase.findByEmail(email);
@@ -109,8 +110,8 @@ app.post('/api/signin', ipRateLimit, async (req, res) => {
 app.post('/api/verify', async (req, res) => {
   const { email, code } = req.body;
   
-  if (!email || !code) {
-    return res.status(400).json({ error: 'Email and verification code are required' });
+  if (!email || !validator.isEmail(email) || !code) {
+    return res.status(400).json({ error: 'Valid email and verification code are required' });
   }
 
   const user = await UserDatabase.findByEmail(email);
@@ -167,23 +168,35 @@ app.get('*', async (req: Request, res: Response) => {
   try {
     // Check if user is authenticated via signed cookie
     const email = req.signedCookies.user_email;
-    let isAuthenticated = false;
+    let user = null;
     
     if (email) {
       try {
-        const user = await UserDatabase.findByEmail(email);
-        isAuthenticated = !!user;
+        user = await UserDatabase.findByEmail(email);
       } catch (error) {
         console.error('Error checking user authentication:', error);
       }
     }
     
-    // Serve different HTML based on authentication state
-    const htmlFile = isAuthenticated 
-      ? path.join(process.cwd(), 'dist/public/authenticated.html')
-      : path.join(process.cwd(), 'dist/public/unauthenticated.html');
-    
-    res.sendFile(htmlFile);
+    if (user) {
+      // User is authenticated - serve authenticated HTML with user data injected
+      const htmlPath = path.join(process.cwd(), 'dist/public/authenticated.html');
+      let html = readFileSync(htmlPath, 'utf-8');
+      
+      // Inject user email into HTML
+      const userScript = `
+        <script>
+          window.__USER_EMAIL__ = ${JSON.stringify(user.email)};
+        </script>
+      `;
+      
+      html = html.replace('</body>', `${userScript}</body>`);
+      res.send(html);
+    } else {
+      // User is not authenticated - serve unauthenticated HTML
+      const htmlFile = path.join(process.cwd(), 'dist/public/unauthenticated.html');
+      res.sendFile(htmlFile);
+    }
   } catch (error) {
     console.error('Error serving HTML:', error);
     // Fallback to unauthenticated template
