@@ -4,6 +4,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 import rateLimit from 'express-rate-limit';
 import { sendVerificationEmail } from '../services/email.js';
 import { UserDatabase } from '../services/database.js';
@@ -162,8 +163,34 @@ app.post('/api/logout', (req, res) => {
 });
 
 
-app.get('*', (_req: Request, res: Response) => {
-  res.sendFile(path.join(process.cwd(), 'dist/index.html'));
+app.get('*', async (req: Request, res: Response) => {
+  try {
+    // Check if user is authenticated via signed cookie
+    const email = req.signedCookies.user_email;
+    let isAuthenticated = false;
+    
+    if (email) {
+      try {
+        const user = await UserDatabase.findByEmail(email);
+        isAuthenticated = !!user;
+      } catch (error) {
+        console.error('Error checking user authentication:', error);
+      }
+    }
+    
+    // Serve different HTML based on authentication state
+    const templatePath = isAuthenticated 
+      ? path.join(process.cwd(), 'templates/authenticated.html')
+      : path.join(process.cwd(), 'templates/unauthenticated.html');
+    
+    const html = readFileSync(templatePath, 'utf-8');
+    res.send(html);
+  } catch (error) {
+    console.error('Error serving HTML:', error);
+    // Fallback to unauthenticated template
+    const fallbackPath = path.join(process.cwd(), 'templates/unauthenticated.html');
+    res.sendFile(fallbackPath);
+  }
 });
 
 app.listen(PORT, () => {
