@@ -53,15 +53,9 @@ function App() {
       const data = await response.json();
       
       if (response.ok) {
-        if (data.user.existing) {
-          // User already exists and was signed in automatically
-          setState('signedin');
-          setMessage('Successfully signed in!');
-        } else {
-          // New user, need verification
-          setState('verify');
-          setMessage('Verification code sent to your email');
-        }
+        // All users (new and existing) need email verification
+        setState('verify');
+        setMessage('Verification code sent to your email');
       } else {
         setMessage(data.error || 'Failed to send verification code');
       }
