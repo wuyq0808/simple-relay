@@ -1,14 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.scss';
 
-type AppState = 'signin' | 'verify' | 'signedin';
+type AppState = 'signin' | 'verify' | 'signedin' | 'loading';
 
 function App() {
-  const [state, setState] = useState<AppState>('signin');
+  const [state, setState] = useState<AppState>('loading');
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  // Check authentication status on page load
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch('/api/profile', {
+          credentials: 'include' // Include cookies in request
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setEmail(data.email);
+          setState('signedin');
+        } else {
+          setState('signin');
+        }
+      } catch (error) {
+        setState('signin');
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +44,7 @@ function App() {
     setMessage('');
 
     try {
-      const response = await fetch('/api/signup', {
+      const response = await fetch('/api/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -30,6 +53,7 @@ function App() {
       const data = await response.json();
       
       if (response.ok) {
+        // All users (new and existing) need email verification
         setState('verify');
         setMessage('Verification code sent to your email');
       } else {
@@ -74,7 +98,17 @@ function App() {
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include' // Include cookies in request
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    
+    // Clear local state regardless of API call success
     setState('signin');
     setEmail('');
     setVerificationCode('');
@@ -88,6 +122,12 @@ function App() {
         <h1 className="app-title">
           AI Fastlane
         </h1>
+
+        {state === 'loading' && (
+          <p className="description">
+            Loading...
+          </p>
+        )}
 
         {state === 'signin' && (
           <>
