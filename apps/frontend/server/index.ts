@@ -67,7 +67,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // Unified signup/signin endpoint
-app.post('/api/signup', ipRateLimit, async (req, res) => {
+app.post('/api/signin', ipRateLimit, async (req, res) => {
   const { email } = req.body;
   
   if (!email || !email.includes('@')) {
@@ -162,6 +162,24 @@ app.post('/api/verify', async (req, res) => {
   console.log(`User verified: ${email}`);
   
   res.json({ message: 'Email verified successfully', email });
+});
+
+// Profile endpoint - for checking auth status
+app.get('/api/profile', requireAuth, async (req, res) => {
+  const email = (req as any).userEmail;
+  
+  // Fetch user data from database
+  const user = await UserDatabase.findByEmail(email);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  res.json({
+    email: user.email,
+    created_at: user.created_at,
+    last_login: user.last_login
+  });
 });
 
 // Logout endpoint - clears signed cookie
