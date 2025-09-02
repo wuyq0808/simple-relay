@@ -1,12 +1,12 @@
 import React from 'react';
-import './SignedInWidget.scss';
+import './SignedInPanel.scss';
 
-interface SignedInWidgetProps {
+interface SignedInPanelProps {
   email: string;
   onSignOut: () => void;
 }
 
-export default function SignedInWidget({ email, onSignOut }: SignedInWidgetProps) {
+export default function SignedInPanel({ email, onSignOut }: SignedInPanelProps) {
   return (
     <>
       <p className="description">
