@@ -1,5 +1,5 @@
 import React from 'react';
-import SignedInPanel from './SignedInPanel';
+import LogoutPanel from './LogoutPanel';
 
 interface DashboardProps {
   userEmail: string;
@@ -30,9 +30,9 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
           AI Fastlane
         </h1>
 
-        <SignedInPanel
+        <LogoutPanel
           email={userEmail}
-          onSignOut={handleSignOut}
+          onLogout={handleSignOut}
         />
       </div>
     </div>

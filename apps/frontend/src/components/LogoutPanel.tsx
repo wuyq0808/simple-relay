@@ -1,12 +1,12 @@
 import React from 'react';
-import './SignedInPanel.scss';
+import './LogoutPanel.scss';
 
-interface SignedInPanelProps {
+interface LogoutPanelProps {
   email: string;
-  onSignOut: () => void;
+  onLogout: () => void;
 }
 
-export default function SignedInPanel({ email, onSignOut }: SignedInPanelProps) {
+export default function LogoutPanel({ email, onLogout }: LogoutPanelProps) {
   return (
     <>
       <p className="description">
@@ -19,10 +19,10 @@ export default function SignedInPanel({ email, onSignOut }: SignedInPanelProps) 
       <hr className="divider" />
 
       <button
-        onClick={onSignOut}
+        onClick={onLogout}
         className="primary-button"
       >
-        Sign Out
+        Log Out
       </button>
     </>
   );
