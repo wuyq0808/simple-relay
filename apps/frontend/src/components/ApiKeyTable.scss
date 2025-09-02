@@ -76,13 +76,6 @@
   flex: 1;
 }
 
-.key-value {
-  font-family: 'Courier New', monospace;
-  font-size: 16px;
-  color: #333;
-  font-weight: normal;
-  margin-bottom: 8px;
-}
 
 .key-date {
   font-size: 14px;
@@ -110,7 +103,7 @@
   gap: 12px;
 }
 
-.copy-button, .copy-command-button {
+.copy-command-button {
   background-color: #333;
   color: white;
   border: none;
@@ -120,8 +113,13 @@
   font-size: 13px;
   transition: background-color 0.2s ease;
   
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: #444;
+  }
+  
+  &:disabled {
+    background-color: #666;
+    cursor: default;
   }
 }
 
