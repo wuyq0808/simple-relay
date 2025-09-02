@@ -255,7 +255,16 @@ app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
 app.get('*', async (req: Request, res: Response) => {
   try {
     const htmlPath = path.join(process.cwd(), 'dist/index.html');
-    res.sendFile(htmlPath);
+    const html = readFileSync(htmlPath, 'utf8');
+    
+    // Inject backend URL into the HTML
+    const backendUrl = process.env.BACKEND_URL || 'https://simple-relay-staging-573916960175.us-central1.run.app';
+    const injectedHtml = html.replace(
+      '<head>',
+      `<head><script>window.__BACKEND_URL__ = "${backendUrl}";</script>`
+    );
+    
+    res.send(injectedHtml);
   } catch (error) {
     console.error('Error serving HTML:', error);
     res.status(500).send('Server error');

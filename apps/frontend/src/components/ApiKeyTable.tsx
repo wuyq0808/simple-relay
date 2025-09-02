@@ -100,12 +100,27 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
     }
   };
 
+  const getBackendUrl = () => {
+    // Get backend URL from environment variable set by deployment
+    return (window as any).__BACKEND_URL__ || process.env.BACKEND_URL || 'https://simple-relay-staging-573916960175.us-central1.run.app';
+  };
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       onMessage('API key copied to clipboard');
     } catch (error) {
       onMessage('Failed to copy to clipboard');
+    }
+  };
+
+  const copyCommand = async (apiKey: string) => {
+    const command = `ANTHROPIC_AUTH_TOKEN=${apiKey} ANTHROPIC_BASE_URL=${getBackendUrl()} claude`;
+    try {
+      await navigator.clipboard.writeText(command);
+      onMessage('Command copied to clipboard');
+    } catch (error) {
+      onMessage('Failed to copy command');
     }
   };
 
@@ -144,13 +159,24 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
                 <span className="key-date">
                   Created {new Date(key.created_at).toLocaleDateString('en-CA')}
                 </span>
+                <div className="key-command">
+                  <code>
+                    ANTHROPIC_AUTH_TOKEN={key.api_key} ANTHROPIC_BASE_URL={getBackendUrl()} claude
+                  </code>
+                </div>
               </div>
               <div className="key-actions">
                 <button 
                   className="copy-button"
                   onClick={() => copyToClipboard(key.api_key)}
                 >
-                  Copy
+                  Copy Key
+                </button>
+                <button 
+                  className="copy-command-button"
+                  onClick={() => copyCommand(key.api_key)}
+                >
+                  Copy Command
                 </button>
                 <button 
                   className="delete-button"

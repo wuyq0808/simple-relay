@@ -64,6 +64,7 @@ jobs:
         TF_VAR_resend_api_key: ${{ inputs.deploy_environment == 'production' && secrets.RESEND_API_KEY_PRODUCTION || secrets.RESEND_API_KEY_STAGING }}
         TF_VAR_resend_from_email: ${{ secrets.RESEND_FROM_EMAIL }}
         TF_VAR_cookie_secret: ${{ inputs.deploy_environment == 'production' && secrets.COOKIE_SECRET_PRODUCTION || secrets.COOKIE_SECRET_STAGING }}
+        TF_VAR_backend_url: ${{ inputs.deploy_environment == 'production' && vars.BACKEND_PRODUCTION_URL || vars.BACKEND_STAGING_URL }}
       run: terraform plan -input=false -no-color
 
   terraform-deploy:
@@ -142,4 +143,5 @@ jobs:
         TF_VAR_resend_api_key: ${{ inputs.deploy_environment == 'production' && secrets.RESEND_API_KEY_PRODUCTION || secrets.RESEND_API_KEY_STAGING }}
         TF_VAR_resend_from_email: ${{ secrets.RESEND_FROM_EMAIL }}
         TF_VAR_cookie_secret: ${{ inputs.deploy_environment == 'production' && secrets.COOKIE_SECRET_PRODUCTION || secrets.COOKIE_SECRET_STAGING }}
+        TF_VAR_backend_url: ${{ inputs.deploy_environment == 'production' && vars.BACKEND_PRODUCTION_URL || vars.BACKEND_STAGING_URL }}
       run: terraform apply -input=false -auto-approve -no-color

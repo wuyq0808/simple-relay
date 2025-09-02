@@ -89,12 +89,28 @@
   color: #666;
 }
 
+.key-command {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  
+  code {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+    color: #333;
+    word-break: break-all;
+    line-height: 1.4;
+  }
+}
+
 .key-actions {
   display: flex;
   gap: 12px;
 }
 
-.copy-button {
+.copy-button, .copy-command-button {
   background-color: #333;
   color: white;
   border: none;

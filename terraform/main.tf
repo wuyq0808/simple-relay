@@ -111,6 +111,11 @@ variable "cookie_secret" {
   sensitive   = true
 }
 
+variable "backend_url" {
+  description = "Backend service URL for frontend to display in API key commands"
+  type        = string
+}
+
 variable "deploy_environment" {
   description = "Environment (production or staging)"
   type        = string
