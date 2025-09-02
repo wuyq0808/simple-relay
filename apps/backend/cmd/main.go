@@ -10,6 +10,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"simple-relay/backend/internal/services"
 	"simple-relay/backend/internal/services/provider"
 	"simple-relay/shared/database"
 	"strings"
@@ -118,14 +119,34 @@ func main() {
 	// Initialize OAuth store
 	oauthStore := provider.NewOAuthStore(dbService)
 	
+	// Initialize API key service
+	apiKeyService := services.NewApiKeyService(dbService.Client())
+	
 	// Create reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(config.OfficialTarget)
 	
+	// Create a custom handler that checks authentication before proxying
+	proxyHandler := func(w http.ResponseWriter, req *http.Request) {
+		// Extract user ID from API key
+		userId := extractUserIdFromAPIKey(req, apiKeyService)
+		
+		// Reject request if no valid API key provided
+		if userId == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		
+		// Store user ID in request context for proxy director
+		ctx := context.WithValue(req.Context(), "userId", userId)
+		req = req.WithContext(ctx)
+		proxy.ServeHTTP(w, req)
+	}
+	
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
-		// TODO: Extract actual user ID from request context/headers/authentication
-		// For now, using the default hardcoded user ID
-		userID := DefaultUserID
+		userId := req.Context().Value("userId").(string)
+		
+		userID := userId
 		
 		tokenBinding, err := oauthStore.GetValidTokenForUser(userID)
 		if err != nil {
@@ -172,9 +193,12 @@ func main() {
 				Closer: &multiCloser{gcsPW, billingPW}, // Close both pipes
 			}
 			
+			// Get user ID from request context
+			userId := resp.Request.Context().Value("userId").(string)
+			
 			// Start streaming to both services
-			go sendResponseToStorage(gcsPR, resp, config)
-			go sendToBillingService(billingPR, resp, config)
+			go sendResponseToStorage(gcsPR, resp, config, userId)
+			go sendToBillingService(billingPR, resp, config, userId)
 		}
 		
 		return nil
@@ -190,7 +214,7 @@ func main() {
 	
 	
 	// Proxy all requests with API key validation
-	r.PathPrefix("/").HandlerFunc(clientApiKeyValidationMiddleware(config.AllowedClientSecretKey, proxy.ServeHTTP))
+	r.PathPrefix("/").HandlerFunc(clientApiKeyValidationMiddleware(config.AllowedClientSecretKey, proxyHandler))
 	
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -203,7 +227,7 @@ func main() {
 }
 
 
-func sendToBillingService(reader io.Reader, resp *http.Response, config *Config) {
+func sendToBillingService(reader io.Reader, resp *http.Response, config *Config, userId string) {
 	// Get identity token for service-to-service authentication
 	idToken, err := getIdentityToken(config.BillingServiceURL)
 	if err != nil {
@@ -219,9 +243,7 @@ func sendToBillingService(reader io.Reader, resp *http.Response, config *Config)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+idToken)
-	// TODO: implement subscription system - this hardcoded user ID will be replaced
-	// with actual user identification from subscription management
-	req.Header.Set("X-User-ID", DefaultUserID)
+	req.Header.Set("X-User-ID", userId)
 	
 	// Forward all response headers to billing service
 	for key, values := range resp.Header {
@@ -245,7 +267,7 @@ func sendToBillingService(reader io.Reader, resp *http.Response, config *Config)
 	}
 }
 
-func sendResponseToStorage(reader io.Reader, resp *http.Response, config *Config) {
+func sendResponseToStorage(reader io.Reader, resp *http.Response, config *Config, userId string) {
 	ctx := context.Background()
 	
 	// Create a storage client
@@ -260,7 +282,7 @@ func sendResponseToStorage(reader io.Reader, resp *http.Response, config *Config
 	objectName := fmt.Sprintf("api-responses/%d/%d-%s.json", 
 		resp.StatusCode, 
 		time.Now().Unix(), 
-		DefaultUserID)
+		userId)
 	
 	// Get bucket handle
 	bucket := client.Bucket(config.APIResponsesBucket)
@@ -272,7 +294,7 @@ func sendResponseToStorage(reader io.Reader, resp *http.Response, config *Config
 	
 	// Add metadata with JSON-encoded headers
 	metadata := map[string]string{
-		"user-id":     DefaultUserID,
+		"user-id":     userId,
 		"status-code": fmt.Sprintf("%d", resp.StatusCode),
 		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		"url":         resp.Request.URL.String(),
@@ -341,6 +363,29 @@ func (mc multiCloser) Close() error {
 		closer.Close() // Ignore individual errors for simplicity
 	}
 	return nil
+}
+
+
+// extractUserIdFromAPIKey extracts user ID from API key in Authorization header
+func extractUserIdFromAPIKey(req *http.Request, apiKeyService *services.ApiKeyService) string {
+	authHeader := req.Header.Get("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return ""
+	}
+	
+	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
+	
+	// Look up user ID by API key with caching
+	// Note: For convenience, we use email address as userId in our system
+	userId, err := apiKeyService.FindUserEmailByApiKey(req.Context(), apiKey)
+	if err != nil {
+		return ""
+	}
+	if userId == "" {
+		return ""
+	}
+	
+	return userId
 }
 
 
