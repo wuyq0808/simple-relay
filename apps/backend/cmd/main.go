@@ -214,7 +214,7 @@ func main() {
 	
 	
 	// Proxy all requests with API key validation
-	r.PathPrefix("/").HandlerFunc(clientApiKeyValidationMiddleware(config.AllowedClientSecretKey, proxyHandler))
+	r.PathPrefix("/").HandlerFunc(proxyHandler)
 	
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -336,24 +336,6 @@ func addOAuthBetaHeader(req *http.Request) {
 	}
 }
 
-func clientApiKeyValidationMiddleware(allowedClientSecretKey string, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Get API secret key from Authorization header
-		var apiSecretKey string
-		authHeader := r.Header.Get("Authorization")
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			apiSecretKey = strings.TrimPrefix(authHeader, "Bearer ")
-		}
-		
-		// Check if API secret key matches
-		if apiSecretKey != allowedClientSecretKey {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		
-		next(w, r)
-	}
-}
 
 // multiCloser closes multiple io.Closers
 type multiCloser []io.Closer
