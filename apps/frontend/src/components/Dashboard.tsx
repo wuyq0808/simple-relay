@@ -1,5 +1,5 @@
-import React from 'react';
 import LogoutPanel from './LogoutPanel';
+import ApiKeyTable from './ApiKeyTable';
 
 interface DashboardProps {
   userEmail: string;
@@ -24,16 +24,34 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
   };
 
   return (
-    <div className="app-container">
-      <div className="app-content">
-        <h1 className="app-title">
-          AI Fastlane
-        </h1>
+    <div className="dashboard-container">
+      <div className="sidebar">
+        <div className="sidebar-content">
+          <h1 className="app-title">
+            AI Fastlane
+          </h1>
+          <p className="tagline">
+            Never fall behind.
+          </p>
+          
+          <div className="sidebar-bottom">
+            <LogoutPanel
+              email={userEmail}
+              onLogout={handleSignOut}
+            />
+          </div>
+        </div>
+      </div>
 
-        <LogoutPanel
-          email={userEmail}
-          onLogout={handleSignOut}
-        />
+      <div className="main-panel">
+        <div className="main-panel-content">
+          <div className="api-keys-section">
+            <h2>API Keys</h2>
+            <p className="description">Manage your API keys for accessing AI Fastlane services.</p>
+            
+            <ApiKeyTable userEmail={userEmail} onMessage={onMessage} />
+          </div>
+        </div>
       </div>
     </div>
   );

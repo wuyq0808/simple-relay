@@ -103,6 +103,7 @@ class FirestoreUserDatabase {
     }
     return user.verification_expires_at > new Date();
   }
+
 }
 
 // Export singleton instance

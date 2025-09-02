@@ -12,9 +12,12 @@ simple-relay-468808
 - **Production**: `simple-relay-db-production`
 
 ### Collections
+- `users` - User accounts and authentication data
+- `api_key_bindings` - API key to user email bindings
 - `oauth_tokens` - OAuth token data
 - `usage_records` - Billing usage records  
 - `user_token_bindings` - User token binding system
+- `app_config` - Application configuration settings
 
 ### Script Usage
 ```bash

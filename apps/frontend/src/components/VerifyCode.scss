@@ -32,6 +32,11 @@
   cursor: pointer;
   background-color: #333;
   color: white;
+  transition: background-color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background-color: #444;
+  }
 
   &:disabled {
     background-color: #f5f5f5;
