@@ -1,15 +1,16 @@
-# DNS Zone for aifastlane.net
+# Reference existing DNS zone for production, create new zone for staging
 resource "google_dns_managed_zone" "aifastlane_zone" {
-  name     = "aifastlane-net-${var.deploy_environment}"
-  dns_name = var.deploy_environment == "production" ? "aifastlane.net." : "${var.deploy_environment}.aifastlane.net."
+  count = var.deploy_environment == "staging" ? 1 : 0
+  
+  name     = "aifastlane-net-staging"
+  dns_name = "staging.aifastlane.net."
 
-  description = "DNS zone for aifastlane.net domain - ${var.deploy_environment}"
+  description = "DNS zone for staging.aifastlane.net subdomain"
 }
 
-# Data source for production zone (needed for staging NS delegation)
+# Data source to reference existing production zone
 data "google_dns_managed_zone" "production_zone" {
-  count = var.deploy_environment == "staging" ? 1 : 0
-  name  = "aifastlane-net-production"
+  name = "aifastlane-net"
 }
 
 # NS delegation record for staging subdomain in production zone
@@ -20,8 +21,8 @@ resource "google_dns_record_set" "staging_ns_delegation" {
   type = "NS"
   ttl  = 300
 
-  managed_zone = data.google_dns_managed_zone.production_zone[0].name
-  rrdatas      = google_dns_managed_zone.aifastlane_zone.name_servers
+  managed_zone = data.google_dns_managed_zone.production_zone.name
+  rrdatas      = google_dns_managed_zone.aifastlane_zone[0].name_servers
 }
 
 # A records pointing to Cloud Run
@@ -30,7 +31,7 @@ resource "google_dns_record_set" "aifastlane_a" {
   type = "A"
   ttl  = 300
 
-  managed_zone = google_dns_managed_zone.aifastlane_zone.name
+  managed_zone = var.deploy_environment == "production" ? data.google_dns_managed_zone.production_zone.name : google_dns_managed_zone.aifastlane_zone[0].name
 
   rrdatas = [
     "216.239.32.21",
@@ -46,7 +47,7 @@ resource "google_dns_record_set" "aifastlane_aaaa" {
   type = "AAAA"
   ttl  = 300
 
-  managed_zone = google_dns_managed_zone.aifastlane_zone.name
+  managed_zone = var.deploy_environment == "production" ? data.google_dns_managed_zone.production_zone.name : google_dns_managed_zone.aifastlane_zone[0].name
 
   rrdatas = [
     "2001:4860:4802:32::15",
@@ -56,46 +57,54 @@ resource "google_dns_record_set" "aifastlane_aaaa" {
   ]
 }
 
-# DMARC record for email security
+# DMARC record for email security (production only)
 resource "google_dns_record_set" "dmarc" {
-  name = var.deploy_environment == "production" ? "_dmarc.aifastlane.net." : "_dmarc.${var.deploy_environment}.aifastlane.net."
+  count = var.deploy_environment == "production" ? 1 : 0
+  
+  name = "_dmarc.aifastlane.net."
   type = "TXT"
   ttl  = 300
 
-  managed_zone = google_dns_managed_zone.aifastlane_zone.name
+  managed_zone = data.google_dns_managed_zone.production_zone.name
 
   rrdatas = ["\"v=DMARC1; p=none;\""]
 }
 
-# Resend domain key for email authentication
+# Resend domain key for email authentication (production only)
 resource "google_dns_record_set" "resend_domainkey" {
-  name = var.deploy_environment == "production" ? "resend._domainkey.aifastlane.net." : "resend._domainkey.${var.deploy_environment}.aifastlane.net."
+  count = var.deploy_environment == "production" ? 1 : 0
+  
+  name = "resend._domainkey.aifastlane.net."
   type = "TXT"
   ttl  = 300
 
-  managed_zone = google_dns_managed_zone.aifastlane_zone.name
+  managed_zone = data.google_dns_managed_zone.production_zone.name
 
   rrdatas = ["\"p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHRm0xIYZUk0jYPgpT126LFrktukRI2apEiWYF7NI3jnalYOkd4WxwFAIaf9kQayVlOsfZmZNFjYuRo61fMSWNJEDe3IqjeZs7S3CK1Fdu76BpTr+XyHHJhetbLUKngZeUP5qWPuodC4TCBeNncJApB+lixekoCE6bxqgldwWWpwIDAQAB\""]
 }
 
-# MX record for send subdomain
+# MX record for send subdomain (production only)
 resource "google_dns_record_set" "send_mx" {
-  name = var.deploy_environment == "production" ? "send.aifastlane.net." : "send.${var.deploy_environment}.aifastlane.net."
+  count = var.deploy_environment == "production" ? 1 : 0
+  
+  name = "send.aifastlane.net."
   type = "MX"
   ttl  = 300
 
-  managed_zone = google_dns_managed_zone.aifastlane_zone.name
+  managed_zone = data.google_dns_managed_zone.production_zone.name
 
   rrdatas = ["10 feedback-smtp.ap-northeast-1.amazonses.com."]
 }
 
-# SPF record for send subdomain
+# SPF record for send subdomain (production only)
 resource "google_dns_record_set" "send_txt" {
-  name = var.deploy_environment == "production" ? "send.aifastlane.net." : "send.${var.deploy_environment}.aifastlane.net."
+  count = var.deploy_environment == "production" ? 1 : 0
+  
+  name = "send.aifastlane.net."
   type = "TXT"
   ttl  = 300
 
-  managed_zone = google_dns_managed_zone.aifastlane_zone.name
+  managed_zone = data.google_dns_managed_zone.production_zone.name
 
   rrdatas = ["\"v=spf1 include:amazonses.com ~all\""]
 }
@@ -117,7 +126,7 @@ resource "google_cloud_run_domain_mapping" "aifastlane_domain" {
 # Outputs
 output "dns_name_servers" {
   description = "Name servers for the DNS zone"
-  value       = google_dns_managed_zone.aifastlane_zone.name_servers
+  value       = var.deploy_environment == "production" ? data.google_dns_managed_zone.production_zone.name_servers : google_dns_managed_zone.aifastlane_zone[0].name_servers
 }
 
 output "domain_mapping_status" {
