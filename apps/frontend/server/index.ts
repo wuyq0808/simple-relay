@@ -4,7 +4,9 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 import rateLimit from 'express-rate-limit';
+import validator from 'validator';
 import { sendVerificationEmail } from '../services/email.js';
 import { UserDatabase } from '../services/database.js';
 
@@ -60,8 +62,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.post('/api/signin', ipRateLimit, async (req, res) => {
   const { email } = req.body;
   
-  if (!email || !email.includes('@')) {
-    return res.status(400).json({ error: 'Valid email is required' });
+  if (!email || !validator.isEmail(email)) {
+    return res.status(400).json({ error: 'Valid email address is required' });
   }
 
   const existingUser = await UserDatabase.findByEmail(email);
@@ -108,8 +110,8 @@ app.post('/api/signin', ipRateLimit, async (req, res) => {
 app.post('/api/verify', async (req, res) => {
   const { email, code } = req.body;
   
-  if (!email || !code) {
-    return res.status(400).json({ error: 'Email and verification code are required' });
+  if (!email || !validator.isEmail(email) || !code) {
+    return res.status(400).json({ error: 'Valid email and verification code are required' });
   }
 
   const user = await UserDatabase.findByEmail(email);
@@ -156,14 +158,38 @@ app.get('/api/profile', requireAuth, async (req, res) => {
   });
 });
 
+app.get('/api/auth', async (req, res) => {
+  const email = req.signedCookies.user_email;
+  let user = null;
+  
+  if (email) {
+    try {
+      user = await UserDatabase.findByEmail(email);
+    } catch (error) {
+      console.error('Error checking user authentication:', error);
+    }
+  }
+  
+  res.json({
+    isAuthenticated: !!user,
+    email: user?.email || null
+  });
+});
+
 app.post('/api/logout', (req, res) => {
   res.clearCookie('user_email');
   res.json({ message: 'Logged out successfully' });
 });
 
 
-app.get('*', (_req: Request, res: Response) => {
-  res.sendFile(path.join(process.cwd(), 'dist/index.html'));
+app.get('*', async (req: Request, res: Response) => {
+  try {
+    const htmlPath = path.join(process.cwd(), 'dist/index.html');
+    res.sendFile(htmlPath);
+  } catch (error) {
+    console.error('Error serving HTML:', error);
+    res.status(500).send('Server error');
+  }
 });
 
 app.listen(PORT, () => {
