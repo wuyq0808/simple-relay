@@ -67,19 +67,21 @@ app.post('/api/signin', ipRateLimit, async (req, res) => {
     return res.status(400).json({ error: 'Valid email address is required' });
   }
 
-  // Check if signup is enabled
-  try {
-    const signupEnabled = await ConfigService.getConfig('signup_enabled');
-    if (signupEnabled === false) {
-      return res.status(403).json({ error: 'Sign up is currently disabled' });
-    }
-  } catch (error) {
-    console.error('Error checking signup config:', error);
-    return res.status(500).json({ error: 'Configuration service unavailable' });
-  }
-
   const existingUser = await UserDatabase.findByEmail(email);
   
+  // Check if signup is enabled for new users
+  if (!existingUser) {
+    try {
+      const signupEnabled = await ConfigService.getConfig('signup_enabled');
+      if (signupEnabled === false) {
+        return res.status(403).json({ error: 'Sign up is currently disabled' });
+      }
+    } catch (error) {
+      console.error('Error checking signup config:', error);
+      return res.status(500).json({ error: 'Configuration service unavailable' });
+    }
+  }
+
   const verificationCode = generateVerificationCode();
   const verificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
