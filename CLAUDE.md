@@ -23,6 +23,10 @@ simple-relay-468808
 
 # Read from production
 ./scripts/read-firestore.sh -p simple-relay-468808 -d simple-relay-db-production -c COLLECTION_NAME
+
+# Manage app configuration
+./scripts/config-manager.sh -p simple-relay-468808 -d DATABASE_NAME -c get -k CONFIG_KEY
+./scripts/config-manager.sh -p simple-relay-468808 -d DATABASE_NAME -c set -k CONFIG_KEY -v VALUE
 ```
 
 ## Development Server Rules
