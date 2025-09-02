@@ -120,19 +120,14 @@ func main() {
 	
 	// Create a custom handler that checks authentication before proxying
 	proxyHandler := func(w http.ResponseWriter, req *http.Request) {
-		log.Printf("DEBUG: Processing request to %s", req.URL.Path)
-		
 		// Extract user ID from API key
 		userId := extractUserIdFromAPIKey(req, apiKeyService)
 		
 		// Reject request if no valid API key provided
 		if userId == "" {
-			log.Printf("DEBUG: Rejecting request - no valid user ID found")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		
-		log.Printf("DEBUG: Request authorized for user: %s", userId)
 		
 		// Store user ID in request context for proxy director
 		ctx := context.WithValue(req.Context(), "userId", userId)
@@ -349,37 +344,24 @@ func (mc multiCloser) Close() error {
 // extractUserIdFromAPIKey extracts user ID from API key in Authorization header
 func extractUserIdFromAPIKey(req *http.Request, apiKeyService *services.ApiKeyService) string {
 	authHeader := req.Header.Get("Authorization")
-	log.Printf("DEBUG: Authorization header present: %t", authHeader != "")
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		log.Printf("DEBUG: No Bearer token found in auth header")
 		return ""
 	}
 	
 	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
-	log.Printf("DEBUG: Extracted API key: %s", maskApiKey(apiKey))
 	
 	// Look up user ID by API key with caching
 	// Note: For convenience, we use email address as userId in our system
 	userId, err := apiKeyService.FindUserEmailByApiKey(req.Context(), apiKey)
 	if err != nil {
-		log.Printf("DEBUG: Error looking up API key: %v", err)
 		return ""
 	}
 	if userId == "" {
-		log.Printf("DEBUG: No user found for API key")
 		return ""
 	}
 	
-	log.Printf("DEBUG: Found user: %s", userId)
 	return userId
 }
 
-// maskApiKey masks an API key for logging (shows first 8 and last 4 chars)
-func maskApiKey(apiKey string) string {
-	if len(apiKey) <= 12 {
-		return apiKey
-	}
-	return apiKey[:8] + "..." + apiKey[len(apiKey)-4:]
-}
 
 

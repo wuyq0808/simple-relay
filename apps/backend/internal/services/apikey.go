@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -49,36 +48,25 @@ func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string
 	// Check cache first
 	if entry, exists := s.cache.Get(apiKey); exists {
 		if time.Since(entry.Timestamp) < s.cacheDuration {
-			log.Printf("DEBUG: Cache hit for API key, user: %s", entry.UserEmail)
 			return entry.UserEmail, nil
 		}
 		// Remove expired entry
 		s.cache.Remove(apiKey)
-		log.Printf("DEBUG: Cache entry expired, removed from cache")
 	}
-
-	log.Printf("DEBUG: Querying Firestore for API key in collection: %s", s.collection)
 
 	// Fetch from Firestore
 	doc, err := s.client.Collection(s.collection).Doc(apiKey).Get(ctx)
 	if err != nil {
-		log.Printf("DEBUG: Firestore query error: %v", err)
 		if doc != nil && !doc.Exists() {
-			log.Printf("DEBUG: API key document does not exist")
 			return "", nil
 		}
 		return "", fmt.Errorf("error fetching API key: %w", err)
 	}
 
-	log.Printf("DEBUG: Document exists: %t", doc.Exists())
-
 	var binding ApiKeyBinding
 	if err := doc.DataTo(&binding); err != nil {
-		log.Printf("DEBUG: Error parsing document data: %v", err)
 		return "", fmt.Errorf("error parsing API key binding: %w", err)
 	}
-
-	log.Printf("DEBUG: Found user email in database: %s", binding.UserEmail)
 
 	// Cache the result
 	s.cache.Add(apiKey, &CacheEntry{
