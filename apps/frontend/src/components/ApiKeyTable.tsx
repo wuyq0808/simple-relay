@@ -164,7 +164,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
                   onClick={() => copyCommand(key.api_key)}
                   disabled={copiedCommand === key.api_key}
                 >
-                  {copiedCommand === key.api_key ? 'Copied' : 'Copy Command'}
+                  {copiedCommand === key.api_key ? 'Copied' : 'Copy'}
                 </button>
                 <button 
                   className="delete-button"
