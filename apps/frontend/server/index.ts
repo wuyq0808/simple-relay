@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import validator from 'validator';
 import { sendVerificationEmail } from '../services/email.js';
 import { UserDatabase } from '../services/database.js';
+import { ConfigService } from '../services/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,6 +65,17 @@ app.post('/api/signin', ipRateLimit, async (req, res) => {
   
   if (!email || !validator.isEmail(email)) {
     return res.status(400).json({ error: 'Valid email address is required' });
+  }
+
+  // Check if signup is enabled
+  try {
+    const signupEnabled = await ConfigService.getConfig('signup_enabled');
+    if (signupEnabled === false) {
+      return res.status(403).json({ error: 'Sign up is currently disabled' });
+    }
+  } catch (error) {
+    console.error('Error checking signup config:', error);
+    return res.status(500).json({ error: 'Configuration service unavailable' });
   }
 
   const existingUser = await UserDatabase.findByEmail(email);
