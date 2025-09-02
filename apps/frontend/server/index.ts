@@ -8,8 +8,9 @@ import { readFileSync } from 'fs';
 import rateLimit from 'express-rate-limit';
 import validator from 'validator';
 import { sendVerificationEmail } from '../services/email.js';
-import { UserDatabase } from '../services/database.js';
+import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
+import { ApiKeyDatabase } from '../services/api-key-database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -193,6 +194,61 @@ app.get('/api/auth', async (req, res) => {
 app.post('/api/logout', (req, res) => {
   res.clearCookie('user_email');
   res.json({ message: 'Logged out successfully' });
+});
+
+// API Key management endpoints
+app.get('/api/api-keys', requireAuth, async (req, res) => {
+  try {
+    const email = (req as any).userEmail;
+    const apiKeys = await ApiKeyDatabase.findByUserEmail(email);
+    res.json(apiKeys);
+  } catch (error) {
+    console.error('Error fetching API keys:', error);
+    res.status(500).json({ error: 'Failed to fetch API keys' });
+  }
+});
+
+app.post('/api/api-keys', requireAuth, async (req, res) => {
+  try {
+    const email = (req as any).userEmail;
+    
+    // Generate API key on server
+    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    const newBinding = await ApiKeyDatabase.create({
+      api_key: apiKey,
+      user_email: email,
+    });
+    
+    res.json(newBinding);
+  } catch (error) {
+    console.error('Error creating API key:', error);
+    if (error instanceof Error && error.message.includes('maximum of 3 API keys')) {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
+  try {
+    const email = (req as any).userEmail;
+    const apiKey = req.params.key;
+    
+    // Verify the API key belongs to the user
+    const binding = await ApiKeyDatabase.findByApiKey(apiKey);
+    if (!binding || binding.user_email !== email) {
+      return res.status(404).json({ error: 'API key not found' });
+    }
+    
+    await ApiKeyDatabase.deleteApiKey(apiKey);
+    res.json({ message: 'API key deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting API key:', error);
+    res.status(500).json({ error: 'Failed to delete API key' });
+  }
 });
 
 
