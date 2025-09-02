@@ -92,11 +92,6 @@ variable "api_secret_key" {
   sensitive   = true
 }
 
-variable "client_secret_key" {
-  description = "Client Secret Key" 
-  type        = string
-  sensitive   = true
-}
 
 variable "resend_api_key" {
   description = "Resend API Key for email service"

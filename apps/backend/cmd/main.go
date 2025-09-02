@@ -38,7 +38,6 @@ func getIdentityToken(audience string) (string, error) {
 
 type Config struct {
 	APIKey                   string
-	AllowedClientSecretKey   string
 	OfficialTarget           *url.URL
 	BillingServiceURL        string
 	ProjectID                string
@@ -57,11 +56,6 @@ func loadConfig() *Config {
 		log.Fatal("API_SECRET_KEY environment variable is required")
 	}
 	
-	// Get allowed client secret key from environment variable
-	allowedClientSecretKey := os.Getenv("ALLOWED_CLIENT_SECRET_KEY")
-	if allowedClientSecretKey == "" {
-		log.Fatal("ALLOWED_CLIENT_SECRET_KEY environment variable is required")
-	}
 
 	// Get official base URL from environment variable
 	var officialTarget *url.URL
@@ -97,7 +91,6 @@ func loadConfig() *Config {
 
 	return &Config{
 		APIKey:                   apiKey,
-		AllowedClientSecretKey:   allowedClientSecretKey,
 		OfficialTarget:           officialTarget,
 		BillingServiceURL:        billingServiceURL,
 		ProjectID:                projectID,

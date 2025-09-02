@@ -76,10 +76,6 @@ resource "google_cloud_run_v2_service" "simple_relay" {
         value = var.api_secret_key
       }
 
-      env {
-        name  = "ALLOWED_CLIENT_SECRET_KEY"
-        value = var.client_secret_key
-      }
 
 
       ports {
