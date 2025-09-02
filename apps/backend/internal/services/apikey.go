@@ -12,9 +12,8 @@ import (
 
 // ApiKeyBinding represents an API key binding document
 type ApiKeyBinding struct {
-	ApiKey    string    `firestore:"api_key" json:"api_key"`
-	UserEmail string    `firestore:"user_email" json:"user_email"`
-	CreatedAt time.Time `firestore:"created_at" json:"created_at"`
+	ApiKey    string `firestore:"api_key" json:"api_key"`
+	UserEmail string `firestore:"user_email" json:"user_email"`
 }
 
 // CacheEntry represents a cached API key lookup result
