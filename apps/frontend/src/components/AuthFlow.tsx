@@ -7,9 +7,10 @@ type MessageType = 'success' | 'error' | '';
 
 interface AuthFlowProps {
   onMessage: (message: string, type?: MessageType) => void;
+  onStateChange: (state: AuthState) => void;
 }
 
-export default function AuthFlow({ onMessage }: AuthFlowProps) {
+export default function AuthFlow({ onMessage, onStateChange }: AuthFlowProps) {
   const [state, setState] = useState<AuthState>('signin');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,7 @@ export default function AuthFlow({ onMessage }: AuthFlowProps) {
       
       if (response.ok) {
         setState('verify');
+        onStateChange('verify');
         onMessage('Verification code sent to your email', 'success');
       } else {
         onMessage(data.error || 'Failed to send verification code', 'error');
@@ -76,21 +78,28 @@ export default function AuthFlow({ onMessage }: AuthFlowProps) {
   return (
     <>
       {state === 'signin' && (
-        <SignInForm
-          email={email}
-          loading={loading}
-          onEmailChange={setEmail}
-          onSubmit={handleEmailSubmit}
-        />
+        <div key="signin" className="form-container">
+          <SignInForm
+            email={email}
+            loading={loading}
+            onEmailChange={setEmail}
+            onSubmit={handleEmailSubmit}
+          />
+        </div>
       )}
 
       {state === 'verify' && (
-        <VerifyCode
-          email={email}
-          loading={loading}
-          onCodeComplete={handleVerificationSubmit}
-          onBack={() => setState('signin')}
-        />
+        <div key="verify" className="form-container">
+          <VerifyCode
+            email={email}
+            loading={loading}
+            onCodeComplete={handleVerificationSubmit}
+            onBack={() => {
+            setState('signin');
+            onStateChange('signin');
+          }}
+          />
+        </div>
       )}
     </>
   );
