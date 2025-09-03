@@ -14,10 +14,12 @@ interface ApiKeyTableProps {
 
 export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [apiEnabled, setApiEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; apiKey: string }>({ show: false, apiKey: '' });
   const [deleting, setDeleting] = useState(false);
+  const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
 
   useEffect(() => {
     loadApiKeys();
@@ -29,8 +31,9 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         credentials: 'include'
       });
       if (response.ok) {
-        const keys = await response.json();
-        setApiKeys(keys);
+        const data = await response.json();
+        setApiKeys(data.api_keys || data); // Handle both new and old response formats
+        setApiEnabled(data.api_enabled !== undefined ? data.api_enabled : true);
       } else {
         onMessage('Failed to load API keys');
       }
@@ -100,19 +103,30 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
     }
   };
 
-  const copyToClipboard = async (text: string) => {
+  const getBackendUrl = () => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    if (!backendUrl) {
+      throw new Error('VITE_BACKEND_URL environment variable is required');
+    }
+    return backendUrl;
+  };
+
+  const copyCommand = async (apiKey: string) => {
+    const command = `ANTHROPIC_AUTH_TOKEN=${apiKey} ANTHROPIC_BASE_URL=${getBackendUrl()} claude`;
     try {
-      await navigator.clipboard.writeText(text);
-      onMessage('API key copied to clipboard');
+      await navigator.clipboard.writeText(command);
+      setCopiedCommand(apiKey);
+      onMessage('Command copied to clipboard');
+      
+      // Reset after 1 second
+      setTimeout(() => {
+        setCopiedCommand(null);
+      }, 1000);
     } catch (error) {
-      onMessage('Failed to copy to clipboard');
+      onMessage('Failed to copy command');
     }
   };
 
-  const maskApiKey = (key: string) => {
-    if (key.length <= 8) return key;
-    return key.substring(0, 8) + '...' + key.substring(key.length - 4);
-  };
 
   if (loading) {
     return <div className="api-key-loading">Loading API keys...</div>;
@@ -124,7 +138,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         <button 
           className="create-key-button"
           onClick={createApiKey}
-          disabled={creating || apiKeys.length >= 3}
+          disabled={creating || apiKeys.length >= 3 || !apiEnabled}
         >
           {creating ? 'Creating...' : 'Create'}
         </button>
@@ -133,24 +147,29 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
 
       {apiKeys.length === 0 ? (
         <div className="no-keys">
-          No API keys yet. Create your first key to get started.
+          {!apiEnabled ? 'API access disabled. Contact us to get access.' : 'Create your first key to get started.'}
         </div>
       ) : (
         <div className="key-list">
           {apiKeys.map((key) => (
             <div key={key.api_key} className="key-item">
               <div className="key-info">
-                <span className="key-value">{maskApiKey(key.api_key)}</span>
                 <span className="key-date">
                   Created {new Date(key.created_at).toLocaleDateString('en-CA')}
                 </span>
+                <div className="key-command">
+                  <code>
+                    ANTHROPIC_AUTH_TOKEN={key.api_key} ANTHROPIC_BASE_URL={getBackendUrl()} claude
+                  </code>
+                </div>
               </div>
               <div className="key-actions">
                 <button 
-                  className="copy-button"
-                  onClick={() => copyToClipboard(key.api_key)}
+                  className="copy-command-button"
+                  onClick={() => copyCommand(key.api_key)}
+                  disabled={copiedCommand === key.api_key || !apiEnabled}
                 >
-                  Copy
+                  {copiedCommand === key.api_key ? 'Copied' : 'Copy'}
                 </button>
                 <button 
                   className="delete-button"
@@ -183,4 +202,9 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
       )}
     </div>
   );
+}
+
+function maskApiKey(apiKey: string): string {
+  if (apiKey.length <= 8) return apiKey;
+  return apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4);
 }

@@ -30,6 +30,13 @@ simple-relay-468808
 # Manage app configuration
 ./scripts/config-manager.sh -p simple-relay-468808 -d DATABASE_NAME -c get -k CONFIG_KEY
 ./scripts/config-manager.sh -p simple-relay-468808 -d DATABASE_NAME -c set -k CONFIG_KEY -v VALUE
+
+# Grant API access to users
+./scripts/grant-api-access.sh -e USER_EMAIL -p simple-relay-468808 -d simple-relay-db-staging
+./scripts/grant-api-access.sh -e USER_EMAIL -p simple-relay-468808 -d simple-relay-db-production
+
+# Revoke API access from users
+./scripts/grant-api-access.sh -e USER_EMAIL -p simple-relay-468808 -d DATABASE_NAME -r
 ```
 
 ## Development Server Rules

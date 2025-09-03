@@ -68,6 +68,7 @@
   border-radius: 4px;
   background-color: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  gap: 20px;
 }
 
 .key-info {
@@ -76,36 +77,51 @@
   flex: 1;
 }
 
-.key-value {
-  font-family: 'Courier New', monospace;
-  font-size: 16px;
-  color: #333;
-  font-weight: normal;
-  margin-bottom: 8px;
-}
 
 .key-date {
   font-size: 14px;
   color: #666;
 }
 
+.key-command {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  
+  code {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+    color: #333;
+    word-break: break-all;
+    line-height: 1.4;
+  }
+}
+
 .key-actions {
   display: flex;
   gap: 12px;
+  align-items: center;
 }
 
-.copy-button {
+.copy-command-button {
   background-color: #333;
   color: white;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   transition: background-color 0.2s ease;
   
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: #444;
+  }
+  
+  &:disabled {
+    background-color: #666;
+    cursor: default;
   }
 }
 
@@ -113,16 +129,27 @@
   background-color: white;
   color: #333;
   border: 1px solid #ddd;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   transition: all 0.2s ease;
   
   &:hover {
     background-color: #f5f5f5;
     border-color: #999;
   }
+}
+
+.api-disabled-message {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 12px 16px;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  margin: 16px 0;
+  font-size: 14px;
+  text-align: center;
 }
 
 // Modal styles

@@ -61,7 +61,6 @@ jobs:
         TF_VAR_firestore_database_name: simple-relay-db
         TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
-        TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
         TF_VAR_resend_api_key: ${{ inputs.deploy_environment == 'production' && secrets.RESEND_API_KEY_PRODUCTION || secrets.RESEND_API_KEY_STAGING }}
         TF_VAR_resend_from_email: ${{ secrets.RESEND_FROM_EMAIL }}
         TF_VAR_cookie_secret: ${{ inputs.deploy_environment == 'production' && secrets.COOKIE_SECRET_PRODUCTION || secrets.COOKIE_SECRET_STAGING }}
@@ -75,6 +74,8 @@ jobs:
     concurrency: 
       group: deploy-${{ inputs.deploy_environment }}
       cancel-in-progress: false
+    env:
+      BACKEND_URL: ${{ inputs.deploy_environment == 'production' && vars.BACKEND_PRODUCTION_URL || vars.BACKEND_STAGING_URL }}
     
     steps:
     - name: Checkout
@@ -116,7 +117,7 @@ jobs:
     - name: Build and Push Frontend Container
       working-directory: ./apps/frontend
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
+        docker build --build-arg VITE_BACKEND_URL="${{ env.BACKEND_URL }}" -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}"
 
 
@@ -140,7 +141,6 @@ jobs:
         TF_VAR_firestore_database_name: simple-relay-db
         TF_VAR_deploy_environment: ${{ inputs.deploy_environment }}
         TF_VAR_api_secret_key: ${{ secrets.API_SECRET_KEY }}
-        TF_VAR_client_secret_key: ${{ secrets.ALLOWED_CLIENT_SECRET_KEY }}
         TF_VAR_resend_api_key: ${{ inputs.deploy_environment == 'production' && secrets.RESEND_API_KEY_PRODUCTION || secrets.RESEND_API_KEY_STAGING }}
         TF_VAR_resend_from_email: ${{ secrets.RESEND_FROM_EMAIL }}
         TF_VAR_cookie_secret: ${{ inputs.deploy_environment == 'production' && secrets.COOKIE_SECRET_PRODUCTION || secrets.COOKIE_SECRET_STAGING }}

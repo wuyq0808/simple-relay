@@ -47,7 +47,7 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
         <div className="main-panel-content">
           <div className="api-keys-section">
             <h2>API Keys</h2>
-            <p className="description">Manage your API keys for accessing AI Fastlane services.</p>
+            <p className="description">Manage your API keys for accessing the service.</p>
             
             <ApiKeyTable userEmail={userEmail} onMessage={onMessage} />
           </div>

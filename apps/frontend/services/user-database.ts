@@ -6,6 +6,7 @@ export interface User {
   last_login: Date | null;          // Last login timestamp
   verification_token: string | null; // Token for email verification
   verification_expires_at: Date | null; // Expiration time for verification token
+  api_enabled: boolean;             // Whether API access is enabled for this user
 }
 
 class FirestoreUserDatabase {
@@ -26,10 +27,11 @@ class FirestoreUserDatabase {
     });
   }
 
-  async create(user: Omit<User, 'created_at'>): Promise<User> {
+  async create(user: Omit<User, 'created_at' | 'api_enabled'>): Promise<User> {
     const newUser: User = {
       ...user,
       created_at: new Date(),
+      api_enabled: false,
     };
     
     const docRef = this.db.collection(this.collection).doc(user.email);
@@ -38,6 +40,7 @@ class FirestoreUserDatabase {
       created_at: newUser.created_at.toISOString(),
       last_login: newUser.last_login?.toISOString() || null,
       verification_expires_at: newUser.verification_expires_at?.toISOString() || null,
+      api_enabled: newUser.api_enabled,
     });
     
     return newUser;
@@ -58,6 +61,7 @@ class FirestoreUserDatabase {
       last_login: data.last_login ? new Date(data.last_login) : null,
       verification_token: data.verification_token || null,
       verification_expires_at: data.verification_expires_at ? new Date(data.verification_expires_at) : null,
+      api_enabled: data.api_enabled !== undefined ? data.api_enabled : false,
     };
   }
 
@@ -103,6 +107,7 @@ class FirestoreUserDatabase {
     }
     return user.verification_expires_at > new Date();
   }
+
 
 }
 

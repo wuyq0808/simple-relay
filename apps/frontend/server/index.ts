@@ -4,7 +4,6 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
 import rateLimit from 'express-rate-limit';
 import validator from 'validator';
 import { sendVerificationEmail } from '../services/email.js';
@@ -200,8 +199,20 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/api-keys', requireAuth, async (req, res) => {
   try {
     const email = (req as any).userEmail;
+    
+    // Get user to check api_enabled status
+    const user = await UserDatabase.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get API keys from separate collection
     const apiKeys = await ApiKeyDatabase.findByUserEmail(email);
-    res.json(apiKeys);
+    
+    res.json({
+      api_keys: apiKeys,
+      api_enabled: user.api_enabled
+    });
   } catch (error) {
     console.error('Error fetching API keys:', error);
     res.status(500).json({ error: 'Failed to fetch API keys' });
@@ -212,9 +223,19 @@ app.post('/api/api-keys', requireAuth, async (req, res) => {
   try {
     const email = (req as any).userEmail;
     
-    // Generate API key on server
-    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
-      .map(b => b.toString(16).padStart(2, '0'))
+    // Check if API is enabled for this user
+    const user = await UserDatabase.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (!user.api_enabled) {
+      return res.status(403).json({ error: 'API access is not enabled for this user' });
+    }
+    
+    // Generate API key on server (base36: 0-9, a-z)
+    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(20)))
+      .map(b => b.toString(36))
       .join('');
     
     const newBinding = await ApiKeyDatabase.create({
@@ -251,8 +272,7 @@ app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
   }
 });
 
-
-app.get('*', async (req: Request, res: Response) => {
+app.get('*', (req: Request, res: Response) => {
   try {
     const htmlPath = path.join(process.cwd(), 'dist/index.html');
     res.sendFile(htmlPath);
