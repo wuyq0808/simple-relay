@@ -52,13 +52,17 @@ func NewApiKeyService(client *firestore.Client) *ApiKeyService {
 // FindUserEmailByApiKey looks up the user email associated with an API key
 // Returns the user email or empty string if not found
 func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string) (string, error) {
+	fmt.Printf("[DEBUG-APIKEY] Looking up API key: %s\n", apiKey)
+	
 	// Check cache first
 	if entry, exists := s.cache.Get(apiKey); exists {
 		if time.Since(entry.Timestamp) < s.cacheDuration {
+			fmt.Printf("[DEBUG-APIKEY] Cache hit for API key: %s, userId: %s\n", apiKey, entry.UserEmail)
 			return entry.UserEmail, nil
 		}
 		// Remove expired entry
 		s.cache.Remove(apiKey)
+		fmt.Printf("[DEBUG-APIKEY] Cache expired for API key: %s\n", apiKey)
 	}
 
 	// Query for users that have this API key in their api_keys array
@@ -66,27 +70,37 @@ func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string
 		"api_key": apiKey,
 	})
 
+	fmt.Printf("[DEBUG-APIKEY] Executing Firestore query for API key: %s\n", apiKey)
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
+		fmt.Printf("[DEBUG-APIKEY] Query error for API key %s: %v\n", apiKey, err)
 		return "", fmt.Errorf("error querying users: %w", err)
 	}
 
+	fmt.Printf("[DEBUG-APIKEY] Query returned %d documents for API key: %s\n", len(docs), apiKey)
+
 	// Should only be one user with this API key
 	if len(docs) == 0 {
+		fmt.Printf("[DEBUG-APIKEY] No user found for API key: %s\n", apiKey)
 		return "", nil // API key not found
 	}
 
 	if len(docs) > 1 {
+		fmt.Printf("[DEBUG-APIKEY] Multiple users found for API key: %s\n", apiKey)
 		return "", fmt.Errorf("data integrity error: API key %s found in multiple users", apiKey)
 	}
 
 	var user User
 	if err := docs[0].DataTo(&user); err != nil {
+		fmt.Printf("[DEBUG-APIKEY] Error parsing user data for API key %s: %v\n", apiKey, err)
 		return "", fmt.Errorf("error parsing user data: %w", err)
 	}
 
+	fmt.Printf("[DEBUG-APIKEY] Found user: email=%s, api_enabled=%t for API key: %s\n", user.email, user.api_enabled, apiKey)
+
 	// Check if API is enabled for this user
 	if !user.api_enabled {
+		fmt.Printf("[DEBUG-APIKEY] API access disabled for user: %s\n", user.email)
 		return "", nil // API access disabled
 	}
 
@@ -96,6 +110,7 @@ func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string
 		Timestamp: time.Now(),
 	})
 
+	fmt.Printf("[DEBUG-APIKEY] Successfully authenticated user: %s for API key: %s\n", user.email, apiKey)
 	return user.email, nil
 }
 
