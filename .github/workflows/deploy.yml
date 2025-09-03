@@ -75,7 +75,7 @@ jobs:
       group: deploy-${{ inputs.deploy_environment }}
       cancel-in-progress: false
     env:
-      BACKEND_URL: ${{ inputs.deploy_environment == 'production' && vars.BACKEND_PRODUCTION_URL || vars.BACKEND_STAGING_URL }}
+      BACKEND_URL: ${{ inputs.deploy_environment == 'production' && 'https://api.aifastlane.net' || 'https://staging-api.aifastlane.net' }}
     
     steps:
     - name: Checkout

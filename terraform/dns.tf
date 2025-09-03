@@ -109,7 +109,39 @@ resource "google_dns_record_set" "send_txt" {
   rrdatas = ["\"v=spf1 include:amazonses.com ~all\""]
 }
 
-# Cloud Run domain mapping
+# A records for API subdomain pointing to Cloud Run
+resource "google_dns_record_set" "api_a" {
+  name = var.deploy_environment == "production" ? "api.aifastlane.net." : "staging-api.aifastlane.net."
+  type = "A"
+  ttl  = 300
+
+  managed_zone = var.deploy_environment == "production" ? data.google_dns_managed_zone.production_zone.name : google_dns_managed_zone.aifastlane_zone[0].name
+
+  rrdatas = [
+    "216.239.32.21",
+    "216.239.34.21", 
+    "216.239.36.21",
+    "216.239.38.21"
+  ]
+}
+
+# AAAA records for API subdomain IPv6 support
+resource "google_dns_record_set" "api_aaaa" {
+  name = var.deploy_environment == "production" ? "api.aifastlane.net." : "staging-api.aifastlane.net."
+  type = "AAAA"
+  ttl  = 300
+
+  managed_zone = var.deploy_environment == "production" ? data.google_dns_managed_zone.production_zone.name : google_dns_managed_zone.aifastlane_zone[0].name
+
+  rrdatas = [
+    "2001:4860:4802:32::15",
+    "2001:4860:4802:34::15",
+    "2001:4860:4802:36::15", 
+    "2001:4860:4802:38::15"
+  ]
+}
+
+# Cloud Run domain mapping for frontend
 resource "google_cloud_run_domain_mapping" "aifastlane_domain" {
   location = var.region
   name     = var.deploy_environment == "production" ? "aifastlane.net" : "${var.deploy_environment}.aifastlane.net"
@@ -123,6 +155,20 @@ resource "google_cloud_run_domain_mapping" "aifastlane_domain" {
   }
 }
 
+# Cloud Run domain mapping for backend API
+resource "google_cloud_run_domain_mapping" "api_domain" {
+  location = var.region
+  name     = var.deploy_environment == "production" ? "api.aifastlane.net" : "staging-api.aifastlane.net"
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = "${var.service_name}-${var.deploy_environment}"
+  }
+}
+
 # Outputs
 output "dns_name_servers" {
   description = "Name servers for the DNS zone"
@@ -130,11 +176,21 @@ output "dns_name_servers" {
 }
 
 output "domain_mapping_status" {
-  description = "Status of the domain mapping"
+  description = "Status of the frontend domain mapping"
   value       = google_cloud_run_domain_mapping.aifastlane_domain.status
 }
 
-output "domain_name" {
-  description = "The domain name for this environment"
+output "api_domain_mapping_status" {
+  description = "Status of the API domain mapping"
+  value       = google_cloud_run_domain_mapping.api_domain.status
+}
+
+output "frontend_domain_name" {
+  description = "The frontend domain name for this environment"
   value       = var.deploy_environment == "production" ? "aifastlane.net" : "${var.deploy_environment}.aifastlane.net"
+}
+
+output "api_domain_name" {
+  description = "The API domain name for this environment"
+  value       = var.deploy_environment == "production" ? "api.aifastlane.net" : "staging-api.aifastlane.net"
 }
