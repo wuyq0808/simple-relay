@@ -75,6 +75,8 @@ jobs:
     concurrency: 
       group: deploy-${{ inputs.deploy_environment }}
       cancel-in-progress: false
+    env:
+      TF_VAR_backend_url: ${{ inputs.deploy_environment == 'production' && vars.BACKEND_PRODUCTION_URL || vars.BACKEND_STAGING_URL }}
     
     steps:
     - name: Checkout
