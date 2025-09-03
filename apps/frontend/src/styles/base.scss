@@ -1,13 +1,8 @@
-// Animation variables
-$fade-in-duration: 0.2s;
-$fade-in-easing: ease-out;
-$fade-in-translate: 20px;
-
-// Animation mixins
+// Animation mixin
 @mixin fade-in-up {
   opacity: 0;
-  transform: translateY($fade-in-translate);
-  animation: fade-in-up-keyframes $fade-in-duration $fade-in-easing forwards;
+  transform: translateY(20px);
+  animation: fade-in-up-keyframes 0.2s ease-out forwards;
   
   @keyframes fade-in-up-keyframes {
     to {
