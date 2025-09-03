@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -14,10 +12,8 @@ import (
 	"simple-relay/backend/internal/services/provider"
 	"simple-relay/shared/database"
 	"strings"
-	"time"
 
 	"cloud.google.com/go/compute/metadata"
-	"cloud.google.com/go/storage"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 )
@@ -42,7 +38,6 @@ type Config struct {
 	BillingServiceURL        string
 	ProjectID                string
 	DatabaseName             string
-	APIResponsesBucket       string
 }
 
 func loadConfig() *Config {
@@ -84,18 +79,12 @@ func loadConfig() *Config {
 		log.Fatal("FIRESTORE_DATABASE_NAME environment variable is required")
 	}
 
-	apiResponsesBucket := os.Getenv("API_RESPONSES_BUCKET")
-	if apiResponsesBucket == "" {
-		log.Fatal("API_RESPONSES_BUCKET environment variable is required")
-	}
-
 	return &Config{
 		APIKey:                   apiKey,
 		OfficialTarget:           officialTarget,
 		BillingServiceURL:        billingServiceURL,
 		ProjectID:                projectID,
 		DatabaseName:             databaseName,
-		APIResponsesBucket:       apiResponsesBucket,
 	}
 }
 
@@ -162,33 +151,28 @@ func main() {
 		req.Header["X-Forwarded-For"] = nil
 	}
 	
-	// Intercept response for billing and storage
+	// Intercept response for billing
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		if strings.Contains(resp.Request.URL.Path, "/messages") {
 			// Store original body before modification
 			originalBody := resp.Body
 			
-			// Create pipes for streaming to both GCS and billing
-			gcsPR, gcsPW := io.Pipe()
+			// Create pipe for streaming to billing
 			billingPR, billingPW := io.Pipe()
-			
-			// Use MultiWriter to send to both pipes
-			multiWriter := io.MultiWriter(gcsPW, billingPW)
 			
 			// Replace response body with teed version
 			resp.Body = &struct {
 				io.Reader
 				io.Closer
 			}{
-				Reader: io.TeeReader(originalBody, multiWriter),
-				Closer: &multiCloser{gcsPW, billingPW}, // Close both pipes
+				Reader: io.TeeReader(originalBody, billingPW),
+				Closer: billingPW,
 			}
 			
 			// Get user ID from request context
 			userId := resp.Request.Context().Value("userId").(string)
 			
-			// Start streaming to both services
-			go sendResponseToStorage(gcsPR, resp, config, userId)
+			// Start streaming to billing service
 			go sendToBillingService(billingPR, resp, config, userId)
 		}
 		
@@ -258,62 +242,6 @@ func sendToBillingService(reader io.Reader, resp *http.Response, config *Config,
 	}
 }
 
-func sendResponseToStorage(reader io.Reader, resp *http.Response, config *Config, userId string) {
-	ctx := context.Background()
-	
-	// Create a storage client
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		log.Printf("Error creating storage client: %v", err)
-		return
-	}
-	defer client.Close()
-	
-	// Generate object name with timestamp and status code
-	objectName := fmt.Sprintf("api-responses/%d/%d-%s.json", 
-		resp.StatusCode, 
-		time.Now().Unix(), 
-		userId)
-	
-	// Get bucket handle
-	bucket := client.Bucket(config.APIResponsesBucket)
-	obj := bucket.Object(objectName)
-	
-	// Create writer
-	writer := obj.NewWriter(ctx)
-	writer.ContentType = "application/json"
-	
-	// Add metadata with JSON-encoded headers
-	metadata := map[string]string{
-		"user-id":     userId,
-		"status-code": fmt.Sprintf("%d", resp.StatusCode),
-		"timestamp":   time.Now().UTC().Format(time.RFC3339),
-		"url":         resp.Request.URL.String(),
-	}
-	
-	// JSON encode all response headers as a single metadata value
-	if headersJSON, err := json.Marshal(resp.Header); err == nil {
-		metadata["headers"] = string(headersJSON)
-	} else {
-		log.Printf("Error marshaling headers to JSON: %v", err)
-	}
-	
-	writer.Metadata = metadata
-	
-	// Stream directly from pipe reader - this blocks until EOF!
-	if _, err := io.Copy(writer, reader); err != nil {
-		log.Printf("Error writing to storage: %v", err)
-		writer.Close()
-		return
-	}
-	
-	if err := writer.Close(); err != nil {
-		log.Printf("Error closing storage writer: %v", err)
-		return
-	}
-	
-	log.Printf("API response saved to storage: %s", objectName)
-}
 
 
 func addOAuthBetaHeader(req *http.Request) {
@@ -328,15 +256,6 @@ func addOAuthBetaHeader(req *http.Request) {
 }
 
 
-// multiCloser closes multiple io.Closers
-type multiCloser []io.Closer
-
-func (mc multiCloser) Close() error {
-	for _, closer := range mc {
-		closer.Close() // Ignore individual errors for simplicity
-	}
-	return nil
-}
 
 
 // extractUserIdFromAPIKey extracts user ID from API key in Authorization header
