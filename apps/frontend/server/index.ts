@@ -234,8 +234,8 @@ app.post('/api/api-keys', requireAuth, async (req, res) => {
     }
     
     // Generate API key on server
-    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
-      .map(b => b.toString(16).padStart(2, '0'))
+    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(36))
       .join('');
     
     const newBinding = await ApiKeyDatabase.create({
