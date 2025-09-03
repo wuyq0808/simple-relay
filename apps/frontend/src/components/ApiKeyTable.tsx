@@ -104,8 +104,11 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
   };
 
   const getBackendUrl = () => {
-    // Get backend URL from environment variable set by deployment
-    return (window as any).__BACKEND_URL__ || process.env.BACKEND_URL || 'https://simple-relay-staging-573916960175.us-central1.run.app';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    if (!backendUrl) {
+      throw new Error('VITE_BACKEND_URL environment variable is required');
+    }
+    return backendUrl;
   };
 
   const copyCommand = async (apiKey: string) => {

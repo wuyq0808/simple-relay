@@ -299,10 +299,6 @@ resource "google_cloud_run_v2_service" "simple_frontend" {
         value = var.cookie_secret
       }
 
-      env {
-        name  = "BACKEND_URL"
-        value = var.backend_url
-      }
 
       ports {
         container_port = 3000

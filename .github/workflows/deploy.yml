@@ -116,7 +116,7 @@ jobs:
     - name: Build and Push Frontend Container
       working-directory: ./apps/frontend
       run: |-
-        docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
+        docker build --build-arg VITE_BACKEND_URL="${{ env.TF_VAR_backend_url }}" -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}"
 
 

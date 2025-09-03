@@ -10,6 +10,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Accept backend URL as build argument for Vite
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
 # Build the application
 RUN npm run build
 
