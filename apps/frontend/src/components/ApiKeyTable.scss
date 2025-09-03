@@ -109,10 +109,10 @@
   background-color: #333;
   color: white;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   transition: background-color 0.2s ease;
   
   &:hover:not(:disabled) {
@@ -129,10 +129,10 @@
   background-color: white;
   color: #333;
   border: 1px solid #ddd;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   transition: all 0.2s ease;
   
   &:hover {

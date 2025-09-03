@@ -9,10 +9,17 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
-// ApiKeyBinding represents an API key binding document
-type ApiKeyBinding struct {
-	ApiKey    string `firestore:"api_key" json:"api_key"`
-	UserEmail string `firestore:"user_email" json:"user_email"`
+// ApiKey represents an API key within a user document
+type ApiKey struct {
+	api_key    string
+	created_at string
+}
+
+// User represents a user document with API keys
+type User struct {
+	email       string
+	api_keys    []ApiKey
+	api_enabled bool
 }
 
 // CacheEntry represents a cached API key lookup result
@@ -36,7 +43,7 @@ func NewApiKeyService(client *firestore.Client) *ApiKeyService {
 	
 	return &ApiKeyService{
 		client:        client,
-		collection:    "api_key_bindings",
+		collection:    "users",
 		cache:         cache,
 		cacheDuration: time.Minute, // 1 minute cache
 	}
@@ -54,27 +61,42 @@ func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string
 		s.cache.Remove(apiKey)
 	}
 
-	// Fetch from Firestore
-	doc, err := s.client.Collection(s.collection).Doc(apiKey).Get(ctx)
+	// Query for users that have this API key in their api_keys array
+	query := s.client.Collection(s.collection).Where("api_keys", "array-contains", map[string]interface{}{
+		"api_key": apiKey,
+	})
+
+	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
-		if doc != nil && !doc.Exists() {
-			return "", nil
-		}
-		return "", fmt.Errorf("error fetching API key: %w", err)
+		return "", fmt.Errorf("error querying users: %w", err)
 	}
 
-	var binding ApiKeyBinding
-	if err := doc.DataTo(&binding); err != nil {
-		return "", fmt.Errorf("error parsing API key binding: %w", err)
+	// Should only be one user with this API key
+	if len(docs) == 0 {
+		return "", nil // API key not found
+	}
+
+	if len(docs) > 1 {
+		return "", fmt.Errorf("data integrity error: API key %s found in multiple users", apiKey)
+	}
+
+	var user User
+	if err := docs[0].DataTo(&user); err != nil {
+		return "", fmt.Errorf("error parsing user data: %w", err)
+	}
+
+	// Check if API is enabled for this user
+	if !user.api_enabled {
+		return "", nil // API access disabled
 	}
 
 	// Cache the result
 	s.cache.Add(apiKey, &CacheEntry{
-		UserEmail: binding.UserEmail,
+		UserEmail: user.email,
 		Timestamp: time.Now(),
 	})
-	
-	return binding.UserEmail, nil
+
+	return user.email, nil
 }
 
 

@@ -198,3 +198,8 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
     </div>
   );
 }
+
+function maskApiKey(apiKey: string): string {
+  if (apiKey.length <= 8) return apiKey;
+  return apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4);
+}
