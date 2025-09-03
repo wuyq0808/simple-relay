@@ -11,8 +11,8 @@ import (
 
 // ApiKeyBinding represents an API key binding document
 type ApiKeyBinding struct {
-	api_key    string
-	user_email string
+	ApiKey    string `firestore:"api_key" json:"api_key"`
+	UserEmail string `firestore:"user_email" json:"user_email"`
 }
 
 // CacheEntry represents a cached API key lookup result
@@ -76,16 +76,16 @@ func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string
 		return "", fmt.Errorf("error parsing API key binding: %w", err)
 	}
 
-	fmt.Printf("[DEBUG-APIKEY] Found API key binding - user_email: %s\n", binding.user_email)
+	fmt.Printf("[DEBUG-APIKEY] Found API key binding - user_email: %s\n", binding.UserEmail)
 
 	// Cache the result
 	s.cache.Add(apiKey, &CacheEntry{
-		UserEmail: binding.user_email,
+		UserEmail: binding.UserEmail,
 		Timestamp: time.Now(),
 	})
 
-	fmt.Printf("[DEBUG-APIKEY] Successfully authenticated user: %s for API key: %s\n", binding.user_email, apiKey)
-	return binding.user_email, nil
+	fmt.Printf("[DEBUG-APIKEY] Successfully authenticated user: %s for API key: %s\n", binding.UserEmail, apiKey)
+	return binding.UserEmail, nil
 }
 
 
