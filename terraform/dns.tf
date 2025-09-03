@@ -110,12 +110,13 @@ resource "google_dns_record_set" "send_txt" {
 }
 
 # A records for API subdomain pointing to Cloud Run
+# Both staging-api and api subdomains go in the production zone
 resource "google_dns_record_set" "api_a" {
   name = var.deploy_environment == "production" ? "api.aifastlane.net." : "staging-api.aifastlane.net."
   type = "A"
   ttl  = 300
 
-  managed_zone = var.deploy_environment == "production" ? data.google_dns_managed_zone.production_zone.name : google_dns_managed_zone.aifastlane_zone[0].name
+  managed_zone = data.google_dns_managed_zone.production_zone.name
 
   rrdatas = [
     "216.239.32.21",
@@ -126,12 +127,13 @@ resource "google_dns_record_set" "api_a" {
 }
 
 # AAAA records for API subdomain IPv6 support
+# Both staging-api and api subdomains go in the production zone
 resource "google_dns_record_set" "api_aaaa" {
   name = var.deploy_environment == "production" ? "api.aifastlane.net." : "staging-api.aifastlane.net."
   type = "AAAA"
   ttl  = 300
 
-  managed_zone = var.deploy_environment == "production" ? data.google_dns_managed_zone.production_zone.name : google_dns_managed_zone.aifastlane_zone[0].name
+  managed_zone = data.google_dns_managed_zone.production_zone.name
 
   rrdatas = [
     "2001:4860:4802:32::15",
