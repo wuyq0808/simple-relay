@@ -364,6 +364,3 @@ func extractUserIdFromAPIKey(req *http.Request, apiKeyService *services.ApiKeySe
 	
 	return userId
 }
-
-
-
