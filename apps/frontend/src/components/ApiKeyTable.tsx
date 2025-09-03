@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './ApiKeyTable.scss';
+import Loading from './Loading';
 
 interface ApiKey {
   api_key: string;
@@ -134,7 +135,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
 
 
   if (loading) {
-    return <div className="api-key-loading">Loading API keys...</div>;
+    return <Loading />;
   }
 
   return (
