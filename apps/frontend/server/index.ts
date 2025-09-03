@@ -4,7 +4,6 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
 import rateLimit from 'express-rate-limit';
 import validator from 'validator';
 import { sendVerificationEmail } from '../services/email.js';
@@ -273,12 +272,10 @@ app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
   }
 });
 
-
-app.get('*', async (req: Request, res: Response) => {
+app.get('*', (req: Request, res: Response) => {
   try {
     const htmlPath = path.join(process.cwd(), 'dist/index.html');
-    const html = readFileSync(htmlPath, 'utf8');
-    res.send(html);
+    res.sendFile(htmlPath);
   } catch (error) {
     console.error('Error serving HTML:', error);
     res.status(500).send('Server error');
