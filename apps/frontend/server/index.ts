@@ -10,6 +10,7 @@ import validator from 'validator';
 import { sendVerificationEmail } from '../services/email.js';
 import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
+import { ApiKeyDatabase } from '../services/api-key-database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -199,17 +200,15 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/api-keys', requireAuth, async (req, res) => {
   try {
     const email = (req as any).userEmail;
+    
+    // Get user to check api_enabled status
     const user = await UserDatabase.findByEmail(email);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Transform user's api_keys to match the expected format
-    const apiKeys = user.api_keys.map(key => ({
-      api_key: key.api_key,
-      user_email: user.email,
-      created_at: key.created_at.toISOString(),
-    }));
+    // Get API keys from separate collection
+    const apiKeys = await ApiKeyDatabase.findByUserEmail(email);
     
     res.json({
       api_keys: apiKeys,
@@ -225,23 +224,27 @@ app.post('/api/api-keys', requireAuth, async (req, res) => {
   try {
     const email = (req as any).userEmail;
     
+    // Check if API is enabled for this user
+    const user = await UserDatabase.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (!user.api_enabled) {
+      return res.status(403).json({ error: 'API access is not enabled for this user' });
+    }
+    
     // Generate API key on server
     const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
     
-    const updatedUser = await UserDatabase.addApiKey(email, apiKey);
-    if (!updatedUser) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Return the new API key in the expected format
-    const newApiKey = updatedUser.api_keys.find(key => key.api_key === apiKey);
-    res.json({
+    const newBinding = await ApiKeyDatabase.create({
       api_key: apiKey,
       user_email: email,
-      created_at: newApiKey?.created_at.toISOString(),
     });
+    
+    res.json(newBinding);
   } catch (error) {
     console.error('Error creating API key:', error);
     if (error instanceof Error && error.message.includes('maximum of 3 API keys')) {
@@ -257,17 +260,12 @@ app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
     const apiKey = req.params.key;
     
     // Verify the API key belongs to the user
-    const user = await UserDatabase.findByEmail(email);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const hasApiKey = user.api_keys.some(key => key.api_key === apiKey);
-    if (!hasApiKey) {
+    const binding = await ApiKeyDatabase.findByApiKey(apiKey);
+    if (!binding || binding.user_email !== email) {
       return res.status(404).json({ error: 'API key not found' });
     }
     
-    await UserDatabase.removeApiKey(email, apiKey);
+    await ApiKeyDatabase.deleteApiKey(apiKey);
     res.json({ message: 'API key deleted successfully' });
   } catch (error) {
     console.error('Error deleting API key:', error);
