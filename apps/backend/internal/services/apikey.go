@@ -38,7 +38,7 @@ func NewApiKeyService(client *firestore.Client) *ApiKeyService {
 		client:        client,
 		collection:    "api_key_bindings",
 		cache:         cache,
-		cacheDuration: time.Minute, // 1 minute cache
+		cacheDuration: 5 * time.Minute, // 5 minute cache
 	}
 }
 
