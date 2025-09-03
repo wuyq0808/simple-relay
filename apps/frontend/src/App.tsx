@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './styles/base.scss';
 import LoginPanel from './components/LoginPanel';
 import Dashboard from './components/Dashboard';
+import Loading from './components/Loading';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -34,7 +35,7 @@ function App() {
     return (
       <div className="app-container loading">
         <div className="app-content loading">
-          {showLoadingText && <p className="description">Loading...</p>}
+          {showLoadingText && <Loading />}
         </div>
       </div>
     );
