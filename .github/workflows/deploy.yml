@@ -76,7 +76,7 @@ jobs:
       group: deploy-${{ inputs.deploy_environment }}
       cancel-in-progress: false
     env:
-      TF_VAR_backend_url: ${{ inputs.deploy_environment == 'production' && vars.BACKEND_PRODUCTION_URL || vars.BACKEND_STAGING_URL }}
+      BACKEND_URL: ${{ inputs.deploy_environment == 'production' && vars.BACKEND_PRODUCTION_URL || vars.BACKEND_STAGING_URL }}
     
     steps:
     - name: Checkout
@@ -118,7 +118,7 @@ jobs:
     - name: Build and Push Frontend Container
       working-directory: ./apps/frontend
       run: |-
-        docker build --build-arg VITE_BACKEND_URL="${{ env.TF_VAR_backend_url }}" -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
+        docker build --build-arg VITE_BACKEND_URL="${{ env.BACKEND_URL }}" -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}"
 
 
