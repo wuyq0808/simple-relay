@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './ApiKeyTable.scss';
 
 interface ApiKey {
@@ -187,7 +188,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         </div>
       )}
 
-      {deleteModal.show && (
+      {deleteModal.show && createPortal(
         <div className="modal-overlay" onClick={hideDeleteModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Delete API Key</h3>
@@ -202,7 +203,8 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
