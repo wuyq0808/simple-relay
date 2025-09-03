@@ -14,6 +14,7 @@ interface ApiKeyTableProps {
 
 export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [apiEnabled, setApiEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; apiKey: string }>({ show: false, apiKey: '' });
@@ -30,8 +31,9 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         credentials: 'include'
       });
       if (response.ok) {
-        const keys = await response.json();
-        setApiKeys(keys);
+        const data = await response.json();
+        setApiKeys(data.api_keys || data); // Handle both new and old response formats
+        setApiEnabled(data.api_enabled !== undefined ? data.api_enabled : true);
       } else {
         onMessage('Failed to load API keys');
       }
@@ -133,12 +135,18 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         <button 
           className="create-key-button"
           onClick={createApiKey}
-          disabled={creating || apiKeys.length >= 3}
+          disabled={creating || apiKeys.length >= 3 || !apiEnabled}
         >
           {creating ? 'Creating...' : 'Create'}
         </button>
         <span className="key-count">{apiKeys.length}/3 keys</span>
       </div>
+
+      {!apiEnabled && (
+        <div className="api-disabled-message">
+          API access is not enabled. Please contact us to enable access.
+        </div>
+      )}
 
       {apiKeys.length === 0 ? (
         <div className="no-keys">
@@ -162,7 +170,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
                 <button 
                   className="copy-command-button"
                   onClick={() => copyCommand(key.api_key)}
-                  disabled={copiedCommand === key.api_key}
+                  disabled={copiedCommand === key.api_key || !apiEnabled}
                 >
                   {copiedCommand === key.api_key ? 'Copied' : 'Copy'}
                 </button>

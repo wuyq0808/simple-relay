@@ -211,7 +211,10 @@ app.get('/api/api-keys', requireAuth, async (req, res) => {
       created_at: key.created_at.toISOString(),
     }));
     
-    res.json(apiKeys);
+    res.json({
+      api_keys: apiKeys,
+      api_enabled: user.api_enabled
+    });
   } catch (error) {
     console.error('Error fetching API keys:', error);
     res.status(500).json({ error: 'Failed to fetch API keys' });
