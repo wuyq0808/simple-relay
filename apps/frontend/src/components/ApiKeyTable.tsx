@@ -162,26 +162,31 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
                 <span className="key-date">
                   Created {new Date(key.created_at).toLocaleDateString('en-CA')}
                 </span>
-                <div className="key-command">
-                  <code>
-                    ANTHROPIC_AUTH_TOKEN={maskApiKey(key.api_key)} ANTHROPIC_BASE_URL={getBackendUrl()} claude
-                  </code>
+                <div className="key-command-row">
+                  <div className="key-command">
+                    <code>
+                      ANTHROPIC_AUTH_TOKEN={maskApiKey(key.api_key)} ANTHROPIC_BASE_URL={getBackendUrl()} claude
+                    </code>
+                  </div>
+                  <div className="key-buttons">
+                    <button 
+                      className="copy-command-button"
+                      onClick={() => copyCommand(key.api_key)}
+                      disabled={copiedCommand === key.api_key || !apiEnabled}
+                    >
+                      {copiedCommand === key.api_key ? 'Copied' : 'Copy'}
+                    </button>
+                    <button 
+                      className="delete-button"
+                      onClick={() => showDeleteModal(key.api_key)}
+                      title="Delete API key"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="key-actions">
-                <button 
-                  className="copy-command-button"
-                  onClick={() => copyCommand(key.api_key)}
-                  disabled={copiedCommand === key.api_key || !apiEnabled}
-                >
-                  {copiedCommand === key.api_key ? 'Copied' : 'Copy'}
-                </button>
-                <button 
-                  className="delete-button"
-                  onClick={() => showDeleteModal(key.api_key)}
-                >
-                  Delete
-                </button>
               </div>
             </div>
           ))}
