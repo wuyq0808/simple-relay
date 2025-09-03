@@ -139,9 +139,7 @@ func main() {
 	proxy.Director = func(req *http.Request) {
 		userId := req.Context().Value("userId").(string)
 		
-		userID := userId
-		
-		tokenBinding, err := oauthStore.GetValidTokenForUser(userID)
+		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
 		if err != nil {
 			// Fail the request if no valid OAuth token
 			return
