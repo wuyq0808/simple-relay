@@ -145,15 +145,9 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         <span className="key-count">{apiKeys.length}/3 keys</span>
       </div>
 
-      {!apiEnabled && (
-        <div className="api-disabled-message">
-          API access is not enabled. Please contact us to enable access.
-        </div>
-      )}
-
       {apiKeys.length === 0 ? (
         <div className="no-keys">
-          Create your first key to get started.
+          {!apiEnabled ? 'API access is not enabled. Please contact us to enable access.' : 'Create your first key to get started.'}
         </div>
       ) : (
         <div className="key-list">
