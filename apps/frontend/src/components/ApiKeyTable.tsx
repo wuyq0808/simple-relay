@@ -118,10 +118,10 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
       setCopiedCommand(apiKey);
       onMessage('Command copied to clipboard');
       
-      // Reset after 2 seconds
+      // Reset after 1 second
       setTimeout(() => {
         setCopiedCommand(null);
-      }, 2000);
+      }, 1000);
     } catch (error) {
       onMessage('Failed to copy command');
     }
@@ -153,7 +153,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
 
       {apiKeys.length === 0 ? (
         <div className="no-keys">
-          No API keys yet. Create your first key to get started.
+          Create your first key to get started.
         </div>
       ) : (
         <div className="key-list">
