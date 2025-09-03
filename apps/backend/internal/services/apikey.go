@@ -45,38 +45,28 @@ func NewApiKeyService(client *firestore.Client) *ApiKeyService {
 // FindUserEmailByApiKey looks up the user email associated with an API key
 // Returns the user email or empty string if not found
 func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string) (string, error) {
-	fmt.Printf("[DEBUG-APIKEY] Looking up API key: %s\n", apiKey)
-	
 	// Check cache first
 	if entry, exists := s.cache.Get(apiKey); exists {
 		if time.Since(entry.Timestamp) < s.cacheDuration {
-			fmt.Printf("[DEBUG-APIKEY] Cache hit for API key: %s, userId: %s\n", apiKey, entry.UserEmail)
 			return entry.UserEmail, nil
 		}
 		// Remove expired entry
 		s.cache.Remove(apiKey)
-		fmt.Printf("[DEBUG-APIKEY] Cache expired for API key: %s\n", apiKey)
 	}
 
 	// Direct lookup using API key as document ID
-	fmt.Printf("[DEBUG-APIKEY] Looking up document with ID: %s\n", apiKey)
 	doc, err := s.client.Collection(s.collection).Doc(apiKey).Get(ctx)
 	if err != nil {
 		if doc != nil && !doc.Exists() {
-			fmt.Printf("[DEBUG-APIKEY] API key document not found: %s\n", apiKey)
 			return "", nil // API key not found
 		}
-		fmt.Printf("[DEBUG-APIKEY] Error fetching API key document: %v\n", err)
 		return "", fmt.Errorf("error fetching API key: %w", err)
 	}
 
 	var binding ApiKeyBinding
 	if err := doc.DataTo(&binding); err != nil {
-		fmt.Printf("[DEBUG-APIKEY] Error parsing API key binding: %v\n", err)
 		return "", fmt.Errorf("error parsing API key binding: %w", err)
 	}
-
-	fmt.Printf("[DEBUG-APIKEY] Found API key binding - user_email: %s\n", binding.UserEmail)
 
 	// Cache the result
 	s.cache.Add(apiKey, &CacheEntry{
@@ -84,7 +74,6 @@ func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string
 		Timestamp: time.Now(),
 	})
 
-	fmt.Printf("[DEBUG-APIKEY] Successfully authenticated user: %s for API key: %s\n", binding.UserEmail, apiKey)
 	return binding.UserEmail, nil
 }
 

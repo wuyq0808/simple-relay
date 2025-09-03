@@ -120,21 +120,14 @@ func main() {
 	
 	// Create a custom handler that checks authentication before proxying
 	proxyHandler := func(w http.ResponseWriter, req *http.Request) {
-		log.Printf("[DEBUG] Processing request: %s %s", req.Method, req.URL.Path)
-		log.Printf("[DEBUG] Authorization header: %s", req.Header.Get("Authorization"))
-		
 		// Extract user ID from API key
 		userId := extractUserIdFromAPIKey(req, apiKeyService)
-		log.Printf("[DEBUG] Extracted userId: %s", userId)
 		
 		// Reject request if no valid API key provided
 		if userId == "" {
-			log.Printf("[DEBUG] No valid userId found, returning 401")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		
-		log.Printf("[DEBUG] Authentication successful for userId: %s", userId)
 		
 		// Store user ID in request context for proxy director
 		ctx := context.WithValue(req.Context(), "userId", userId)
@@ -351,31 +344,24 @@ func (mc multiCloser) Close() error {
 // extractUserIdFromAPIKey extracts user ID from API key in Authorization header
 func extractUserIdFromAPIKey(req *http.Request, apiKeyService *services.ApiKeyService) string {
 	authHeader := req.Header.Get("Authorization")
-	log.Printf("[DEBUG] Auth header: %s", authHeader)
 	
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		log.Printf("[DEBUG] Auth header doesn't start with 'Bearer '")
 		return ""
 	}
 	
 	apiKey := strings.TrimPrefix(authHeader, "Bearer ")
-	log.Printf("[DEBUG] Extracted API key: %s", apiKey)
 	
 	// Look up user ID by API key with caching
 	// Note: For convenience, we use email address as userId in our system
 	userId, err := apiKeyService.FindUserEmailByApiKey(req.Context(), apiKey)
-	log.Printf("[DEBUG] FindUserEmailByApiKey result - userId: %s, err: %v", userId, err)
 	
 	if err != nil {
-		log.Printf("[DEBUG] Error from FindUserEmailByApiKey: %v", err)
 		return ""
 	}
 	if userId == "" {
-		log.Printf("[DEBUG] Empty userId returned from FindUserEmailByApiKey")
 		return ""
 	}
 	
-	log.Printf("[DEBUG] Successfully resolved userId: %s", userId)
 	return userId
 }
 
