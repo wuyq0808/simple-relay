@@ -182,7 +182,7 @@ class FirestoreUserDatabase {
               api_key: key.api_key,
               created_at: new Date(key.created_at),
             })),
-            enabled: userData.enabled !== undefined ? userData.enabled : true,
+            api_enabled: userData.api_enabled !== undefined ? userData.api_enabled : false,
           };
         }
       }
