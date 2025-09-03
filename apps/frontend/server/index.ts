@@ -233,8 +233,8 @@ app.post('/api/api-keys', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'API access is not enabled for this user' });
     }
     
-    // Generate API key on server
-    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    // Generate API key on server (base36: 0-9, a-z)
+    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(20)))
       .map(b => b.toString(36))
       .join('');
     
