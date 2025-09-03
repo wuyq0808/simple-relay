@@ -239,7 +239,7 @@ app.post('/api/api-keys', requireAuth, async (req, res) => {
     
     // Generate API key on server (base62: 0-9, A-Z, a-z)
     const randomBytes = crypto.getRandomValues(new Uint8Array(20));
-    const apiKey = 'ak-' + base62.encode(randomBytes);
+    const apiKey = 'sk-afl-' + base62.encode(randomBytes);
     
     const newBinding = await ApiKeyDatabase.create({
       api_key: apiKey,

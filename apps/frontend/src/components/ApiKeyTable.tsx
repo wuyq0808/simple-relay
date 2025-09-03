@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './ApiKeyTable.scss';
 
 interface ApiKey {
@@ -111,6 +112,10 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
     return backendUrl;
   };
 
+  const maskApiKey = (apiKey: string) => {
+    return apiKey.slice(0, 7) + '****';
+  };
+
   const copyCommand = async (apiKey: string) => {
     const command = `ANTHROPIC_AUTH_TOKEN=${apiKey} ANTHROPIC_BASE_URL=${getBackendUrl()} claude`;
     try {
@@ -159,7 +164,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
                 </span>
                 <div className="key-command">
                   <code>
-                    ANTHROPIC_AUTH_TOKEN={key.api_key} ANTHROPIC_BASE_URL={getBackendUrl()} claude
+                    ANTHROPIC_AUTH_TOKEN={maskApiKey(key.api_key)} ANTHROPIC_BASE_URL={getBackendUrl()} claude
                   </code>
                 </div>
               </div>
@@ -183,7 +188,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         </div>
       )}
 
-      {deleteModal.show && (
+      {deleteModal.show && createPortal(
         <div className="modal-overlay" onClick={hideDeleteModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Delete API Key</h3>
@@ -198,7 +203,8 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
