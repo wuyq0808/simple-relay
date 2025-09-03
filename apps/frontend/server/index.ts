@@ -6,7 +6,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
 import validator from 'validator';
+import baseX from 'base-x';
 import { sendVerificationEmail } from '../services/email.js';
+
+const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+const base62 = baseX(BASE62);
 import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
 import { ApiKeyDatabase } from '../services/api-key-database.js';
@@ -233,10 +237,9 @@ app.post('/api/api-keys', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'API access is not enabled for this user' });
     }
     
-    // Generate API key on server (base36: 0-9, a-z)
-    const apiKey = 'ak-' + Array.from(crypto.getRandomValues(new Uint8Array(20)))
-      .map(b => b.toString(36))
-      .join('');
+    // Generate API key on server (base62: 0-9, A-Z, a-z)
+    const randomBytes = crypto.getRandomValues(new Uint8Array(20));
+    const apiKey = 'ak-' + base62.encode(randomBytes);
     
     const newBinding = await ApiKeyDatabase.create({
       api_key: apiKey,
