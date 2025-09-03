@@ -124,6 +124,50 @@ fi
 
 echo "✅ User found in database"
 
+# If revoking access, delete all existing API keys first
+if [ "$REVOKE" = true ]; then
+    echo "🗑️  Finding and deleting existing API keys..."
+    
+    # Query api_key_bindings collection to find user's API keys
+    API_BINDINGS_URL="https://firestore.googleapis.com/v1/projects/$PROJECT_ID/databases/$DATABASE/documents/api_key_bindings"
+    
+    # Get all API key bindings for this user
+    API_KEYS_JSON=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+                         -H "Content-Type: application/json" \
+                         "$API_BINDINGS_URL")
+    
+    # Extract API keys that belong to this user
+    USER_API_KEYS=$(echo "$API_KEYS_JSON" | jq -r --arg email "$EMAIL" \
+        '.documents[]? | select(.fields.user_email.stringValue == $email) | .name | split("/") | .[-1]')
+    
+    if [ -z "$USER_API_KEYS" ]; then
+        echo "ℹ️  No existing API keys found for user"
+    else
+        API_KEY_COUNT=$(echo "$USER_API_KEYS" | wc -l)
+        echo "🔍 Found $API_KEY_COUNT API key(s) to delete"
+        
+        # Delete each API key
+        echo "$USER_API_KEYS" | while read -r api_key; do
+            if [ -n "$api_key" ]; then
+                echo "   🗑️  Deleting API key: ${api_key:0:10}..."
+                DELETE_URL="https://firestore.googleapis.com/v1/projects/$PROJECT_ID/databases/$DATABASE/documents/api_key_bindings/$api_key"
+                
+                DELETE_RESPONSE=$(curl -s -X DELETE \
+                    -H "Authorization: Bearer $ACCESS_TOKEN" \
+                    "$DELETE_URL")
+                
+                if [ $? -eq 0 ]; then
+                    echo "   ✅ Deleted API key: ${api_key:0:10}..."
+                else
+                    echo "   ❌ Failed to delete API key: ${api_key:0:10}..."
+                fi
+            fi
+        done
+        
+        echo "✅ Finished deleting API keys"
+    fi
+fi
+
 # Update the user document to set api_enabled field
 echo "📝 Updating user API access..."
 FIRESTORE_PATCH_URL="https://firestore.googleapis.com/v1/projects/$PROJECT_ID/databases/$DATABASE/documents/users/$EMAIL?updateMask.fieldPaths=api_enabled"
@@ -156,7 +200,7 @@ if echo "$RESPONSE" | jq -e '.updateTime' > /dev/null; then
         echo ""
         echo "⚠️  API access has been revoked for $EMAIL"
         echo "   The user can no longer create new API keys"
-        echo "   Existing API keys will continue to work"
+        echo "   All existing API keys have been deleted and will no longer work"
     else
         echo ""
         echo "🎉 API access has been granted to $EMAIL"
