@@ -45,14 +45,14 @@
   color: white;
   transition: background-color 0.2s ease;
 
-  &:hover:not(:disabled) {
-    background-color: #444;
-  }
-
   &:disabled {
     background-color: #f5f5f5;
     color: #999;
     cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: #444;
   }
 }
 
@@ -68,17 +68,17 @@
   align-items: center;
   justify-content: center;
   
-  &:hover:not(:disabled) {
-    background-color: #f5f5f5;
-    border-color: #999;
-    color: #333;
-  }
-  
   &:disabled {
     background-color: white;
     color: #666;
     border-color: #ddd;
     cursor: default;
+  }
+  
+  &:hover:not(:disabled) {
+    background-color: #f5f5f5;
+    border-color: #999;
+    color: #333;
   }
 }
 
@@ -113,7 +113,7 @@
   color: #e2e8f0;
   padding: 12px;
   border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: Monaco, Menlo, monospace;
   font-size: 12px;
   line-height: 1.4;
   overflow-x: auto;
@@ -132,7 +132,7 @@
   background-color: #f5f5f5;
   padding: 2px 6px;
   border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: Monaco, Menlo, monospace;
   font-size: 13px;
   color: #333;
 }

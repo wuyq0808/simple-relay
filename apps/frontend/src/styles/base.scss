@@ -59,6 +59,12 @@ body, html {
   height: 100%;
 }
 
+.description {
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 30px;
+}
+
 .sidebar-bottom {
   margin-top: auto;
   padding-top: 30px;
@@ -67,7 +73,7 @@ body, html {
   .description {
     font-size: 12px;
     color: #666;
-    margin: 0 0 8px 0;
+    margin: 0 0 8px;
   }
 }
 
@@ -86,14 +92,14 @@ body, html {
   h2 {
     font-size: 24px;
     color: #333;
-    margin: 0 0 10px 0;
+    margin: 0 0 10px;
     font-weight: normal;
   }
   
   .description {
     font-size: 16px;
     color: #666;
-    margin: 0 0 30px 0;
+    margin: 0 0 30px;
   }
 }
 
@@ -102,9 +108,10 @@ body, html {
 
 .app-title {
   font-size: 24px;
-  margin: 0 0 20px 0;
+  margin: 0 0 20px;
   color: #333;
   font-weight: normal;
+
   // No fade-in needed - parent .app-content handles it
 }
 
@@ -115,14 +122,8 @@ body, html {
 .tagline {
   font-size: 14px;
   color: #666;
-  margin: 0 0 30px 0;
+  margin: 0 0 30px;
   font-style: italic;
-}
-
-.description {
-  font-size: 16px;
-  color: #666;
-  margin: 0 0 30px 0;
 }
 
 .divider {
