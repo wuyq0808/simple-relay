@@ -11,16 +11,17 @@ import (
 )
 
 type OAuthCredentials struct {
-	AccessToken      string    `json:"access_token" firestore:"access_token"`
-	RefreshToken     string    `json:"refresh_token" firestore:"refresh_token"`
-	ExpiresAt        time.Time `json:"expires_at" firestore:"expires_at"`
-	Scope            string    `json:"scope" firestore:"scope"`
-	OrganizationUUID string    `json:"organization_uuid" firestore:"organization_uuid"`
-	OrganizationName string    `json:"organization_name" firestore:"organization_name"`
-	AccountUUID      string    `json:"account_uuid" firestore:"account_uuid"`
-	AccountEmail     string    `json:"account_email" firestore:"account_email"`
-	UpdatedAt        time.Time `json:"updated_at" firestore:"updated_at"`
-	RefreshStartedAt time.Time `json:"refresh_started_at" firestore:"refresh_started_at"`
+	AccessToken      string            `json:"access_token" firestore:"access_token"`
+	RefreshToken     string            `json:"refresh_token" firestore:"refresh_token"`
+	ExpiresAt        time.Time         `json:"expires_at" firestore:"expires_at"`
+	Scope            string            `json:"scope" firestore:"scope"`
+	OrganizationUUID string            `json:"organization_uuid" firestore:"organization_uuid"`
+	OrganizationName string            `json:"organization_name" firestore:"organization_name"`
+	AccountUUID      string            `json:"account_uuid" firestore:"account_uuid"`
+	AccountEmail     string            `json:"account_email" firestore:"account_email"`
+	UpdatedAt        time.Time         `json:"updated_at" firestore:"updated_at"`
+	RefreshStartedAt time.Time         `json:"refresh_started_at" firestore:"refresh_started_at"`
+	RateLimitHeaders map[string]string `json:"rate_limit_headers,omitempty" firestore:"rate_limit_headers,omitempty"`
 }
 
 type UserTokenBinding struct {
@@ -197,4 +198,47 @@ func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding,
 	store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 	
 	return resultBinding, nil
+}
+
+func (store *OAuthStore) ClearUserTokenBinding(userID string) error {
+	ctx := context.Background()
+	
+	// Delete from Firestore
+	_, err := store.db.Client().Collection("user_token_bindings").Doc(userID).Delete(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to clear user token binding for %s: %w", userID, err)
+	}
+	
+	// Remove from cache after successful database operation
+	store.userTokenCache.Remove(userID)
+	
+	return nil
+}
+
+func (store *OAuthStore) SaveRateLimitHeadersByToken(accessToken string, headers map[string]string) error {
+	ctx := context.Background()
+	
+	// Find the OAuth token document by access_token
+	query := store.db.Client().Collection("oauth_tokens").Where("access_token", "==", accessToken).Limit(1)
+	docs, err := query.Documents(ctx).GetAll()
+	if err != nil {
+		return fmt.Errorf("failed to find OAuth token by access token: %w", err)
+	}
+	
+	if len(docs) == 0 {
+		return fmt.Errorf("no OAuth token found with access token")
+	}
+	
+	// Update the document with rate limit headers
+	docRef := docs[0].Ref
+	_, err = docRef.Update(ctx, []firestore.Update{
+		{Path: "rate_limit_headers", Value: headers},
+		{Path: "updated_at", Value: time.Now()},
+	})
+	
+	if err != nil {
+		return fmt.Errorf("failed to save rate limit headers: %w", err)
+	}
+	
+	return nil
 }
