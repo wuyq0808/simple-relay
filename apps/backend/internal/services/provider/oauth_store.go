@@ -90,6 +90,11 @@ func (store *OAuthStore) GetValidCredentials() (*OAuthCredentials, error) {
 		return nil, fmt.Errorf("failed to refresh OAuth credentials: %w", err)
 	}
 	
+	// Verify the refreshed credentials are actually valid
+	if refreshedCredentials.ExpiresAt.Before(time.Now()) {
+		return nil, fmt.Errorf("refreshed credentials are still expired")
+	}
+	
 	return refreshedCredentials, nil
 }
 
@@ -114,18 +119,9 @@ func (store *OAuthStore) GetUserTokenBinding(userID string) (*UserTokenBinding, 
 	return &binding, nil
 }
 
-func (store *OAuthStore) SaveUserTokenBinding(binding *UserTokenBinding) error {
-	ctx := context.Background()
-	
-	_, err := store.db.Client().Collection("user_token_bindings").Doc(binding.UserID).Set(ctx, binding)
-	if err != nil {
-		return fmt.Errorf("failed to save user token binding: %w", err)
-	}
-	
-	return nil
-}
 
 func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding, error) {
+	// Check cache first for valid tokens
 	if cached, exists := store.userTokenCache.Get(userID); exists {
 		if cached.ExpiresAt.After(time.Now()) {
 			return cached, nil
@@ -138,64 +134,70 @@ func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding,
 	
 	err := store.db.Client().RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		docRef := store.db.Client().Collection("user_token_bindings").Doc(userID)
-		doc, err := tx.Get(docRef)
+		doc, txErr := tx.Get(docRef)
 		
 		var binding *UserTokenBinding
-		if err != nil {
-			randomCreds, err := store.GetValidCredentials()
-			if err != nil {
-				return fmt.Errorf("failed to get valid token for new user binding: %w", err)
+		
+		// Case 1: No binding exists for user - create new binding
+		if txErr != nil {
+			// Any error here means document doesn't exist (NotFound) or other transient issues
+			// In either case, we'll create a new binding with fresh credentials
+			validCreds, credsErr := store.GetValidCredentials()
+			if credsErr != nil {
+				return fmt.Errorf("failed to get valid token for new user binding: %w", credsErr)
 			}
 			
 			binding = &UserTokenBinding{
 				UserID:      userID,
-				AccountUUID: randomCreds.AccountUUID,
-				AccessToken: randomCreds.AccessToken,
-				ExpiresAt:   randomCreds.ExpiresAt,
+				AccountUUID: validCreds.AccountUUID,
+				AccessToken: validCreds.AccessToken,
+				ExpiresAt:   validCreds.ExpiresAt,
 			}
 			
-			err = tx.Set(docRef, binding)
-			if err != nil {
-				return fmt.Errorf("failed to save new user token binding: %w", err)
+			if setErr := tx.Set(docRef, binding); setErr != nil {
+				return fmt.Errorf("failed to save new user token binding: %w", setErr)
 			}
 			
 			resultBinding = binding
+			store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 			return nil
 		}
 		
-		if err := doc.DataTo(&binding); err != nil {
-			return fmt.Errorf("failed to parse user token binding: %w", err)
+		// Case 2: Binding exists - parse and check validity
+		if parseErr := doc.DataTo(&binding); parseErr != nil {
+			return fmt.Errorf("failed to parse user token binding: %w", parseErr)
 		}
 		
 		now := time.Now()
 		if binding.ExpiresAt.After(now) {
+			// Token is still valid, use as-is
 			resultBinding = binding
+			store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 			return nil
 		}
 		
-		freshCreds, err := store.GetValidCredentials()
-		if err != nil {
-			return fmt.Errorf("failed to get fresh token for user %s: %w", userID, err)
+		// Case 3: Binding exists but token is expired - refresh with new credentials
+		freshCreds, credsErr := store.GetValidCredentials()
+		if credsErr != nil {
+			return fmt.Errorf("failed to get fresh token for user %s: %w", userID, credsErr)
 		}
 		
 		binding.AccessToken = freshCreds.AccessToken
 		binding.ExpiresAt = freshCreds.ExpiresAt
 		binding.AccountUUID = freshCreds.AccountUUID
 		
-		err = tx.Set(docRef, binding)
-		if err != nil {
-			return fmt.Errorf("failed to save refreshed user token binding: %w", err)
+		if setErr := tx.Set(docRef, binding); setErr != nil {
+			return fmt.Errorf("failed to save refreshed user token binding: %w", setErr)
 		}
 		
 		resultBinding = binding
+		store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 		return nil
 	})
 	
 	if err != nil {
 		return nil, err
 	}
-	
-	store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 	
 	return resultBinding, nil
 }
