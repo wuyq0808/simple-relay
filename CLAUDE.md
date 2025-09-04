@@ -37,6 +37,10 @@ simple-relay-468808
 
 # Revoke API access from users
 ./scripts/grant-api-access.sh -e USER_EMAIL -p simple-relay-468808 -d DATABASE_NAME -r
+
+# List users with pending access requests
+./scripts/grant-api-access.sh -l -p simple-relay-468808 -d simple-relay-db-staging
+./scripts/grant-api-access.sh -l -p simple-relay-468808 -d simple-relay-db-production
 ```
 
 ## Development Server Rules

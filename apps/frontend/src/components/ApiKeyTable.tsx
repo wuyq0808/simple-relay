@@ -26,6 +26,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
   const [deleting, setDeleting] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [usageGuideModal, setUsageGuideModal] = useState(false);
+  const [accessApprovalPending, setAccessApprovalPending] = useState(false);
 
   const loadApiKeys = useCallback(async () => {
     try {
@@ -36,6 +37,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         const data = await response.json();
         setApiKeys(data.api_keys || data); // Handle both new and old response formats
         setApiEnabled(data.api_enabled !== undefined ? data.api_enabled : true);
+        setAccessApprovalPending(data.access_approval_pending || false);
       } else {
         onMessage(t('apiKeys.messages.loadError'));
       }
@@ -146,6 +148,26 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
     }
   };
 
+  const requestAccess = async () => {
+    try {
+      const response = await fetch('/api/request-access', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setAccessApprovalPending(true);
+        onMessage(t('apiKeys.messages.accessRequested'));
+      } else {
+        onMessage(t('apiKeys.messages.error'));
+      }
+    } catch {
+      onMessage(t('apiKeys.messages.error'));
+    }
+  };
 
   if (loading) {
     return <Loading />;
@@ -173,7 +195,20 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
 
       {apiKeys.length === 0 ? (
         <div className="no-keys">
-          {!apiEnabled ? t('apiKeys.apiDisabled') : t('apiKeys.noKeys')}
+          {!apiEnabled ? (
+            accessApprovalPending ? (
+              t('apiKeys.accessRequested')
+            ) : (
+              <button 
+                className="request-access-link"
+                onClick={requestAccess}
+              >
+                {t('apiKeys.requestAccess')}
+              </button>
+            )
+          ) : (
+            t('apiKeys.noKeys')
+          )}
         </div>
       ) : (
         <div className="key-list">

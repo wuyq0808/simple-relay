@@ -210,7 +210,8 @@ app.get('/api/api-keys', requireAuth, async (req, res) => {
     
     res.json({
       api_keys: apiKeys,
-      api_enabled: user.api_enabled
+      api_enabled: user.api_enabled,
+      access_approval_pending: user.access_approval_pending || false
     });
   } catch (error) {
     console.error('Error fetching API keys:', error);
@@ -267,6 +268,22 @@ app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error deleting API key:', error);
     res.status(500).json({ error: 'Failed to delete API key' });
+  }
+});
+
+app.post('/api/request-access', requireAuth, async (req, res) => {
+  try {
+    const email = req.signedCookies.user_email;
+    
+    // Update user to mark access approval as pending
+    await UserDatabase.updateUser(email, {
+      access_approval_pending: true
+    });
+    
+    res.json({ message: 'Access request submitted successfully' });
+  } catch (error) {
+    console.error('Error requesting access:', error);
+    res.status(500).json({ error: 'Failed to submit access request' });
   }
 });
 
