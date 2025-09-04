@@ -1,0 +1,54 @@
+{
+  "app": {
+    "title": "AI Fastlane",
+    "tagline": "Never fall behind."
+  },
+  "auth": {
+    "verify": "Verify",
+    "verifyCode": "Verify Code",
+    "enterEmail": "Enter your email to get started",
+    "enterCode": "Enter the 6-digit code sent to your email",
+    "backToSignIn": "← Back to Sign In",
+    "signOut": "Sign Out",
+    "signedInAs": "Signed in as"
+  },
+  "apiKeys": {
+    "title": "API Keys",
+    "description": "Create and manage your API keys for accessing AI Fastlane services.",
+    "create": "Create",
+    "usageGuide": "Usage Guide",
+    "creating": "Creating...",
+    "noKeys": "Create your first key to get started.",
+    "apiDisabled": "API access disabled. Contact us to get access.",
+    "created": "Created {{date}}",
+    "copy": "Copy API key",
+    "delete": "Delete API key",
+    "deleteTitle": "Delete API Key",
+    "deleteMessage": "Are you sure you want to delete this API key?",
+    "cancel": "Cancel",
+    "deleting": "Deleting...",
+    "messages": {
+      "created": "API key created successfully",
+      "deleted": "API key deleted successfully",
+      "copied": "API key copied to clipboard",
+      "createError": "Failed to create API key",
+      "deleteError": "Failed to delete API key",
+      "loadError": "Failed to load API keys",
+      "copyError": "Failed to copy API key"
+    }
+  },
+  "usageGuide": {
+    "title": "Usage Guide",
+    "oneTime": "One-time usage",
+    "sessionExport": "Export for session",
+    "envVariables": "Environment Variables",
+    "envDescription": "Set these environment variables to use the API:",
+    "close": "Close"
+  },
+  "common": {
+    "loading": "Loading...",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied!"
+  }
+}
