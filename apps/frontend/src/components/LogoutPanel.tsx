@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './LogoutPanel.scss';
 
 interface LogoutPanelProps {
@@ -7,10 +8,12 @@ interface LogoutPanelProps {
 }
 
 export default function LogoutPanel({ email, onLogout }: LogoutPanelProps) {
+  const { t } = useTranslation();
+  
   return (
     <>
       <p className="description">
-        Signed in as
+        {t('auth.signedInAs')}
       </p>
       <p className="signed-in-email">
         {email}
@@ -22,7 +25,7 @@ export default function LogoutPanel({ email, onLogout }: LogoutPanelProps) {
         onClick={onLogout}
         className="primary-button"
       >
-        Log Out
+        {t('auth.signOut')}
       </button>
     </>
   );

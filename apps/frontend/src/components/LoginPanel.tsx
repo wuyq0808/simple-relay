@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import '../styles/base.scss';
 import SignIn from './SignIn';
 import Verify from './Verify';
@@ -7,6 +8,7 @@ type MessageType = 'success' | 'error' | '';
 type AuthState = 'signin' | 'verify';
 
 function LoginPanel() {
+  const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<MessageType>('');
   const [authState, setAuthState] = useState<AuthState>('signin');
@@ -32,7 +34,7 @@ function LoginPanel() {
       <div key={authState} className="app-content">
         
         <h1 className="app-title">
-          AI Fastlane
+          {t('app.title')}
         </h1>
 
         {authState === 'signin' && (

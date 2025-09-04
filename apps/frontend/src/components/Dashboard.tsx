@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import LogoutPanel from './LogoutPanel';
 import ApiKeyTable from './ApiKeyTable';
 
@@ -7,6 +8,7 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
+  const { t } = useTranslation();
 
   const handleSignOut = async () => {
     try {
@@ -27,10 +29,10 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
       <div className="sidebar">
         <div className="sidebar-content">
           <h1 className="app-title">
-            AI Fastlane
+            {t('app.title')}
           </h1>
           <p className="tagline">
-            Never fall behind.
+            {t('app.tagline')}
           </p>
           
           <div className="sidebar-bottom">
@@ -45,8 +47,8 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
       <div className="main-panel">
         <div className="main-panel-content">
           <div className="api-keys-section">
-            <h2>API Keys</h2>
-            <p className="description">Manage your API keys for accessing the service.</p>
+            <h2>{t('apiKeys.title')}</h2>
+            <p className="description">{t('apiKeys.description')}</p>
             
             <ApiKeyTable userEmail={userEmail} onMessage={onMessage} />
           </div>

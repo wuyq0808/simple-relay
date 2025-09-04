@@ -9,6 +9,17 @@ function App() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showLoadingText, setShowLoadingText] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // Auto-dismiss message after 5 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   useEffect(() => {
     const loadingTimer = setTimeout(() => {
@@ -42,7 +53,17 @@ function App() {
   }
 
   if (isAuthenticated) {
-    return <Dashboard userEmail={userEmail!} onMessage={() => {}} />;
+    return (
+      <>
+        <Dashboard userEmail={userEmail!} onMessage={setMessage} />
+        {message && (
+          <div className="message-toast">
+            {message}
+            <button onClick={() => setMessage('')} className="message-close">×</button>
+          </div>
+        )}
+      </>
+    );
   }
 
   return <LoginPanel />;

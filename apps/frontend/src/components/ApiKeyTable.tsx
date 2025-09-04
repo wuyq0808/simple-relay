@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import './ApiKeyTable.scss';
 import Loading from './Loading';
 import UsageGuide from './UsageGuide';
@@ -16,6 +17,7 @@ interface ApiKeyTableProps {
 }
 
 export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKeyTableProps) {
+  const { t } = useTranslation();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [apiEnabled, setApiEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -35,14 +37,14 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         setApiKeys(data.api_keys || data); // Handle both new and old response formats
         setApiEnabled(data.api_enabled !== undefined ? data.api_enabled : true);
       } else {
-        onMessage('Failed to load API keys');
+        onMessage(t('apiKeys.messages.loadError'));
       }
     } catch {
-      onMessage('Error loading API keys');
+      onMessage(t('apiKeys.messages.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [onMessage]);
+  }, [onMessage, t]);
 
   useEffect(() => {
     loadApiKeys();
@@ -62,14 +64,14 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
       });
 
       if (response.ok) {
-        onMessage('API key created successfully');
+        onMessage(t('apiKeys.messages.created'));
         await loadApiKeys();
       } else {
         const error = await response.json();
         onMessage(`Error: ${error.error}`);
       }
     } catch {
-      onMessage('Failed to create API key');
+      onMessage(t('apiKeys.messages.createError'));
     } finally {
       setCreating(false);
     }
@@ -102,13 +104,13 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
       });
 
       if (response.ok) {
-        onMessage('API key deleted successfully');
+        onMessage(t('apiKeys.messages.deleted'));
         await loadApiKeys();
       } else {
-        onMessage('Failed to delete API key');
+        onMessage(t('apiKeys.messages.deleteError'));
       }
     } catch {
-      onMessage('Error deleting API key');
+      onMessage(t('apiKeys.messages.deleteError'));
     } finally {
       setDeleting(false);
       hideDeleteModal();
@@ -134,14 +136,14 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
     try {
       await navigator.clipboard.writeText(apiKey);
       setCopiedCommand(apiKey);
-      onMessage('API key copied to clipboard');
+      onMessage(t('apiKeys.messages.copied'));
       
       // Reset after 1 second
       setTimeout(() => {
         setCopiedCommand(null);
       }, 1000);
     } catch {
-      onMessage('Failed to copy API key');
+      onMessage(t('apiKeys.messages.copyError'));
     }
   };
 
@@ -159,21 +161,20 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
             onClick={createApiKey}
             disabled={creating || apiKeys.length >= 3 || !apiEnabled}
           >
-            {creating ? 'Creating...' : 'Create'}
+            {creating ? t('apiKeys.creating') : t('apiKeys.create')}
           </button>
           <button 
             className="usage-guide-button"
             onClick={showUsageGuide}
           >
-            Usage Guide
+            {t('apiKeys.usageGuide')}
           </button>
         </div>
-        <span className="key-count">{apiKeys.length}/3 keys</span>
       </div>
 
       {apiKeys.length === 0 ? (
         <div className="no-keys">
-          {!apiEnabled ? 'API access disabled. Contact us to get access.' : 'Create your first key to get started.'}
+          {!apiEnabled ? t('apiKeys.apiDisabled') : t('apiKeys.noKeys')}
         </div>
       ) : (
         <div className="key-list">
@@ -181,7 +182,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
             <div key={key.api_key} className="key-item">
               <div className="key-info">
                 <span className="key-date">
-                  Created {new Date(key.created_at).toLocaleDateString('en-CA')}
+                  {t('apiKeys.created', { date: new Date(key.created_at).toLocaleDateString() })}
                 </span>
                 <div className="key-command-row">
                   <div className="key-display">
@@ -192,7 +193,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
                       className="copy-key-button"
                       onClick={() => copyCommand(key.api_key)}
                       disabled={copiedCommand === key.api_key || !apiEnabled}
-                      title="Copy API key"
+                      title={t('apiKeys.copy')}
                     >
                       {copiedCommand === key.api_key ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -208,7 +209,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
                     <button 
                       className="delete-button"
                       onClick={() => showDeleteModal(key.api_key)}
-                      title="Delete API key"
+                      title={t('apiKeys.delete')}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -225,15 +226,15 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
       {deleteModal.show && createPortal(
         <div className="modal-overlay" onClick={hideDeleteModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>Delete API Key</h3>
-            <p>Are you sure you want to delete this API key?</p>
+            <h3>{t('apiKeys.deleteTitle')}</h3>
+            <p>{t('apiKeys.deleteMessage')}</p>
             <p className="api-key-preview">{maskApiKey(deleteModal.apiKey)}</p>
             <div className="modal-actions">
               <button className="cancel-button" onClick={hideDeleteModal} disabled={deleting}>
-                Cancel
+                {t('apiKeys.cancel')}
               </button>
               <button className="confirm-delete-button" onClick={confirmDelete} disabled={deleting}>
-                {deleting ? 'Deleting...' : 'Delete'}
+                {deleting ? t('apiKeys.deleting') : t('apiKeys.delete')}
               </button>
             </div>
           </div>

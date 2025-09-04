@@ -1,0 +1,54 @@
+{
+  "app": {
+    "title": "AI快线",
+    "tagline": "快人一步"
+  },
+  "auth": {
+    "verify": "验证",
+    "verifyCode": "验证码",
+    "enterEmail": "输入邮箱开始使用",
+    "enterCode": "输入发送到您邮箱的6位验证码",
+    "backToSignIn": "← 返回登录",
+    "signOut": "退出登录",
+    "signedInAs": "当前登录"
+  },
+  "apiKeys": {
+    "title": "API密钥",
+    "description": "创建和管理您的API密钥以访问AI快线",
+    "create": "创建",
+    "usageGuide": "使用指南",
+    "creating": "创建中...",
+    "noKeys": "创建您的第一个密钥开始使用。",
+    "apiDisabled": "联系我们获取访问权限。",
+    "created": "创建于 {{date}}",
+    "copy": "复制API密钥",
+    "delete": "删除API密钥",
+    "deleteTitle": "删除API密钥",
+    "deleteMessage": "您确定要删除此API密钥吗？",
+    "cancel": "取消",
+    "deleting": "删除中...",
+    "messages": {
+      "created": "API密钥创建成功",
+      "deleted": "API密钥删除成功",
+      "copied": "API密钥已复制到剪贴板",
+      "createError": "创建API密钥失败",
+      "deleteError": "删除API密钥失败",
+      "loadError": "加载API密钥失败",
+      "copyError": "复制API密钥失败"
+    }
+  },
+  "usageGuide": {
+    "title": "使用指南",
+    "oneTime": "一次性使用",
+    "sessionExport": "会话导出",
+    "envVariables": "环境变量",
+    "envDescription": "设置这些环境变量来使用API：",
+    "close": "关闭"
+  },
+  "common": {
+    "loading": "加载中...",
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "已复制！"
+  }
+}
