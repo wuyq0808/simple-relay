@@ -37,7 +37,7 @@ export default function AuthFlow({ onMessage, onStateChange }: AuthFlowProps) {
       } else {
         onMessage(data.error || 'Failed to send verification code', 'error');
       }
-    } catch (error) {
+    } catch {
       onMessage('Network error. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -68,7 +68,7 @@ export default function AuthFlow({ onMessage, onStateChange }: AuthFlowProps) {
       } else {
         onMessage(data.error || 'Invalid verification code', 'error');
       }
-    } catch (error) {
+    } catch {
       onMessage('Network error. Please try again.', 'error');
     } finally {
       setLoading(false);

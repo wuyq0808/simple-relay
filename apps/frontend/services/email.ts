@@ -64,12 +64,3 @@ export async function sendVerificationEmail(data: VerificationEmailData): Promis
   }
 }
 
-export async function sendWelcomeEmail(email: string, appName?: string): Promise<EmailResult> {
-  // Placeholder for welcome email - can be implemented later
-  return { success: true };
-}
-
-export async function sendPasswordResetEmail(email: string, resetToken: string, appName?: string): Promise<EmailResult> {
-  // Placeholder for password reset email - can be implemented later
-  return { success: true };
-}
