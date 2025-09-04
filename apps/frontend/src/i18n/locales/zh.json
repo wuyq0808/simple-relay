@@ -28,13 +28,9 @@
     "cancel": "取消",
     "deleting": "删除中...",
     "messages": {
-      "created": "API密钥创建成功",
-      "deleted": "API密钥删除成功",
-      "copied": "API密钥已复制到剪贴板",
-      "createError": "创建API密钥失败",
-      "deleteError": "删除API密钥失败",
-      "loadError": "加载API密钥失败",
-      "copyError": "复制API密钥失败"
+      "created": "API密钥已创建",
+      "deleted": "API密钥已删除",
+      "error": "系统出错，请稍后再试"
     }
   },
   "usageGuide": {
