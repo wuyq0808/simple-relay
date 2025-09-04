@@ -11,6 +11,7 @@ EMAIL=""
 PROJECT_ID=""
 DATABASE=""
 REVOKE=false
+LIST_PENDING=false
 
 # Function to show usage
 show_usage() {
@@ -19,10 +20,11 @@ show_usage() {
     echo "Usage: $0 [options]"
     echo ""
     echo "Options:"
-    echo "  -e, --email EMAIL              User email address (required)"
+    echo "  -e, --email EMAIL              User email address (required for grant/revoke)"
     echo "  -p, --project PROJECT_ID       GCP Project ID (required)"
     echo "  -d, --database DATABASE        Database name (required)"
     echo "  -r, --revoke                   Revoke API access instead of granting"
+    echo "  -l, --list-pending             List users with pending access requests"
     echo "  -h, --help                     Show this help message"
     echo ""
     echo "Examples:"
@@ -34,6 +36,9 @@ show_usage() {
     echo ""
     echo "  # Grant API access in production"
     echo "  $0 -e user@example.com -p simple-relay-468808 -d simple-relay-db-production"
+    echo ""
+    echo "  # List pending access requests"
+    echo "  $0 -l -p simple-relay-468808 -d simple-relay-db-staging"
     exit 0
 }
 
@@ -56,6 +61,10 @@ while [[ $# -gt 0 ]]; do
             REVOKE=true
             shift
             ;;
+        -l|--list-pending)
+            LIST_PENDING=true
+            shift
+            ;;
         -h|--help)
             show_usage
             ;;
@@ -67,11 +76,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required parameters
-if [ -z "$EMAIL" ]; then
-    echo "❌ Error: User email is required. Use -e/--email to specify."
-    exit 1
-fi
-
 if [ -z "$PROJECT_ID" ]; then
     echo "❌ Error: Project ID is required. Use -p/--project to specify."
     exit 1
@@ -80,6 +84,57 @@ fi
 if [ -z "$DATABASE" ]; then
     echo "❌ Error: Database name is required. Use -d/--database to specify."
     exit 1
+fi
+
+# Email is only required for grant/revoke operations, not for listing
+if [ "$LIST_PENDING" = false ] && [ -z "$EMAIL" ]; then
+    echo "❌ Error: User email is required for grant/revoke operations. Use -e/--email to specify."
+    exit 1
+fi
+
+# Get access token using gcloud
+echo "🔑 Getting access token..."
+ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
+
+if [ -z "$ACCESS_TOKEN" ]; then
+    echo "❌ Failed to get access token"
+    echo "Please run: gcloud auth application-default login"
+    exit 1
+fi
+
+# Handle list pending requests
+if [ "$LIST_PENDING" = true ]; then
+    echo "🔍 Listing users with pending access requests..."
+    echo "Project ID: $PROJECT_ID"
+    echo "Database: $DATABASE"
+    echo ""
+    
+    FIRESTORE_LIST_URL="https://firestore.googleapis.com/v1/projects/$PROJECT_ID/databases/$DATABASE/documents/users"
+    
+    # Get all users and filter for pending requests
+    USERS_JSON=$(curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
+                      -H "Content-Type: application/json" \
+                      "$FIRESTORE_LIST_URL")
+    
+    if [ $? -ne 0 ] || [ -z "$USERS_JSON" ]; then
+        echo "❌ Error: Failed to fetch users from database"
+        exit 1
+    fi
+    
+    # Parse and display pending access requests
+    echo "$USERS_JSON" | jq -r '.documents[]? | select(.fields.access_approval_pending?.booleanValue == true and .fields.api_enabled?.booleanValue != true) | 
+        "📧 " + .fields.email.stringValue + 
+        " (Created: " + (.fields.created_at.stringValue | split("T")[0]) + ")"' | sort
+    
+    PENDING_COUNT=$(echo "$USERS_JSON" | jq '[.documents[]? | select(.fields.access_approval_pending?.booleanValue == true and .fields.api_enabled?.booleanValue != true)] | length')
+    
+    echo ""
+    echo "📊 Found $PENDING_COUNT users with pending access requests"
+    echo ""
+    echo "💡 To approve access for a user, run:"
+    echo "   $0 -e USER_EMAIL -p $PROJECT_ID -d $DATABASE"
+    
+    exit 0
 fi
 
 # Set action based on revoke flag
@@ -97,16 +152,6 @@ echo "Database: $DATABASE"
 echo "User Email: $EMAIL"
 echo "API Enabled: $API_ENABLED"
 echo ""
-
-# Get access token using gcloud
-echo "🔑 Getting access token..."
-ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
-
-if [ -z "$ACCESS_TOKEN" ]; then
-    echo "❌ Failed to get access token"
-    echo "Please run: gcloud auth application-default login"
-    exit 1
-fi
 
 # Check if user exists first
 echo "🔍 Checking if user exists..."
@@ -168,9 +213,9 @@ if [ "$REVOKE" = true ]; then
     fi
 fi
 
-# Update the user document to set api_enabled field
+# Update the user document to set api_enabled field and clear pending status
 echo "📝 Updating user API access..."
-FIRESTORE_PATCH_URL="https://firestore.googleapis.com/v1/projects/$PROJECT_ID/databases/$DATABASE/documents/users/$EMAIL?updateMask.fieldPaths=api_enabled"
+FIRESTORE_PATCH_URL="https://firestore.googleapis.com/v1/projects/$PROJECT_ID/databases/$DATABASE/documents/users/$EMAIL?updateMask.fieldPaths=api_enabled&updateMask.fieldPaths=access_approval_pending"
 
 RESPONSE=$(curl -s -X PATCH \
   "$FIRESTORE_PATCH_URL" \
@@ -180,6 +225,9 @@ RESPONSE=$(curl -s -X PATCH \
     \"fields\": {
       \"api_enabled\": {
         \"booleanValue\": $API_ENABLED
+      },
+      \"access_approval_pending\": {
+        \"booleanValue\": false
       }
     }
   }")

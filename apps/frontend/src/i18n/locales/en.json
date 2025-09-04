@@ -19,7 +19,8 @@
     "usageGuide": "Usage Guide",
     "creating": "Creating...",
     "noKeys": "Create your first key to get started.",
-    "apiDisabled": "API access disabled. Contact us to get access.",
+    "requestAccess": "Click here to request access",
+    "accessRequested": "Access requested. Please wait for approval.",
     "created": "Created {{date}}",
     "copy": "Copy API key",
     "delete": "Delete API key",
@@ -30,6 +31,7 @@
     "messages": {
       "created": "API key created successfully",
       "deleted": "API key deleted successfully",
+      "accessRequested": "Access requested",
       "error": "System error, please retry later"
     }
   },

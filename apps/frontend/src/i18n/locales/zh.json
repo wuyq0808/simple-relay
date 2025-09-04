@@ -19,7 +19,8 @@
     "usageGuide": "使用指南",
     "creating": "创建中...",
     "noKeys": "创建您的第一个密钥开始使用。",
-    "apiDisabled": "联系我们获取访问权限。",
+    "requestAccess": "点击申请权限",
+    "accessRequested": "申请已提交，请耐心等待",
     "created": "创建于 {{date}}",
     "copy": "复制API密钥",
     "delete": "删除API密钥",
@@ -30,6 +31,7 @@
     "messages": {
       "created": "API密钥已创建",
       "deleted": "API密钥已删除",
+      "accessRequested": "申请已提交",
       "error": "系统出错，请稍后再试"
     }
   },

@@ -7,6 +7,7 @@ export interface User {
   verification_token: string | null; // Token for email verification
   verification_expires_at: Date | null; // Expiration time for verification token
   api_enabled: boolean;             // Whether API access is enabled for this user
+  access_approval_pending?: boolean; // Whether the user has a pending access approval request
 }
 
 class FirestoreUserDatabase {
@@ -62,6 +63,7 @@ class FirestoreUserDatabase {
       verification_token: data.verification_token || null,
       verification_expires_at: data.verification_expires_at ? new Date(data.verification_expires_at) : null,
       api_enabled: data.api_enabled !== undefined ? data.api_enabled : false,
+      access_approval_pending: data.access_approval_pending || false,
     };
   }
 
