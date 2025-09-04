@@ -30,11 +30,7 @@
     "messages": {
       "created": "API key created successfully",
       "deleted": "API key deleted successfully",
-      "copied": "API key copied to clipboard",
-      "createError": "Failed to create API key",
-      "deleteError": "Failed to delete API key",
-      "loadError": "Failed to load API keys",
-      "copyError": "Failed to copy API key"
+      "error": "System error, please retry later"
     }
   },
   "usageGuide": {

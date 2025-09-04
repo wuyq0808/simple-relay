@@ -136,7 +136,6 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
     try {
       await navigator.clipboard.writeText(apiKey);
       setCopiedCommand(apiKey);
-      onMessage(t('apiKeys.messages.copied'));
       
       // Reset after 1 second
       setTimeout(() => {

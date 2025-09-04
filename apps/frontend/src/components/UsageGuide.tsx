@@ -16,7 +16,6 @@ export default function UsageGuide({ isOpen, onClose, backendUrl, onMessage }: U
     try {
       await navigator.clipboard.writeText(command);
       setCopiedCommand(label);
-      onMessage('Command copied to clipboard');
       
       // Reset after 1 second
       setTimeout(() => {
