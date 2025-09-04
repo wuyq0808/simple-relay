@@ -37,10 +37,16 @@
   },
   "usageGuide": {
     "title": "使用指南",
+    "install": "安装官方Claude CLI",
+    "envVariables": "环境变量",
+    "authToken": "用于身份验证的API密钥",
+    "baseUrl": "AI快线API端点",
+    "shellCommands": "Shell命令",
     "oneTime": "一次性使用",
     "sessionExport": "会话导出",
-    "envVariables": "环境变量",
-    "envDescription": "设置这些环境变量来使用API：",
+    "tips": "提示",
+    "replaceKey": "将<code>your-api-key</code>替换为您的实际API密钥",
+    "useButton": "使用每个密钥旁边的复制按钮以便操作",
     "close": "关闭"
   },
   "common": {
