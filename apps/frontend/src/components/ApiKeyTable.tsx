@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import './ApiKeyTable.scss';
 import Loading from './Loading';
@@ -14,7 +14,7 @@ interface ApiKeyTableProps {
   onMessage: (message: string) => void;
 }
 
-export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) {
+export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKeyTableProps) {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [apiEnabled, setApiEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -23,11 +23,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
   const [deleting, setDeleting] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadApiKeys();
-  }, []);
-
-  const loadApiKeys = async () => {
+  const loadApiKeys = useCallback(async () => {
     try {
       const response = await fetch('/api/api-keys', {
         credentials: 'include'
@@ -39,12 +35,16 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
       } else {
         onMessage('Failed to load API keys');
       }
-    } catch (error) {
+    } catch {
       onMessage('Error loading API keys');
     } finally {
       setLoading(false);
     }
-  };
+  }, [onMessage]);
+
+  useEffect(() => {
+    loadApiKeys();
+  }, [loadApiKeys]);
 
   const createApiKey = async () => {
     if (creating) return;
@@ -66,7 +66,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
         const error = await response.json();
         onMessage(`Error: ${error.error}`);
       }
-    } catch (error) {
+    } catch {
       onMessage('Failed to create API key');
     } finally {
       setCreating(false);
@@ -97,7 +97,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
       } else {
         onMessage('Failed to delete API key');
       }
-    } catch (error) {
+    } catch {
       onMessage('Error deleting API key');
     } finally {
       setDeleting(false);
@@ -106,7 +106,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
   };
 
   const getBackendUrl = () => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    const backendUrl = (import.meta as unknown as { env: { VITE_BACKEND_URL?: string } }).env.VITE_BACKEND_URL;
     if (!backendUrl) {
       throw new Error('VITE_BACKEND_URL environment variable is required');
     }
@@ -128,7 +128,7 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
       setTimeout(() => {
         setCopiedCommand(null);
       }, 1000);
-    } catch (error) {
+    } catch {
       onMessage('Failed to copy command');
     }
   };
@@ -216,7 +216,3 @@ export default function ApiKeyTable({ userEmail, onMessage }: ApiKeyTableProps) 
   );
 }
 
-function maskApiKey(apiKey: string): string {
-  if (apiKey.length <= 8) return apiKey;
-  return apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4);
-}

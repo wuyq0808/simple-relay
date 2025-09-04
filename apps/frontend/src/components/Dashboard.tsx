@@ -16,8 +16,7 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
       });
       // Force page reload to get the unauthenticated HTML
       window.location.reload();
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
       // Still reload even if logout fails
       window.location.reload();
     }

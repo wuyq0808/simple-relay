@@ -68,7 +68,7 @@ class FirestoreUserDatabase {
   async updateUser(email: string, updates: Partial<Omit<User, 'email'>>): Promise<User | null> {
     const docRef = this.db.collection(this.collection).doc(email);
     
-    const firestoreUpdates: any = {
+    const firestoreUpdates: Record<string, unknown> = {
       ...updates,
       last_login: updates.last_login?.toISOString() || null,
       verification_expires_at: updates.verification_expires_at?.toISOString() || null,

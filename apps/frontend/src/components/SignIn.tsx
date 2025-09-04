@@ -33,7 +33,7 @@ export default function SignIn({ onMessage, onSuccess }: SignInProps) {
       } else {
         onMessage(data.error || 'Failed to send verification code', 'error');
       }
-    } catch (error) {
+    } catch {
       onMessage('Network error. Please try again.', 'error');
     } finally {
       setLoading(false);

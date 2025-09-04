@@ -3,9 +3,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
-import validator from 'validator';
 import baseX from 'base-x';
 import { sendVerificationEmail } from '../services/email.js';
 
@@ -14,9 +12,11 @@ const base62 = baseX(BASE62);
 import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
 import { ApiKeyDatabase } from '../services/api-key-database.js';
+import { 
+  validateSignIn,
+  validateEmailVerification
+} from './middleware/validation.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,25 +51,23 @@ function setLoginCookie(res: Response, email: string): void {
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const email = req.signedCookies.user_email;
   
-  if (!email) {
+  if (!email || typeof email !== 'string') {
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
   
-  (req as any).userEmail = email;
+  // No copying needed - just use req.signedCookies.user_email directly in endpoints
   next();
 }
+
 
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
 
-app.post('/api/signin', ipRateLimit, async (req, res) => {
+app.post('/api/signin', ipRateLimit, validateSignIn, async (req, res) => {
+  // req.body is now validated and properly typed by express-zod-safe
   const { email } = req.body;
-  
-  if (!email || !validator.isEmail(email)) {
-    return res.status(400).json({ error: 'Valid email address is required' });
-  }
 
   const existingUser = await UserDatabase.findByEmail(email);
   
@@ -125,12 +123,9 @@ app.post('/api/signin', ipRateLimit, async (req, res) => {
   }
 });
 
-app.post('/api/verify', async (req, res) => {
+app.post('/api/verify', validateEmailVerification, async (req, res) => {
+  // req.body is now validated and properly typed by express-zod-safe
   const { email, code } = req.body;
-  
-  if (!email || !validator.isEmail(email) || !code) {
-    return res.status(400).json({ error: 'Valid email and verification code are required' });
-  }
 
   const user = await UserDatabase.findByEmail(email);
   
@@ -161,7 +156,7 @@ app.post('/api/verify', async (req, res) => {
 });
 
 app.get('/api/profile', requireAuth, async (req, res) => {
-  const email = (req as any).userEmail;
+  const email = req.signedCookies.user_email;
   
   const user = await UserDatabase.findByEmail(email);
   
@@ -194,7 +189,7 @@ app.get('/api/auth', async (req, res) => {
   });
 });
 
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', (_req, res) => {
   res.clearCookie('user_email');
   res.json({ message: 'Logged out successfully' });
 });
@@ -202,7 +197,7 @@ app.post('/api/logout', (req, res) => {
 // API Key management endpoints
 app.get('/api/api-keys', requireAuth, async (req, res) => {
   try {
-    const email = (req as any).userEmail;
+    const email = req.signedCookies.user_email;
     
     // Get user to check api_enabled status
     const user = await UserDatabase.findByEmail(email);
@@ -225,7 +220,7 @@ app.get('/api/api-keys', requireAuth, async (req, res) => {
 
 app.post('/api/api-keys', requireAuth, async (req, res) => {
   try {
-    const email = (req as any).userEmail;
+    const email = req.signedCookies.user_email;
     
     // Check if API is enabled for this user
     const user = await UserDatabase.findByEmail(email);
@@ -258,7 +253,7 @@ app.post('/api/api-keys', requireAuth, async (req, res) => {
 
 app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
   try {
-    const email = (req as any).userEmail;
+    const email = req.signedCookies.user_email;
     const apiKey = req.params.key;
     
     // Verify the API key belongs to the user
@@ -275,7 +270,7 @@ app.delete('/api/api-keys/:key', requireAuth, async (req, res) => {
   }
 });
 
-app.get('*', (req: Request, res: Response) => {
+app.get('*', (_req: Request, res: Response) => {
   try {
     const htmlPath = path.join(process.cwd(), 'dist/index.html');
     res.sendFile(htmlPath);

@@ -9,7 +9,7 @@ export interface AppConfig {
 
 type ConfigValue = boolean | string | number;
 
-function isValidConfigValue(value: any): value is ConfigValue {
+function isValidConfigValue(value: unknown): value is ConfigValue {
   return typeof value === 'boolean' || 
          typeof value === 'string' || 
          typeof value === 'number';

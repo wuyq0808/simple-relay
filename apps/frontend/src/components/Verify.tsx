@@ -36,7 +36,7 @@ export default function Verify({ email, onMessage, onBack }: VerifyProps) {
       } else {
         onMessage(data.error || 'Invalid verification code', 'error');
       }
-    } catch (error) {
+    } catch {
       onMessage('Network error. Please try again.', 'error');
     } finally {
       setLoading(false);
