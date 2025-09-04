@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import './ApiKeyTable.scss';
 import Loading from './Loading';
+import UsageGuide from './UsageGuide';
 
 interface ApiKey {
   api_key: string;
@@ -22,6 +23,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; apiKey: string }>({ show: false, apiKey: '' });
   const [deleting, setDeleting] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
+  const [usageGuideModal, setUsageGuideModal] = useState(false);
 
   const loadApiKeys = useCallback(async () => {
     try {
@@ -81,6 +83,14 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
     setDeleteModal({ show: false, apiKey: '' });
   };
 
+  const showUsageGuide = () => {
+    setUsageGuideModal(true);
+  };
+
+  const hideUsageGuide = () => {
+    setUsageGuideModal(false);
+  };
+
   const confirmDelete = async () => {
     if (deleting) return;
     
@@ -114,22 +124,24 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
   };
 
   const maskApiKey = (apiKey: string) => {
-    return apiKey.slice(0, 7) + '****';
+    const firstPart = apiKey.slice(0, 7);
+    const lastPart = apiKey.slice(-4);
+    const middleLength = apiKey.length - 11; // total length - first 7 - last 4
+    return firstPart + '*'.repeat(middleLength) + lastPart;
   };
 
   const copyCommand = async (apiKey: string) => {
-    const command = `ANTHROPIC_AUTH_TOKEN=${apiKey} ANTHROPIC_BASE_URL=${getBackendUrl()} claude`;
     try {
-      await navigator.clipboard.writeText(command);
+      await navigator.clipboard.writeText(apiKey);
       setCopiedCommand(apiKey);
-      onMessage('Command copied to clipboard');
+      onMessage('API key copied to clipboard');
       
       // Reset after 1 second
       setTimeout(() => {
         setCopiedCommand(null);
       }, 1000);
     } catch {
-      onMessage('Failed to copy command');
+      onMessage('Failed to copy API key');
     }
   };
 
@@ -141,13 +153,21 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
   return (
     <div className="api-key-table">
       <div className="api-key-header">
-        <button 
-          className="create-key-button"
-          onClick={createApiKey}
-          disabled={creating || apiKeys.length >= 3 || !apiEnabled}
-        >
-          {creating ? 'Creating...' : 'Create'}
-        </button>
+        <div className="header-left">
+          <button 
+            className="create-key-button"
+            onClick={createApiKey}
+            disabled={creating || apiKeys.length >= 3 || !apiEnabled}
+          >
+            {creating ? 'Creating...' : 'Create'}
+          </button>
+          <button 
+            className="usage-guide-button"
+            onClick={showUsageGuide}
+          >
+            Usage Guide
+          </button>
+        </div>
         <span className="key-count">{apiKeys.length}/3 keys</span>
       </div>
 
@@ -164,18 +184,26 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
                   Created {new Date(key.created_at).toLocaleDateString('en-CA')}
                 </span>
                 <div className="key-command-row">
-                  <div className="key-command">
-                    <code>
-                      ANTHROPIC_AUTH_TOKEN={maskApiKey(key.api_key)} ANTHROPIC_BASE_URL={getBackendUrl()} claude
-                    </code>
+                  <div className="key-display">
+                    <code>{maskApiKey(key.api_key)}</code>
                   </div>
                   <div className="key-buttons">
                     <button 
-                      className="copy-command-button"
+                      className="copy-key-button"
                       onClick={() => copyCommand(key.api_key)}
                       disabled={copiedCommand === key.api_key || !apiEnabled}
+                      title="Copy API key"
                     >
-                      {copiedCommand === key.api_key ? 'Copied' : 'Copy'}
+                      {copiedCommand === key.api_key ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" strokeWidth="2" fill="none"/>
+                          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </svg>
+                      )}
                     </button>
                     <button 
                       className="delete-button"
@@ -212,6 +240,13 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         </div>,
         document.body
       )}
+
+      <UsageGuide 
+        isOpen={usageGuideModal} 
+        onClose={hideUsageGuide} 
+        backendUrl={getBackendUrl()} 
+        onMessage={onMessage}
+      />
     </div>
   );
 }

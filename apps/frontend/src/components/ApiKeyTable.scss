@@ -1,3 +1,5 @@
+@import '../styles/mixins.scss';
+
 .api-key-table {
   width: 100%;
   max-width: 100%;
@@ -10,25 +12,23 @@
   margin-bottom: 30px;
 }
 
+.header-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .create-key-button {
-  background-color: #333;
-  color: white;
-  border: none;
+  @include primary-button;
   padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background-color: #444;
-  }
-  
-  &:disabled {
-    background-color: #f5f5f5;
-    color: #999;
-    cursor: not-allowed;
-  }
+  width: auto;
+}
+
+.usage-guide-button {
+  @include secondary-button;
+  padding: 8px 16px;
+  font-size: 14px;
 }
 
 .key-count {
@@ -90,7 +90,7 @@
   margin-top: 8px;
 }
 
-.key-command {
+.key-display {
   flex: 1;
   padding: 8px 12px;
   background-color: #f5f5f5;
@@ -101,10 +101,10 @@
   
   code {
     font-family: 'Monaco', 'Menlo', monospace;
-    font-size: 10px;
+    font-size: 14px;
     color: #333;
     word-break: break-all;
-    }
+  }
 }
 
 .key-buttons {
@@ -113,49 +113,14 @@
   align-items: flex-start;
 }
 
-.copy-command-button {
-  background-color: #333;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background-color: #444;
-  }
-  
-  &:disabled {
-    background-color: #666;
-    cursor: default;
-  }
+.copy-key-button {
+  @include icon-button;
+  padding: 8px 10px;
 }
 
 .delete-button {
-  background-color: white;
-  color: #666;
-  border: 1px solid #ddd;
+  @include icon-button;
   padding: 8px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &:hover {
-    background-color: #f5f5f5;
-    border-color: #999;
-    color: #333;
-  }
-  
-  svg {
-    width: 16px;
-    height: 16px;
-  }
 }
 
 .api-disabled-message {
@@ -171,6 +136,7 @@
 
 // Modal styles
 .modal-overlay {
+  @include modal-overlay-animation;
   position: fixed;
   top: 0;
   left: 0;
@@ -183,7 +149,9 @@
   z-index: 1000;
 }
 
+
 .modal-content {
+  @include modal-content-animation;
   background: white;
   padding: 30px;
   border-radius: 8px;
@@ -222,45 +190,15 @@
 }
 
 .cancel-button {
-  background-color: white;
-  color: #333;
-  border: 1px solid #ddd;
+  @include secondary-button;
   padding: 8px 20px;
-  border-radius: 4px;
-  cursor: pointer;
   font-size: 14px;
-  transition: all 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background-color: #f5f5f5;
-    border-color: #999;
-  }
-  
-  &:disabled {
-    background-color: #f5f5f5;
-    color: #999;
-    cursor: not-allowed;
-    border-color: #ddd;
-  }
 }
 
 .confirm-delete-button {
-  background-color: #333;
-  color: white;
-  border: none;
+  @include primary-button;
   padding: 8px 20px;
-  border-radius: 4px;
-  cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background-color: #444;
-  }
-  
-  &:disabled {
-    background-color: #f5f5f5;
-    color: #999;
-    cursor: not-allowed;
-  }
+  width: auto;
 }
+

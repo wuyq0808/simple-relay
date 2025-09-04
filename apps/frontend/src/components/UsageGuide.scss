@@ -1,0 +1,107 @@
+@import '../styles/mixins.scss';
+
+// Usage Guide Modal styles
+.modal-content.usage-guide {
+  @include modal-content-animation;
+  max-width: 600px;
+  text-align: left;
+}
+
+
+.modal-overlay {
+  @include modal-overlay-animation;
+}
+
+.usage-content {
+  margin: 20px 0;
+  
+  h1 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 20px;
+    font-weight: 600;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+  }
+  
+  h2 {
+    margin: 25px 0 12px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  h3 {
+    margin: 20px 0 8px 0;
+    color: #555;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  p {
+    margin: 8px 0;
+    line-height: 1.5;
+    color: #666;
+  }
+  
+  code {
+    @include inline-code;
+  }
+
+  pre {
+    @include code-block;
+    flex: 1;
+  }
+  
+  ul {
+    margin: 12px 0;
+    padding-left: 20px;
+    
+    li {
+      margin-bottom: 6px;
+      line-height: 1.4;
+      color: #666;
+
+      strong {
+        color: #333;
+      }
+    }
+  }
+
+  strong {
+    color: #333;
+  }
+}
+
+.command-example {
+  margin: 0 0 15px 0;
+}
+
+.code-block-container {
+  position: relative;
+}
+
+.copy-code-button {
+  @include icon-button;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  backdrop-filter: blur(4px);
+  opacity: 0.7;
+  
+  &:disabled {
+    color: #666;
+    border-color: rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.9);
+    opacity: 0.7;
+    cursor: default;
+  }
+  
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}

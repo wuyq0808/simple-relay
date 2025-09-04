@@ -1,16 +1,4 @@
-// Animation mixin
-@mixin fade-in-up {
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fade-in-up-keyframes 0.2s ease-out forwards;
-  
-  @keyframes fade-in-up-keyframes {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-}
+@import './mixins.scss';
 
 
 // Base styles
