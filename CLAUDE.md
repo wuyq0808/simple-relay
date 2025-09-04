@@ -57,7 +57,6 @@ gh workflow run "Staging" --ref feature/frontend-signup
 ### NEVER Deploy to Production
 - DO NOT trigger production deployments automatically
 - Production deployments require manual approval and testing
-- Only deploy to staging for testing purposes
 
 ### Service URLs
 - **Frontend Production**: https://simple-relay-frontend-production-573916960175.us-central1.run.app
