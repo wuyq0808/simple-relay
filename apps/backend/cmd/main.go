@@ -118,21 +118,24 @@ func main() {
 			return
 		}
 		
-		// Store user ID in request context for proxy director
+		// Get OAuth token for user
+		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
+		if err != nil {
+			log.Printf("Failed to get valid token for user %s: %v", userId, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		
+		// Store user ID and access token in request context for proxy director
 		ctx := context.WithValue(req.Context(), "userId", userId)
+		ctx = context.WithValue(ctx, "accessToken", tokenBinding.AccessToken)
 		req = req.WithContext(ctx)
 		proxy.ServeHTTP(w, req)
 	}
 	
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
-		userId := req.Context().Value("userId").(string)
-		
-		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
-		if err != nil {
-			// Fail the request if no valid OAuth token
-			return
-		}
+		accessToken := req.Context().Value("accessToken").(string)
 		
 		// Use official target URL and OAuth token
 		req.URL.Scheme = config.OfficialTarget.Scheme
@@ -140,7 +143,7 @@ func main() {
 		req.Host = config.OfficialTarget.Host
 		
 		// Use the OAuth access token for this user
-		req.Header.Set("Authorization", "Bearer "+tokenBinding.AccessToken)
+		req.Header.Set("Authorization", "Bearer "+accessToken)
 		
 		// Ensure host header matches target
 		req.Header.Set("Host", config.OfficialTarget.Host)
