@@ -1,14 +1,30 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import LogoutPanel from './LogoutPanel';
 import ApiKeyTable from './ApiKeyTable';
+import UsageStats from './UsageStats';
+import './Dashboard.scss';
 
 interface DashboardProps {
   userEmail: string;
   onMessage: (message: string) => void;
 }
 
+type ActiveTab = 'api-keys' | 'usage';
+
 export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
   const { t } = useTranslation();
+  
+  // Initialize activeTab from localStorage, fallback to 'api-keys'
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    const savedTab = localStorage.getItem('dashboard-active-tab');
+    return (savedTab === 'usage' || savedTab === 'api-keys') ? savedTab : 'api-keys';
+  });
+
+  // Save to localStorage whenever activeTab changes
+  useEffect(() => {
+    localStorage.setItem('dashboard-active-tab', activeTab);
+  }, [activeTab]);
 
   const handleSignOut = async () => {
     try {
@@ -35,6 +51,21 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
             {t('app.tagline')}
           </p>
           
+          <nav className="tab-navigation">
+            <button 
+              className={`tab-button ${activeTab === 'api-keys' ? 'active' : ''}`}
+              onClick={() => setActiveTab('api-keys')}
+            >
+              {t('tabs.apiKeys')}
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'usage' ? 'active' : ''}`}
+              onClick={() => setActiveTab('usage')}
+            >
+              {t('tabs.usage')}
+            </button>
+          </nav>
+          
           <div className="sidebar-bottom">
             <LogoutPanel
               email={userEmail}
@@ -46,12 +77,23 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
 
       <div className="main-panel">
         <div className="main-panel-content">
-          <div className="api-keys-section">
-            <h2>{t('apiKeys.title')}</h2>
-            <p className="description">{t('apiKeys.description')}</p>
-            
-            <ApiKeyTable userEmail={userEmail} onMessage={onMessage} />
-          </div>
+          {activeTab === 'api-keys' && (
+            <div className="api-keys-section">
+              <h2>{t('apiKeys.title')}</h2>
+              <p className="description">{t('apiKeys.description')}</p>
+              
+              <ApiKeyTable userEmail={userEmail} onMessage={onMessage} />
+            </div>
+          )}
+          
+          {activeTab === 'usage' && (
+            <div className="usage-section">
+              <h2>{t('usage.title')}</h2>
+              <p className="description">{t('usage.description')}</p>
+              
+              <UsageStats userEmail={userEmail} onMessage={onMessage} />
+            </div>
+          )}
         </div>
       </div>
     </div>
