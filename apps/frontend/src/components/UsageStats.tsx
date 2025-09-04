@@ -14,7 +14,7 @@ interface UsageStatsProps {
   onMessage: (message: string) => void;
 }
 
-export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
+export default function UsageStats({ userEmail, onMessage: _onMessage }: UsageStatsProps) {
   const { t } = useTranslation();
   const [usageData, setUsageData] = useState<DailyUsage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,8 +42,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       const data = await response.json();
       setUsageData(data);
       setLoading(false);
-    } catch (error) {
-      console.error('Error fetching usage stats:', error);
+    } catch {
       // Keep loading state on error, don't show error message
       // setLoading stays true to show loading state
     }
@@ -60,10 +59,10 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
           <table className="usage-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Model</th>
-                <th>Input</th>
-                <th>Output</th>
+                <th>{t('usage.date')}</th>
+                <th>{t('usage.model')}</th>
+                <th>{t('usage.input')}</th>
+                <th>{t('usage.output')}</th>
               </tr>
             </thead>
             <tbody>

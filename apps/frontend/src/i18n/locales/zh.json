@@ -55,24 +55,16 @@
   },
   "usage": {
     "title": "使用统计",
-    "description": "监控您的API使用情况、令牌消耗和费用。",
-    "loading": "加载使用统计中...",
-    "noRecords": "未找到使用记录。开始发起API请求以查看您的使用统计。",
-    "totalCost": "总费用",
-    "totalRequests": "总请求数",
-    "totalTokens": "总令牌数",
-    "timestamp": "时间戳",
+    "description": "监控您的API使用情况和令牌消耗。",
+    "date": "日期",
     "model": "模型",
-    "inputTokens": "输入令牌",
-    "outputTokens": "输出令牌",
-    "cost": "费用",
-    "status": "状态"
+    "input": "输入",
+    "output": "输出"
   },
   "common": {
     "loading": "加载中...",
     "close": "关闭",
     "copy": "复制",
-    "copied": "已复制！",
-    "retry": "重试"
+    "copied": "已复制！"
   }
 }
