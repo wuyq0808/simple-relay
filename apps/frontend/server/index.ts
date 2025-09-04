@@ -57,7 +57,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
     return;
   }
   
-  // No copying needed - just use req.signedCookies.user_email directly in endpoints
   next();
 }
 
