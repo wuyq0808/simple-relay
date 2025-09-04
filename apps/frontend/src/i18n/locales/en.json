@@ -37,10 +37,16 @@
   },
   "usageGuide": {
     "title": "Usage Guide",
+    "install": "Install Official Claude CLI",
+    "envVariables": "Environment Variables",
+    "authToken": "Your API key for authentication",
+    "baseUrl": "The AI Fastlane API endpoint",
+    "shellCommands": "Shell Commands",
     "oneTime": "One-time usage",
     "sessionExport": "Export for session",
-    "envVariables": "Environment Variables",
-    "envDescription": "Set these environment variables to use the API:",
+    "tips": "Tips",
+    "replaceKey": "Replace <code>your-api-key</code> with your actual API key",
+    "useButton": "Use the Copy button next to each key for convenience",
     "close": "Close"
   },
   "common": {
