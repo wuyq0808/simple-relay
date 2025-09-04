@@ -49,10 +49,30 @@
     "useButton": "Use the Copy button next to each key for convenience",
     "close": "Close"
   },
+  "tabs": {
+    "apiKeys": "API Keys",
+    "usage": "Usage"
+  },
+  "usage": {
+    "title": "Usage Statistics",
+    "description": "Monitor your API usage, token consumption, and costs.",
+    "loading": "Loading usage statistics...",
+    "noRecords": "No usage records found. Start making API requests to see your usage statistics.",
+    "totalCost": "Total Cost",
+    "totalRequests": "Total Requests",
+    "totalTokens": "Total Tokens",
+    "timestamp": "Timestamp",
+    "model": "Model",
+    "inputTokens": "Input Tokens",
+    "outputTokens": "Output Tokens",
+    "cost": "Cost",
+    "status": "Status"
+  },
   "common": {
     "loading": "Loading...",
     "close": "Close",
     "copy": "Copy",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "retry": "Retry"
   }
 }

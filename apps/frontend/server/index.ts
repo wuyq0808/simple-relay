@@ -12,6 +12,7 @@ const base62 = baseX(BASE62);
 import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
 import { ApiKeyDatabase } from '../services/api-key-database.js';
+import { UsageDatabase } from '../services/usage-database.js';
 import { 
   validateSignIn,
   validateEmailVerification
@@ -284,6 +285,20 @@ app.post('/api/request-access', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error requesting access:', error);
     res.status(500).json({ error: 'Failed to submit access request' });
+  }
+});
+
+app.get('/api/usage-stats', requireAuth, async (req, res) => {
+  try {
+    const email = req.signedCookies.user_email;
+    
+    // Query actual usage data from Firestore
+    const usageData = await UsageDatabase.findByUserEmail(email);
+    
+    res.json(usageData);
+  } catch (error) {
+    console.error('Error fetching usage stats:', error);
+    res.status(500).json({ error: 'Failed to fetch usage stats' });
   }
 });
 
