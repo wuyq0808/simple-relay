@@ -3,12 +3,13 @@
 .signed-in-email {
   font-size: 14px;
   color: #333;
-  margin: 0 0 20px 0;
+  margin: 0 0 20px;
   font-weight: normal;
 }
 
 .primary-button {
   @include primary-button;
+
   padding: 8px 16px;
   font-size: 14px;
 }

@@ -3,6 +3,7 @@
 // Usage Guide Modal styles
 .modal-content.usage-guide {
   @include modal-content-animation;
+
   max-width: 600px;
   text-align: left;
 }
@@ -16,7 +17,7 @@
   margin: 20px 0;
   
   h1 {
-    margin: 0 0 20px 0;
+    margin: 0 0 20px;
     color: #333;
     font-size: 20px;
     font-weight: 600;
@@ -25,14 +26,14 @@
   }
   
   h2 {
-    margin: 25px 0 12px 0;
+    margin: 25px 0 12px;
     color: #333;
     font-size: 16px;
     font-weight: 600;
   }
 
   h3 {
-    margin: 20px 0 8px 0;
+    margin: 20px 0 8px;
     color: #555;
     font-size: 14px;
     font-weight: 600;
@@ -50,9 +51,14 @@
 
   pre {
     @include code-block;
+
     flex: 1;
   }
   
+  strong {
+    color: #333;
+  }
+
   ul {
     margin: 12px 0;
     padding-left: 20px;
@@ -67,14 +73,10 @@
       }
     }
   }
-
-  strong {
-    color: #333;
-  }
 }
 
 .command-example {
-  margin: 0 0 15px 0;
+  margin: 0 0 15px;
 }
 
 .code-block-container {
@@ -83,19 +85,20 @@
 
 .copy-code-button {
   @include icon-button;
+
   position: absolute;
   top: 8px;
   right: 8px;
-  background-color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgb(255 255 255 / 90%);
+  border: 1px solid rgb(0 0 0 / 10%);
   padding: 6px;
   backdrop-filter: blur(4px);
   opacity: 0.7;
   
   &:disabled {
     color: #666;
-    border-color: rgba(0, 0, 0, 0.1);
-    background-color: rgba(255, 255, 255, 0.9);
+    border-color: rgb(0 0 0 / 10%);
+    background-color: rgb(255 255 255 / 90%);
     opacity: 0.7;
     cursor: default;
   }

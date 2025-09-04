@@ -20,6 +20,7 @@
 
 .create-key-button {
   @include primary-button;
+
   padding: 8px 16px;
   font-size: 14px;
   width: auto;
@@ -27,6 +28,7 @@
 
 .usage-guide-button {
   @include secondary-button;
+
   padding: 8px 16px;
   font-size: 14px;
 }
@@ -67,7 +69,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   background-color: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
   gap: 20px;
 }
 
@@ -100,7 +102,7 @@
   align-items: center;
   
   code {
-    font-family: 'Monaco', 'Menlo', monospace;
+    font-family: Monaco, Menlo, monospace;
     font-size: 14px;
     color: #333;
     word-break: break-all;
@@ -115,11 +117,13 @@
 
 .copy-key-button {
   @include icon-button;
+
   padding: 8px 10px;
 }
 
 .delete-button {
   @include icon-button;
+
   padding: 8px 10px;
 }
 
@@ -137,12 +141,10 @@
 // Modal styles
 .modal-overlay {
   @include modal-overlay-animation;
+
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background-color: rgb(0 0 0 / 50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -152,22 +154,23 @@
 
 .modal-content {
   @include modal-content-animation;
+
   background: white;
   padding: 30px;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   max-width: 400px;
   width: 90%;
   text-align: center;
   
   h3 {
-    margin: 0 0 15px 0;
+    margin: 0 0 15px;
     color: #333;
     font-size: 18px;
   }
   
   p {
-    margin: 0 0 15px 0;
+    margin: 0 0 15px;
     color: #666;
     font-size: 16px;
   }
@@ -180,7 +183,7 @@
   background-color: #f8f9fa;
   padding: 8px 12px;
   border-radius: 4px;
-  margin: 15px 0 25px 0;
+  margin: 15px 0 25px;
 }
 
 .modal-actions {
@@ -191,12 +194,14 @@
 
 .cancel-button {
   @include secondary-button;
+
   padding: 8px 20px;
   font-size: 14px;
 }
 
 .confirm-delete-button {
   @include primary-button;
+
   padding: 8px 20px;
   font-size: 14px;
   width: auto;
