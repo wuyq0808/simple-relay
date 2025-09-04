@@ -4,7 +4,6 @@ go 1.24
 
 require (
 	cloud.google.com/go/firestore v1.14.0
-	cloud.google.com/go/storage v1.30.1
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	google.golang.org/grpc v1.57.0
@@ -13,11 +12,7 @@ require (
 
 replace simple-relay/shared => ../shared
 
-require (
-	cloud.google.com/go/iam v1.1.1 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
-	github.com/google/uuid v1.3.0 // indirect
-)
+require github.com/google/go-cmp v0.5.9 // indirect
 
 require (
 	cloud.google.com/go v0.110.7 // indirect
