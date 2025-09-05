@@ -56,10 +56,12 @@
   "usage": {
     "title": "使用统计",
     "description": "监控您的API使用情况和令牌消耗。",
-    "date": "日期",
+    "hour": "小时",
     "model": "模型",
+    "requests": "请求数",
     "input": "输入",
-    "output": "输出"
+    "output": "输出",
+    "cost": "成本"
   },
   "common": {
     "loading": "加载中...",

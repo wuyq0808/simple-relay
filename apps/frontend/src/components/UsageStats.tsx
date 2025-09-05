@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loading from './Loading';
 
-interface DailyUsage {
-  Date: string;
+interface HourlyUsage {
+  Hour: string;
   Model: string;
   InputTokens: number;
   OutputTokens: number;
+  TotalCost: number;
+  Requests: number;
 }
 
 interface UsageStatsProps {
@@ -16,7 +18,7 @@ interface UsageStatsProps {
 
 export default function UsageStats({ userEmail, onMessage: _onMessage }: UsageStatsProps) {
   const { t } = useTranslation();
-  const [usageData, setUsageData] = useState<DailyUsage[]>([]);
+  const [usageData, setUsageData] = useState<HourlyUsage[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,21 +61,25 @@ export default function UsageStats({ userEmail, onMessage: _onMessage }: UsageSt
           <table className="usage-table">
             <thead>
               <tr>
-                <th>{t('usage.date')}</th>
+                <th>{t('usage.hour')}</th>
                 <th>{t('usage.model')}</th>
+                <th>{t('usage.requests')}</th>
                 <th>{t('usage.input')}</th>
                 <th>{t('usage.output')}</th>
+                <th>{t('usage.cost')}</th>
               </tr>
             </thead>
             <tbody>
               {usageData.map((usage, index) => (
                 <tr key={index}>
-                  <td>{usage.Date}</td>
+                  <td>{usage.Hour}</td>
                   <td>
                     <code className="model-name">{usage.Model}</code>
                   </td>
+                  <td>{usage.Requests.toLocaleString()}</td>
                   <td>{usage.InputTokens.toLocaleString()}</td>
                   <td>{usage.OutputTokens.toLocaleString()}</td>
+                  <td>${usage.TotalCost.toFixed(6)}</td>
                 </tr>
               ))}
             </tbody>
