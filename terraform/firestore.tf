@@ -25,11 +25,11 @@ resource "google_firestore_index" "usage_records_user_timestamp" {
   }
 }
 
-# Firestore Index for daily_aggregates collection
-resource "google_firestore_index" "daily_aggregates_user_date" {
+# Firestore Index for hourly_aggregates collection
+resource "google_firestore_index" "hourly_aggregates_user_hour" {
   project    = var.project_id
   database   = google_firestore_database.oauth_database.name
-  collection = "daily_aggregates"
+  collection = "hourly_aggregates"
 
   fields {
     field_path = "user_id"
@@ -37,8 +37,8 @@ resource "google_firestore_index" "daily_aggregates_user_date" {
   }
 
   fields {
-    field_path = "date"
-    order      = "DESCENDING"
+    field_path = "hour"
+    order      = "ASCENDING"
   }
 }
 
