@@ -54,23 +54,7 @@ class FirestoreUsageDatabase {
       const hourStr = `${hour.getFullYear()}-${(hour.getMonth() + 1).toString().padStart(2, '0')}-${hour.getDate().toString().padStart(2, '0')} ${hour.getHours().toString().padStart(2, '0')}:00`;
       
       // Process model usage stats from flattened Firestore fields
-      // Firestore stores: "model_usage.claude-sonnet-4.input_tokens": 123
-      // We need to reconstruct: { "claude-sonnet-4": { input_tokens: 123, ... } }
-      const modelUsage: Record<string, any> = {};
-      
-      // Extract flattened model usage fields
-      for (const [key, value] of Object.entries(data)) {
-        if (key.startsWith('model_usage.')) {
-          const parts = key.split('.');
-          if (parts.length === 3) {
-            const [, modelName, metric] = parts;
-            if (!modelUsage[modelName]) {
-              modelUsage[modelName] = {};
-            }
-            modelUsage[modelName][metric] = value;
-          }
-        }
-      }
+      const modelUsage = this.extractFlattenedModelUsage(data);
       
       for (const [modelName, stats] of Object.entries(modelUsage)) {
         hourlyUsage.push({
@@ -93,6 +77,30 @@ class FirestoreUsageDatabase {
     });
 
     return hourlyUsage;
+  }
+
+  /**
+   * Extract flattened model usage fields from Firestore document data.
+   * Converts "model_usage.claude-sonnet-4.input_tokens" format
+   * to nested object { "claude-sonnet-4": { input_tokens: value } }
+   */
+  private extractFlattenedModelUsage(data: any): Record<string, any> {
+    const modelUsage: Record<string, any> = {};
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (key.startsWith('model_usage.')) {
+        const parts = key.split('.');
+        if (parts.length === 3) {
+          const [, modelName, metric] = parts;
+          if (!modelUsage[modelName]) {
+            modelUsage[modelName] = {};
+          }
+          modelUsage[modelName][metric] = value;
+        }
+      }
+    }
+    
+    return modelUsage;
   }
 }
 
