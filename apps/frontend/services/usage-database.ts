@@ -60,10 +60,10 @@ class FirestoreUsageDatabase {
         hourlyUsage.push({
           Hour: hourStr,
           Model: modelName,
-          InputTokens: stats.input_tokens || 0,
-          OutputTokens: stats.output_tokens || 0,
-          TotalCost: stats.total_cost || 0,
-          Requests: stats.request_count || 0,
+          InputTokens: (stats.input_tokens as number) || 0,
+          OutputTokens: (stats.output_tokens as number) || 0,
+          TotalCost: (stats.total_cost as number) || 0,
+          Requests: (stats.request_count as number) || 0,
         });
       }
     });
