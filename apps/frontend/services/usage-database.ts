@@ -96,9 +96,6 @@ class FirestoreUsageDatabase {
             modelUsage[modelName] = {};
           }
           modelUsage[modelName][metric] = value;
-        } else {
-          // eslint-disable-next-line no-console
-          console.warn(`Unexpected model_usage field format: ${key}. Expected format: model_usage.{model}.{metric}`);
         }
       }
     }

@@ -96,11 +96,9 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       const data = await response.json();
       setUsageData(data);
       setLoading(false);
-    } catch (error) {
+    } catch {
       setLoading(false);
       onMessage('Failed to load usage statistics. Please try again.');
-      // eslint-disable-next-line no-console
-      console.error('Usage stats fetch error:', error);
     }
   }, [onMessage]);
 

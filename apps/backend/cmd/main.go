@@ -12,6 +12,7 @@ import (
 
 	"simple-relay/backend/internal/services"
 	"simple-relay/backend/internal/services/provider"
+	"simple-relay/backend/internal/messages"
 	"simple-relay/shared/database"
 
 	"cloud.google.com/go/compute/metadata"
@@ -102,6 +103,9 @@ func main() {
 	// Initialize API key service
 	apiKeyService := services.NewApiKeyService(dbService.Client())
 
+	// Initialize usage checker
+	usageChecker := services.NewUsageChecker(dbService.Client())
+
 	// Create reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(config.OfficialTarget)
 
@@ -112,7 +116,19 @@ func main() {
 
 		// Reject request if no valid API key provided
 		if userId == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, messages.ClientErrorMessages.Unauthorized, http.StatusUnauthorized)
+			return
+		}
+
+		// Check daily cost limit before processing request
+		remainingCost, err := usageChecker.CheckDailyCostLimit(req.Context(), userId)
+		if err != nil {
+			log.Printf("Error checking cost limit for user %s: %v", userId, err)
+			http.Error(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
+			return
+		}
+		if remainingCost <= 0 {
+			http.Error(w, messages.ClientErrorMessages.DailyLimitExceeded, http.StatusTooManyRequests)
 			return
 		}
 
@@ -120,7 +136,7 @@ func main() {
 		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
 		if err != nil {
 			log.Printf("Failed to get valid token for user %s: %v", userId, err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
 			return
 		}
 
