@@ -62,7 +62,18 @@
     "input": "输入",
     "output": "输出",
     "cost": "成本",
-    "points": "积分"
+    "points": "积分",
+    "consumedPoints": "消耗积分",
+    "dailyCostLimit": "每日积分限额",
+    "limit": "限额",
+    "usedToday": "已用",
+    "remaining": "剩余",
+    "status": "状态",
+    "available": "可用",
+    "exceeded": "已超限",
+    "resetsAt": "重置于",
+    "date": "日期",
+    "noRecords": "未找到使用记录"
   },
   "common": {
     "loading": "加载中...",

@@ -62,7 +62,18 @@
     "input": "Input",
     "output": "Output",
     "cost": "Cost",
-    "points": "Points"
+    "points": "Points",
+    "consumedPoints": "Consumed Points",
+    "dailyCostLimit": "Daily Cost Limit",
+    "limit": "Limit",
+    "usedToday": "Used Today",
+    "remaining": "Remaining",
+    "status": "Status",
+    "available": "Available",
+    "exceeded": "Exceeded",
+    "resetsAt": "resets at",
+    "date": "Date",
+    "noRecords": "No usage records found"
   },
   "common": {
     "loading": "Loading...",

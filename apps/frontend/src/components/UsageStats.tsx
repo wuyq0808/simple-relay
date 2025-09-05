@@ -45,6 +45,20 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
   const [costLimitInfo, setCostLimitInfo] = useState<CostLimitInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Format UTC time window for user's locale
+  const getLocalizedTimeWindow = () => {
+    const utc8pm = new Date();
+    utc8pm.setUTCHours(20, 0, 0, 0);
+    
+    const localTime = utc8pm.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+    
+    return `${t('usage.resetsAt', 'resets at')} ${localTime}`;
+  };
+
   const groupUsageByDay = (data: HourlyUsage[]): GroupedUsage[] => {
     const groups: Record<string, GroupedUsage> = {};
     
@@ -149,22 +163,49 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
     <div className="usage-stats-container">
       {/* Daily Cost Limit Section */}
       {costLimitInfo && (
-        <div className="cost-limit-section" style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #e0e0e0', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
-          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.2rem' }}>Daily Cost Limit (8pm-8pm UTC)</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-            <div>
-              <strong>Limit:</strong> ${costLimitInfo.costLimit.toFixed(2)}
-            </div>
-            <div>
-              <strong>Used Today:</strong> ${costLimitInfo.usedToday.toFixed(2)}
-            </div>
-            <div style={{ color: costLimitInfo.remaining >= 0 ? '#2e7d32' : '#d32f2f' }}>
-              <strong>Remaining:</strong> ${costLimitInfo.remaining.toFixed(2)}
-            </div>
-            <div>
-              <strong>Status:</strong> {costLimitInfo.remaining >= 0 ? '✅ Available' : '❌ Limit Exceeded'}
-            </div>
-          </div>
+        <div className="usage-table-container" style={{ marginBottom: '2rem' }}>
+          <table className="usage-table">
+            <thead>
+              <tr>
+                <th colSpan={2}>
+                  {t('usage.dailyCostLimit', 'Daily Cost Limit')} - {getLocalizedTimeWindow()}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="day-row">
+                <td style={{ padding: '12px', verticalAlign: 'middle', width: '100%' }}>
+                  {/* Stats */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#333', marginBottom: '8px' }}>
+                    <span>
+                      {Math.floor(costLimitInfo.costLimit * 100)} {t('usage.points', 'Points')}
+                    </span>
+                    <span style={{ color: costLimitInfo.remaining < 0 ? '#dc3545' : (costLimitInfo.remaining / costLimitInfo.costLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
+                      {costLimitInfo.remaining >= 0 ? `${Math.ceil(costLimitInfo.remaining * 100)} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(costLimitInfo.remaining * 100)}`}
+                    </span>
+                  </div>
+                  
+                  {/* Progress Bar Container */}
+                  <div style={{ 
+                    width: '100%', 
+                    height: '12px', 
+                    backgroundColor: 'white', 
+                    overflow: 'hidden',
+                    border: '0.5px solid #6c757d'
+                  }}>
+                    {/* Progress Bar Fill - shows remaining */}
+                    <div style={{
+                      width: `${Math.max(0, Math.min(100, (costLimitInfo.remaining / costLimitInfo.costLimit) * 100))}%`,
+                      height: '100%',
+                      backgroundColor: costLimitInfo.remaining < 0 ? '#dc3545' : (costLimitInfo.remaining / costLimitInfo.costLimit < 0.2) ? '#dc3545' : '#28a745',
+                      transition: 'width 0.3s ease'
+                    }}>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -179,7 +220,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                 <th>{t('usage.requests')}</th>
                 <th>{t('usage.input')}</th>
                 <th>{t('usage.output')}</th>
-                <th>{t('usage.points')}</th>
+                <th>{t('usage.consumedPoints')}</th>
               </tr>
             </thead>
             <tbody>
@@ -233,7 +274,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
         </div>
       ) : (
         <div className="empty-state">
-          <p>No usage records found</p>
+          <p>{t('usage.noRecords', 'No usage records found')}</p>
         </div>
       )}
     </div>
