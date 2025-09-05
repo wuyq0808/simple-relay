@@ -65,13 +65,11 @@ jobs:
         TF_VAR_cookie_secret: ${{ inputs.deploy_environment == 'production' && secrets.COOKIE_SECRET_PRODUCTION || secrets.COOKIE_SECRET_STAGING }}
       run: terraform plan -input=false -no-color
 
-  docker-build:
-    name: Build and Push Images
+  docker-build-backend:
+    name: Build and Push Backend Image
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     environment: ${{ inputs.deploy_environment }}
-    env:
-      BACKEND_URL: ${{ inputs.deploy_environment == 'production' && 'https://api.aifastlane.net' || 'https://staging-api.aifastlane.net' }}
     
     steps:
     - name: Checkout
@@ -99,11 +97,65 @@ jobs:
         docker build -f apps/backend/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}" ./
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-relay:${{ github.sha }}"
 
+  docker-build-billing:
+    name: Build and Push Billing Image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ inputs.deploy_environment }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Setup Google Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Docker Auth
+      id: docker-auth
+      uses: 'docker/login-action@v3'
+      with:
+        registry: ${{ env.REGION }}-docker.pkg.dev
+        username: _json_key
+        password: ${{ secrets.GCP_SA_KEY }}
+
     - name: Build and Push Billing Container
       working-directory: ./
       run: |-
         docker build -f apps/billing/Dockerfile -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}" ./
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-billing:${{ github.sha }}"
+
+  docker-build-frontend:
+    name: Build and Push Frontend Image
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ inputs.deploy_environment }}
+    env:
+      BACKEND_URL: ${{ inputs.deploy_environment == 'production' && 'https://api.aifastlane.net' || 'https://staging-api.aifastlane.net' }}
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Setup Google Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
+
+    - name: Docker Auth
+      id: docker-auth
+      uses: 'docker/login-action@v3'
+      with:
+        registry: ${{ env.REGION }}-docker.pkg.dev
+        username: _json_key
+        password: ${{ secrets.GCP_SA_KEY }}
 
     - name: Build and Push Frontend Container
       working-directory: ./apps/frontend
@@ -115,7 +167,7 @@ jobs:
     name: Terraform Apply
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: [terraform-plan, docker-build]
+    needs: [terraform-plan, docker-build-backend, docker-build-billing, docker-build-frontend]
     environment: ${{ inputs.deploy_environment }}
     concurrency: 
       group: deploy-${{ inputs.deploy_environment }}
