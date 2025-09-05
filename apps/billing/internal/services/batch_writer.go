@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
+
 // BatchWriter 批量写入器，用于优化数据库写入性能
 type BatchWriter struct {
 	client      *firestore.Client
@@ -20,10 +21,11 @@ type BatchWriter struct {
 	stopChan    chan struct{}
 	wg          sync.WaitGroup
 	collection  string
+	aggregator  *AggregatorService
 }
 
 // NewBatchWriter 创建新的批量写入器
-func NewBatchWriter(client *firestore.Client, maxSize int, flushTime time.Duration) *BatchWriter {
+func NewBatchWriter(client *firestore.Client, maxSize int, flushTime time.Duration, billingService *BillingService) *BatchWriter {
 	return &BatchWriter{
 		client:     client,
 		buffer:     make([]*UsageRecord, 0, maxSize),
@@ -31,6 +33,7 @@ func NewBatchWriter(client *firestore.Client, maxSize int, flushTime time.Durati
 		flushTime:  flushTime,
 		stopChan:   make(chan struct{}),
 		collection: "usage_records",
+		aggregator: NewAggregatorService(client, billingService),
 	}
 }
 
@@ -100,7 +103,7 @@ func (bw *BatchWriter) flushLocked() error {
 	ctx := context.Background()
 	batch := bw.client.Batch()
 	
-	// 批量添加文档
+	// 批量添加使用记录文档
 	for _, record := range bw.buffer {
 		docRef := bw.client.Collection(bw.collection).Doc(record.ID)
 		batch.Set(docRef, record)
@@ -112,10 +115,21 @@ func (bw *BatchWriter) flushLocked() error {
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
 	
-	log.Printf("Successfully flushed %d records to database", len(bw.buffer))
+	// 使用聚合服务更新小时聚合数据
+	// 清空缓冲区前先复制记录
+	recordsCopy := make([]*UsageRecord, len(bw.buffer))
+	copy(recordsCopy, bw.buffer)
 	
 	// 清空缓冲区
 	bw.buffer = bw.buffer[:0]
+	
+	// 执行记录聚合
+	if err := bw.aggregator.AggregateRecords(ctx, recordsCopy); err != nil {
+		log.Printf("Error aggregating records: %v", err)
+		// 聚合失败不阻塞刷新操作，仅记录日志
+	}
+	
+	log.Printf("Successfully flushed %d records to database", len(recordsCopy))
 	
 	return nil
 }
