@@ -25,6 +25,9 @@ const (
 )
 
 // writeError writes an HTTP error response without adding extra newlines
+// We use this custom function instead of http.Error() because http.Error() 
+// automatically appends a newline (\n) to the response body, which causes
+// formatting issues in API clients that display the error messages
 func writeError(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(statusCode)
