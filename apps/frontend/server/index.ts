@@ -327,7 +327,7 @@ app.get('/api/cost-limit', requireAuth, async (req, res) => {
     
     // Get usage data for current window
     const todayUsage = await UsageDatabase.findByUserEmailAndTimeRange(email, windowStart, windowEnd);
-    const usedToday = todayUsage.reduce((sum: number, usage: any) => sum + usage.TotalCost, 0);
+    const usedToday = todayUsage.reduce((sum: number, usage) => sum + usage.TotalCost, 0);
     
     const dailyLimit = costLimit?.costLimit || 0;
     const remaining = dailyLimit - usedToday;

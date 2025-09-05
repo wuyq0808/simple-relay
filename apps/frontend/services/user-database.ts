@@ -47,12 +47,7 @@ class FirestoreUserDatabase {
     });
     
     // Set initial cost limit of 0.05 for new users
-    try {
-      await CostLimitDatabase.setCostLimit(user.email, 0.05);
-    } catch (error) {
-      console.error('Failed to set initial cost limit for new user:', user.email, error);
-      // Don't fail user creation if cost limit setting fails
-    }
+    await CostLimitDatabase.setCostLimit(user.email, 0.05);
     
     return newUser;
   }
