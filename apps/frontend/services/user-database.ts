@@ -33,7 +33,7 @@ class FirestoreUserDatabase {
     const newUser: User = {
       ...user,
       created_at: new Date(),
-      api_enabled: false,
+      api_enabled: true,
     };
     
     // Create user document
