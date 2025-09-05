@@ -55,7 +55,7 @@
   },
   "usage": {
     "title": "Usage Statistics",
-    "description": "Monitor your API usage and token consumption.",
+    "description": "Free accounts have a 5-point daily limit.",
     "hour": "Hour",
     "model": "Model",
     "requests": "Requests",
