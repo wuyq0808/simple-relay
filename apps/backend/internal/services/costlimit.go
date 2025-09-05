@@ -10,9 +10,9 @@ import (
 
 // DailyCostLimit represents a daily cost limit document
 type DailyCostLimit struct {
-	UserID     string    `firestore:"userId" json:"userId"`
-	CostLimit  float64   `firestore:"costLimit" json:"costLimit"`
-	UpdateTime time.Time `firestore:"updateTime" json:"updateTime"`
+	UserID     string  `firestore:"userId" json:"userId"`
+	CostLimit  float64 `firestore:"costLimit" json:"costLimit"`
+	UpdateTime string  `firestore:"updateTime" json:"updateTime"`
 }
 
 // CostLimitService handles daily cost limit operations
