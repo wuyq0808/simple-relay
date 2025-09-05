@@ -53,23 +53,33 @@ class FirestoreUsageDatabase {
       // Format hour as YYYY-MM-DD HH:00
       const hourStr = `${hour.getFullYear()}-${(hour.getMonth() + 1).toString().padStart(2, '0')}-${hour.getDate().toString().padStart(2, '0')} ${hour.getHours().toString().padStart(2, '0')}:00`;
       
-      // Process model usage stats from the aggregate
-      const modelUsage = data.model_usage || {};
+      // Process model usage stats from flattened Firestore fields
+      // Firestore stores: "model_usage.claude-sonnet-4.input_tokens": 123
+      // We need to reconstruct: { "claude-sonnet-4": { input_tokens: 123, ... } }
+      const modelUsage: Record<string, any> = {};
+      
+      // Extract flattened model usage fields
+      for (const [key, value] of Object.entries(data)) {
+        if (key.startsWith('model_usage.')) {
+          const parts = key.split('.');
+          if (parts.length === 3) {
+            const [, modelName, metric] = parts;
+            if (!modelUsage[modelName]) {
+              modelUsage[modelName] = {};
+            }
+            modelUsage[modelName][metric] = value;
+          }
+        }
+      }
       
       for (const [modelName, stats] of Object.entries(modelUsage)) {
-        const modelStats = stats as {
-          input_tokens: number;
-          output_tokens: number;
-          total_cost: number;
-          request_count: number;
-        };
         hourlyUsage.push({
           Hour: hourStr,
           Model: modelName,
-          InputTokens: modelStats.input_tokens || 0,
-          OutputTokens: modelStats.output_tokens || 0,
-          TotalCost: modelStats.total_cost || 0,
-          Requests: modelStats.request_count || 0,
+          InputTokens: stats.input_tokens || 0,
+          OutputTokens: stats.output_tokens || 0,
+          TotalCost: stats.total_cost || 0,
+          Requests: stats.request_count || 0,
         });
       }
     });
