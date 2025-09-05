@@ -57,7 +57,12 @@ class FirestoreUsageDatabase {
       const modelUsage = data.model_usage || {};
       
       for (const [modelName, stats] of Object.entries(modelUsage)) {
-        const modelStats = stats as any;
+        const modelStats = stats as {
+          input_tokens: number;
+          output_tokens: number;
+          total_cost: number;
+          request_count: number;
+        };
         hourlyUsage.push({
           Hour: hourStr,
           Model: modelName,

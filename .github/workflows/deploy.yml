@@ -65,26 +65,17 @@ jobs:
         TF_VAR_cookie_secret: ${{ inputs.deploy_environment == 'production' && secrets.COOKIE_SECRET_PRODUCTION || secrets.COOKIE_SECRET_STAGING }}
       run: terraform plan -input=false -no-color
 
-  terraform-deploy:
-    name: Deploy
+  docker-build:
+    name: Build and Push Images
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: terraform-plan
     environment: ${{ inputs.deploy_environment }}
-    concurrency: 
-      group: deploy-${{ inputs.deploy_environment }}
-      cancel-in-progress: false
     env:
       BACKEND_URL: ${{ inputs.deploy_environment == 'production' && 'https://api.aifastlane.net' || 'https://staging-api.aifastlane.net' }}
     
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ${{ env.TF_VERSION }}
 
     - name: Google Auth
       uses: 'google-github-actions/auth@v2'
@@ -120,6 +111,32 @@ jobs:
         docker build --build-arg VITE_BACKEND_URL="${{ env.BACKEND_URL }}" -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}"
 
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [terraform-plan, docker-build]
+    environment: ${{ inputs.deploy_environment }}
+    concurrency: 
+      group: deploy-${{ inputs.deploy_environment }}
+      cancel-in-progress: false
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Google Auth
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Setup Google Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v2'
 
     - name: Terraform Init
       working-directory: ./terraform
@@ -127,7 +144,6 @@ jobs:
         terraform init \
           -backend-config="bucket=simple-relay-${{ inputs.deploy_environment }}" \
           -backend-config="prefix=terraform-state"
-
 
     - name: Terraform Apply
       working-directory: ./terraform

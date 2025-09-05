@@ -3,6 +3,7 @@ import './styles/base.scss';
 import LoginPanel from './components/LoginPanel';
 import Dashboard from './components/Dashboard';
 import Loading from './components/Loading';
+import { MessageToast } from './components/MessageToast';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -11,12 +12,12 @@ function App() {
   const [showLoadingText, setShowLoadingText] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Auto-dismiss message after 5 seconds
+  // Auto-dismiss message after 3 seconds
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => {
         setMessage('');
-      }, 5000);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [message]);
@@ -57,10 +58,7 @@ function App() {
       <>
         <Dashboard userEmail={userEmail!} onMessage={setMessage} />
         {message && (
-          <div className="message-toast">
-            {message}
-            <button onClick={() => setMessage('')} className="message-close">×</button>
-          </div>
+          <MessageToast message={message} />
         )}
       </>
     );

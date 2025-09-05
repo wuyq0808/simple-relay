@@ -16,7 +16,7 @@ interface UsageStatsProps {
   onMessage: (message: string) => void;
 }
 
-export default function UsageStats({ userEmail, onMessage: _onMessage }: UsageStatsProps) {
+export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
   const { t } = useTranslation();
   const [usageData, setUsageData] = useState<HourlyUsage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +44,10 @@ export default function UsageStats({ userEmail, onMessage: _onMessage }: UsageSt
       const data = await response.json();
       setUsageData(data);
       setLoading(false);
-    } catch {
-      // Keep loading state on error, don't show error message
-      // setLoading stays true to show loading state
+    } catch (error) {
+      setLoading(false);
+      onMessage('Failed to load usage statistics. Please try again.');
+      console.error('Usage stats fetch error:', error);
     }
   };
 
