@@ -17,7 +17,6 @@ jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     environment: ${{ inputs.deploy_environment }}
     
     steps:
@@ -70,6 +69,7 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: terraform-plan
     environment: ${{ inputs.deploy_environment }}
     concurrency: 
       group: deploy-${{ inputs.deploy_environment }}
