@@ -79,6 +79,53 @@ class FirestoreUsageDatabase {
     return hourlyUsage;
   }
 
+  async findByUserEmailAndTimeRange(userEmail: string, startTime: Date, endTime: Date): Promise<HourlyUsage[]> {
+    const collection = this.db.collection(this.collection);
+    const snapshot = await collection
+      .where('user_id', '==', userEmail)
+      .where('hour', '>=', startTime)
+      .where('hour', '<', endTime)
+      .orderBy('hour', 'desc')
+      .get();
+    
+    if (snapshot.empty) {
+      return [];
+    }
+
+    const hourlyUsage: HourlyUsage[] = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const hour = data.hour?.toDate() || new Date(data.hour);
+      
+      // Format hour as YYYY-MM-DD HH:00
+      const hourStr = `${hour.getFullYear()}-${(hour.getMonth() + 1).toString().padStart(2, '0')}-${hour.getDate().toString().padStart(2, '0')} ${hour.getHours().toString().padStart(2, '0')}:00`;
+      
+      // Process model usage stats from flattened Firestore fields
+      const modelUsage = this.extractFlattenedModelUsage(data);
+      
+      for (const [modelName, stats] of Object.entries(modelUsage)) {
+        hourlyUsage.push({
+          Hour: hourStr,
+          Model: modelName,
+          InputTokens: (stats.input_tokens as number) || 0,
+          OutputTokens: (stats.output_tokens as number) || 0,
+          TotalCost: (stats.total_cost as number) || 0,
+          Requests: (stats.request_count as number) || 0,
+        });
+      }
+    });
+
+    // Sort by hour desc, then by model asc
+    hourlyUsage.sort((a, b) => {
+      if (a.Hour !== b.Hour) {
+        return b.Hour.localeCompare(a.Hour); // Hour desc
+      }
+      return a.Model.localeCompare(b.Model); // Model asc
+    });
+
+    return hourlyUsage;
+  }
+
   /**
    * Extract flattened model usage fields from Firestore document data.
    * Converts "model_usage.claude-sonnet-4.input_tokens" format

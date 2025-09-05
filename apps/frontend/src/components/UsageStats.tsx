@@ -25,6 +25,15 @@ interface GroupedUsage {
   totalCost: number;
 }
 
+interface CostLimitInfo {
+  costLimit: number;
+  usedToday: number;
+  remaining: number;
+  updateTime: string | null;
+  windowStart: string;
+  windowEnd: string;
+}
+
 interface UsageStatsProps {
   userEmail: string;
   onMessage: (message: string) => void;
@@ -33,6 +42,7 @@ interface UsageStatsProps {
 export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
   const { t } = useTranslation();
   const [usageData, setUsageData] = useState<HourlyUsage[]>([]);
+  const [costLimitInfo, setCostLimitInfo] = useState<CostLimitInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   const groupUsageByDay = (data: HourlyUsage[]): GroupedUsage[] => {
@@ -77,11 +87,9 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
     return Object.values(groups).sort((a, b) => b.day.localeCompare(a.day));
   };
 
-  const fetchUsageStats = useCallback(async () => {
+  const fetchCostLimitInfo = useCallback(async () => {
     try {
-      setLoading(true);
-      
-      const response = await fetch('/api/usage-stats', {
+      const response = await fetch('/api/cost-limit', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -89,18 +97,43 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCostLimitInfo(data);
+      }
+    } catch {
+      // Cost limit info is optional, don't show error if it fails
+    }
+  }, []);
+
+  const fetchUsageStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch both usage stats and cost limit info in parallel
+      const [usageResponse] = await Promise.all([
+        fetch('/api/usage-stats', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }),
+        fetchCostLimitInfo()
+      ]);
+
+      if (!usageResponse.ok) {
+        throw new Error(`HTTP error! status: ${usageResponse.status}`);
       }
 
-      const data = await response.json();
+      const data = await usageResponse.json();
       setUsageData(data);
       setLoading(false);
     } catch {
       setLoading(false);
       onMessage('Failed to load usage statistics. Please try again.');
     }
-  }, [onMessage]);
+  }, [onMessage, fetchCostLimitInfo]);
 
   useEffect(() => {
     fetchUsageStats();
@@ -114,6 +147,28 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
 
   return (
     <div className="usage-stats-container">
+      {/* Daily Cost Limit Section */}
+      {costLimitInfo && (
+        <div className="cost-limit-section" style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #e0e0e0', borderRadius: '8px', backgroundColor: '#f9f9f9' }}>
+          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.2rem' }}>Daily Cost Limit (8pm-8pm UTC)</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+            <div>
+              <strong>Limit:</strong> ${costLimitInfo.costLimit.toFixed(2)}
+            </div>
+            <div>
+              <strong>Used Today:</strong> ${costLimitInfo.usedToday.toFixed(2)}
+            </div>
+            <div style={{ color: costLimitInfo.remaining >= 0 ? '#2e7d32' : '#d32f2f' }}>
+              <strong>Remaining:</strong> ${costLimitInfo.remaining.toFixed(2)}
+            </div>
+            <div>
+              <strong>Status:</strong> {costLimitInfo.remaining >= 0 ? '✅ Available' : '❌ Limit Exceeded'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Usage Statistics Section */}
       {usageData.length > 0 ? (
         <div className="usage-table-container">
           <table className="usage-table">
