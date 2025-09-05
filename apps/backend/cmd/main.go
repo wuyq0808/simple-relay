@@ -22,10 +22,14 @@ import (
 
 const (
 	oauthBetaFlag = "oauth-2025-04-20"
-	// DefaultUserID is a temporary hardcoded user ID that will be replaced
-	// with actual user identification from subscription service
-	DefaultUserID = "hardcoded-user-123"
 )
+
+// writeError writes an HTTP error response without adding extra newlines
+func writeError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(statusCode)
+	w.Write([]byte(message))
+}
 
 // getIdentityToken retrieves an identity token for service-to-service authentication
 func getIdentityToken(audience string) (string, error) {
@@ -116,7 +120,7 @@ func main() {
 
 		// Reject request if no valid API key provided
 		if userId == "" {
-			http.Error(w, messages.ClientErrorMessages.Unauthorized, http.StatusUnauthorized)
+			writeError(w, messages.ClientErrorMessages.Unauthorized, http.StatusUnauthorized)
 			return
 		}
 
@@ -124,11 +128,11 @@ func main() {
 		remainingCost, err := usageChecker.CheckDailyCostLimit(req.Context(), userId)
 		if err != nil {
 			log.Printf("Error checking cost limit for user %s: %v", userId, err)
-			http.Error(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
+			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
 			return
 		}
 		if remainingCost <= 0 {
-			http.Error(w, messages.ClientErrorMessages.DailyLimitExceeded, http.StatusTooManyRequests)
+			writeError(w, messages.ClientErrorMessages.DailyLimitExceeded, http.StatusTooManyRequests)
 			return
 		}
 
@@ -136,7 +140,7 @@ func main() {
 		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
 		if err != nil {
 			log.Printf("Failed to get valid token for user %s: %v", userId, err)
-			http.Error(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
+			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
 			return
 		}
 
