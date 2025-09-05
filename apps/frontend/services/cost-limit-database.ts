@@ -40,6 +40,23 @@ class FirestoreCostLimitDatabase {
     };
   }
 
+  async setCostLimit(userId: string, costLimit: number): Promise<DailyCostLimit> {
+    const newLimit: DailyCostLimit = {
+      userId,
+      costLimit,
+      updateTime: new Date(),
+    };
+    
+    const docRef = this.db.collection(this.collection).doc(userId);
+    await docRef.set({
+      userId: newLimit.userId,
+      costLimit: newLimit.costLimit,
+      updateTime: newLimit.updateTime.toISOString(),
+    });
+    
+    return newLimit;
+  }
+
 }
 
 // Export singleton instance
