@@ -61,7 +61,8 @@
     "requests": "Requests",
     "input": "Input",
     "output": "Output",
-    "cost": "Cost"
+    "cost": "Cost",
+    "points": "Points"
   },
   "common": {
     "loading": "Loading...",

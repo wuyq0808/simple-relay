@@ -11,6 +11,20 @@ interface HourlyUsage {
   Requests: number;
 }
 
+interface GroupedUsage {
+  day: string;
+  models: Record<string, {
+    requests: number;
+    inputTokens: number;
+    outputTokens: number;
+    totalCost: number;
+  }>;
+  totalRequests: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number;
+}
+
 interface UsageStatsProps {
   userEmail: string;
   onMessage: (message: string) => void;
@@ -24,6 +38,48 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
   useEffect(() => {
     fetchUsageStats();
   }, [userEmail]);
+
+  const groupUsageByDay = (data: HourlyUsage[]): GroupedUsage[] => {
+    const groups: Record<string, GroupedUsage> = {};
+    
+    data.forEach(usage => {
+      // Extract date from hour string (YYYY-MM-DD HH:mm)
+      const day = usage.Hour.split(' ')[0];
+      
+      if (!groups[day]) {
+        groups[day] = {
+          day: day,
+          models: {},
+          totalRequests: 0,
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+          totalCost: 0,
+        };
+      }
+      
+      // Aggregate by model within the day
+      if (!groups[day].models[usage.Model]) {
+        groups[day].models[usage.Model] = {
+          requests: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          totalCost: 0,
+        };
+      }
+      
+      groups[day].models[usage.Model].requests += usage.Requests;
+      groups[day].models[usage.Model].inputTokens += usage.InputTokens;
+      groups[day].models[usage.Model].outputTokens += usage.OutputTokens;
+      groups[day].models[usage.Model].totalCost += usage.TotalCost;
+      
+      groups[day].totalRequests += usage.Requests;
+      groups[day].totalInputTokens += usage.InputTokens;
+      groups[day].totalOutputTokens += usage.OutputTokens;
+      groups[day].totalCost += usage.TotalCost;
+    });
+    
+    return Object.values(groups).sort((a, b) => b.day.localeCompare(a.day));
+  };
 
   const fetchUsageStats = async () => {
     try {
@@ -55,6 +111,8 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
     return <Loading />;
   }
 
+  const groupedData = groupUsageByDay(usageData);
+
   return (
     <div className="usage-stats-container">
       {usageData.length > 0 ? (
@@ -62,25 +120,58 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
           <table className="usage-table">
             <thead>
               <tr>
-                <th>{t('usage.hour')}</th>
+                <th>Date</th>
                 <th>{t('usage.model')}</th>
                 <th>{t('usage.requests')}</th>
                 <th>{t('usage.input')}</th>
                 <th>{t('usage.output')}</th>
-                <th>{t('usage.cost')}</th>
+                <th>{t('usage.points')}</th>
               </tr>
             </thead>
             <tbody>
-              {usageData.map((usage, index) => (
-                <tr key={index}>
-                  <td>{usage.Hour}</td>
-                  <td>
-                    <code className="model-name">{usage.Model}</code>
+              {groupedData.map((group) => (
+                <tr key={group.day} className="day-row">
+                  <td className="day-cell">{group.day}</td>
+                  <td className="models-cell">
+                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                      <span key={modelName}>
+                        <code className="model-name">{modelName}</code>
+                        {index < Object.entries(group.models).length - 1 && <br />}
+                      </span>
+                    ))}
                   </td>
-                  <td>{usage.Requests.toLocaleString()}</td>
-                  <td>{usage.InputTokens.toLocaleString()}</td>
-                  <td>{usage.OutputTokens.toLocaleString()}</td>
-                  <td>${usage.TotalCost.toFixed(6)}</td>
+                  <td className="stats-cell">
+                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                      <span key={modelName}>
+                        {modelStats.requests.toLocaleString()}
+                        {index < Object.entries(group.models).length - 1 && <br />}
+                      </span>
+                    ))}
+                  </td>
+                  <td className="stats-cell">
+                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                      <span key={modelName}>
+                        {modelStats.inputTokens.toLocaleString()}
+                        {index < Object.entries(group.models).length - 1 && <br />}
+                      </span>
+                    ))}
+                  </td>
+                  <td className="stats-cell">
+                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                      <span key={modelName}>
+                        {modelStats.outputTokens.toLocaleString()}
+                        {index < Object.entries(group.models).length - 1 && <br />}
+                      </span>
+                    ))}
+                  </td>
+                  <td className="stats-cell">
+                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                      <span key={modelName}>
+                        {Math.floor(modelStats.totalCost * 100)}
+                        {index < Object.entries(group.models).length - 1 && <br />}
+                      </span>
+                    ))}
+                  </td>
                 </tr>
               ))}
             </tbody>

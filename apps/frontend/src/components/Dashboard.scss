@@ -93,12 +93,12 @@
   }
 
   &.active {
-    background-color: #333;
-    color: white;
-    font-weight: 500;
+    background-color: white;
+    color: #333;
+    font-weight: 600;
 
     &:hover {
-      background-color: #444;
+      background-color: white;
     }
   }
 }
@@ -210,44 +210,79 @@
     color: #333;
     border-bottom: 2px solid #e9ecef;
     white-space: nowrap;
+    
+    &:nth-child(3),
+    &:nth-child(4),
+    &:nth-child(5),
+    &:nth-child(6) {
+      text-align: right;
+    }
   }
 
   td {
-    padding: 12px;
+    padding: 8px 12px;
     border-bottom: 1px solid #f0f0f0;
     vertical-align: middle;
-  }
-
-  tr:hover {
-    background-color: #f8f9fa;
-  }
-
-  .model-name {
-    background-color: #f8f9fa;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-family: Monaco, 'Courier New', monospace;
-    font-size: 12px;
-    color: #666;
-  }
-
-  .status-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-
-    &.success {
-      background-color: #d4edda;
-      color: #155724;
+    
+    &:nth-child(3),
+    &:nth-child(4),
+    &:nth-child(5),
+    &:nth-child(6) {
+      text-align: right;
     }
+  }
 
-    &.error {
-      background-color: #f8d7da;
-      color: #721c24;
+
+  .day-row {
+    border-top: 2px solid #dee2e6;
+    
+    td {
+      padding: 8px 12px;
+      vertical-align: top;
+      border-bottom: none;
     }
+    
+    .day-cell {
+      font-weight: 600;
+      color: #495057;
+      padding: 12px;
+    }
+    
+    .models-cell, .stats-cell {
+      line-height: 1.8;
+    }
+    
+    .stats-cell {
+      text-align: right;
+    }
+  }
+}
+
+.model-name {
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: Monaco, 'Courier New', monospace;
+  font-size: 12px;
+  color: #666;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+
+  &.success {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  &.error {
+    background-color: #f8d7da;
+    color: #721c24;
   }
 }
 

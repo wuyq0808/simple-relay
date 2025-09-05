@@ -61,7 +61,8 @@
     "requests": "请求数",
     "input": "输入",
     "output": "输出",
-    "cost": "成本"
+    "cost": "成本",
+    "points": "积分"
   },
   "common": {
     "loading": "加载中...",
