@@ -16,6 +16,7 @@ simple-relay-468808
 - `api_key_bindings` - API key to user email bindings
 - `oauth_tokens` - OAuth token data
 - `usage_records` - Billing usage records  
+- `hourly_aggregates` - Hourly aggregated billing data
 - `user_token_bindings` - User token binding system
 - `app_config` - Application configuration settings
 
@@ -41,6 +42,10 @@ simple-relay-468808
 # List users with pending access requests
 ./scripts/grant-api-access.sh -l -p simple-relay-468808 -d simple-relay-db-staging
 ./scripts/grant-api-access.sh -l -p simple-relay-468808 -d simple-relay-db-production
+
+# Verify billing consistency between usage_records and hourly_aggregates
+./scripts/verify-billing-consistency.sh -p simple-relay-468808 -d simple-relay-db-staging
+./scripts/verify-billing-consistency.sh -p simple-relay-468808 -d simple-relay-db-staging -u USER_EMAIL -h 2025-09-05T01 -v
 ```
 
 ## Development Server Rules
