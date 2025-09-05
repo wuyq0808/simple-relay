@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loading from './Loading';
 
@@ -34,10 +34,6 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
   const { t } = useTranslation();
   const [usageData, setUsageData] = useState<HourlyUsage[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchUsageStats();
-  }, [userEmail]);
 
   const groupUsageByDay = (data: HourlyUsage[]): GroupedUsage[] => {
     const groups: Record<string, GroupedUsage> = {};
@@ -81,7 +77,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
     return Object.values(groups).sort((a, b) => b.day.localeCompare(a.day));
   };
 
-  const fetchUsageStats = async () => {
+  const fetchUsageStats = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -103,9 +99,14 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
     } catch (error) {
       setLoading(false);
       onMessage('Failed to load usage statistics. Please try again.');
+      // eslint-disable-next-line no-console
       console.error('Usage stats fetch error:', error);
     }
-  };
+  }, [onMessage]);
+
+  useEffect(() => {
+    fetchUsageStats();
+  }, [userEmail, fetchUsageStats]);
 
   if (loading) {
     return <Loading />;
@@ -133,7 +134,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                 <tr key={group.day} className="day-row">
                   <td className="day-cell">{group.day}</td>
                   <td className="models-cell">
-                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                    {Object.entries(group.models).map(([modelName, _modelStats], index) => (
                       <span key={modelName}>
                         <code className="model-name">{modelName}</code>
                         {index < Object.entries(group.models).length - 1 && <br />}

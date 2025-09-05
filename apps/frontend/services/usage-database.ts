@@ -84,8 +84,8 @@ class FirestoreUsageDatabase {
    * Converts "model_usage.claude-sonnet-4.input_tokens" format
    * to nested object { "claude-sonnet-4": { input_tokens: value } }
    */
-  private extractFlattenedModelUsage(data: any): Record<string, any> {
-    const modelUsage: Record<string, any> = {};
+  private extractFlattenedModelUsage(data: Record<string, unknown>): Record<string, Record<string, unknown>> {
+    const modelUsage: Record<string, Record<string, unknown>> = {};
     
     for (const [key, value] of Object.entries(data)) {
       if (key.startsWith('model_usage.')) {
@@ -97,6 +97,7 @@ class FirestoreUsageDatabase {
           }
           modelUsage[modelName][metric] = value;
         } else {
+          // eslint-disable-next-line no-console
           console.warn(`Unexpected model_usage field format: ${key}. Expected format: model_usage.{model}.{metric}`);
         }
       }
