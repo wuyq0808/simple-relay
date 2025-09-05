@@ -97,7 +97,7 @@ func NewBillingService(dbService *database.Service, enabled bool) *BillingServic
 	
 	// 初始化批量写入器
 	if enabled && dbService != nil {
-		service.batchWriter = NewBatchWriter(dbService.Client(), 100, 5*time.Second)
+		service.batchWriter = NewBatchWriter(dbService.Client(), 100, 5*time.Second, service)
 		service.batchWriter.Start()
 	}
 	
@@ -246,6 +246,7 @@ func (bs *BillingService) GetDailyAggregate(ctx context.Context, userID string, 
 
 	return aggregate, nil
 }
+
 
 // Close 关闭计费服务
 func (bs *BillingService) Close() error {

@@ -9,17 +9,15 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
-// AggregatorService 数据聚合服务
+// AggregatorService 数据聚合服务 - 现在由BatchWriter调用而非定时运行
 type AggregatorService struct {
 	db              *firestore.Client
 	billingService  *BillingService
-	aggregateInterval time.Duration
-	stopChan        chan struct{}
 }
 
-// DailyAggregate 每日聚合数据
-type DailyAggregate struct {
-	Date             time.Time          `firestore:"date" json:"date"`
+// HourlyAggregate 每小时聚合数据
+type HourlyAggregate struct {
+	Hour             time.Time          `firestore:"hour" json:"hour"`           // 精确到小时: 2025-09-05T14:00:00Z
 	UserID           string             `firestore:"user_id" json:"user_id"`
 	TotalRequests    int                `firestore:"total_requests" json:"total_requests"`
 	TotalInputTokens int                `firestore:"total_input_tokens" json:"total_input_tokens"`
@@ -38,211 +36,23 @@ type ModelStats struct {
 	TotalCost     float64 `firestore:"total_cost" json:"total_cost"`
 }
 
-// NewAggregatorService 创建新的聚合服务
-func NewAggregatorService(db *firestore.Client, billingService *BillingService, interval time.Duration) *AggregatorService {
-	return &AggregatorService{
-		db:                db,
-		billingService:    billingService,
-		aggregateInterval: interval,
-		stopChan:          make(chan struct{}),
-	}
+// MemoryAggregate 内存聚合数据 - 用于在内存中累加再原子更新到Firestore
+type MemoryAggregate struct {
+	UserID            string                      `json:"user_id"`
+	Hour              string                      `json:"hour"` // YYYY-MM-DDTHH format (2025-09-05T14)
+	TotalRequests     int                         `json:"total_requests"`
+	TotalInputTokens  int                         `json:"total_input_tokens"`
+	TotalOutputTokens int                         `json:"total_output_tokens"`
+	TotalCost         float64                     `json:"total_cost"`
+	ModelUsage        map[string]MemoryModelStats `json:"model_usage"`
 }
 
-// Start 启动聚合服务
-func (as *AggregatorService) Start() {
-	go as.run()
-	log.Println("Aggregator service started")
-}
-
-// Stop 停止聚合服务
-func (as *AggregatorService) Stop() {
-	close(as.stopChan)
-	log.Println("Aggregator service stopped")
-}
-
-// run 运行聚合服务主循环
-func (as *AggregatorService) run() {
-	ticker := time.NewTicker(as.aggregateInterval)
-	defer ticker.Stop()
-	
-	for {
-		select {
-		case <-ticker.C:
-			if err := as.performAggregation(); err != nil {
-				log.Printf("Error performing aggregation: %v", err)
-			}
-		case <-as.stopChan:
-			return
-		}
-	}
-}
-
-// performAggregation 执行聚合操作
-func (as *AggregatorService) performAggregation() error {
-	ctx := context.Background()
-	now := time.Now()
-	
-	// 聚合前一小时的数据
-	endTime := now.Truncate(time.Hour)
-	startTime := endTime.Add(-time.Hour)
-	
-	log.Printf("Starting aggregation for period: %s to %s", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	
-	// 获取所有需要聚合的用户
-	users, err := as.getActiveUsers(ctx, startTime, endTime)
-	if err != nil {
-		return fmt.Errorf("failed to get active users: %w", err)
-	}
-	
-	// 为每个用户执行聚合
-	for _, userID := range users {
-		if err := as.aggregateUserData(ctx, userID, startTime, endTime); err != nil {
-			log.Printf("Error aggregating data for user %s: %v", userID, err)
-			continue
-		}
-	}
-	
-	log.Printf("Aggregation completed for %d users", len(users))
-	return nil
-}
-
-// getActiveUsers 获取在指定时间段内有活动的用户列表
-func (as *AggregatorService) getActiveUsers(ctx context.Context, startTime, endTime time.Time) ([]string, error) {
-	query := as.db.Collection("usage_records").
-		Where("timestamp", ">=", startTime).
-		Where("timestamp", "<", endTime).
-		Select("user_id")
-	
-	docs, err := query.Documents(ctx).GetAll()
-	if err != nil {
-		return nil, err
-	}
-	
-	// 使用map去重
-	userMap := make(map[string]bool)
-	for _, doc := range docs {
-		userID, ok := doc.Data()["user_id"].(string)
-		if ok && userID != "" {
-			userMap[userID] = true
-		}
-	}
-	
-	// 转换为slice
-	users := make([]string, 0, len(userMap))
-	for userID := range userMap {
-		users = append(users, userID)
-	}
-	
-	return users, nil
-}
-
-// aggregateUserData 聚合单个用户的数据
-func (as *AggregatorService) aggregateUserData(ctx context.Context, userID string, startTime, endTime time.Time) error {
-	// 获取用户在该时间段的所有记录
-	records, err := as.billingService.GetUserUsage(ctx, userID, startTime, endTime)
-	if err != nil {
-		return fmt.Errorf("failed to get user usage: %w", err)
-	}
-	
-	if len(records) == 0 {
-		return nil // 没有数据需要聚合
-	}
-	
-	// 创建聚合数据
-	aggregate := &DailyAggregate{
-		Date:             startTime.Truncate(24 * time.Hour),
-		UserID:           userID,
-		TotalRequests:    len(records),
-		TotalInputTokens: 0,
-		TotalOutputTokens: 0,
-		TotalCost:        0,
-		ModelUsage:       make(map[string]ModelStats),
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-	}
-	
-	// 计算聚合数据
-	for _, record := range records {
-		aggregate.TotalInputTokens += record.InputTokens
-		aggregate.TotalOutputTokens += record.OutputTokens
-		aggregate.TotalCost += record.TotalCost
-		
-		// 更新模型统计
-		stats := aggregate.ModelUsage[record.Model]
-		stats.RequestCount++
-		stats.InputTokens += record.InputTokens
-		stats.OutputTokens += record.OutputTokens
-		stats.TotalCost += record.TotalCost
-		aggregate.ModelUsage[record.Model] = stats
-	}
-	
-	// 保存到数据库
-	docID := fmt.Sprintf("%s_%s", userID, startTime.Format("2006-01-02"))
-	docRef := as.db.Collection("daily_aggregates").Doc(docID)
-	
-	_, err = docRef.Set(ctx, aggregate)
-	if err != nil {
-		return fmt.Errorf("failed to save aggregate: %w", err)
-	}
-	
-	log.Printf("Saved aggregate for user %s: %d requests, $%.4f total cost", 
-		userID, aggregate.TotalRequests, aggregate.TotalCost)
-	
-	return nil
-}
-
-// GetUserMonthlyUsage 获取用户月度使用统计
-func (as *AggregatorService) GetUserMonthlyUsage(ctx context.Context, userID string, year int, month time.Month) (*MonthlyUsage, error) {
-	startOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0)
-	
-	query := as.db.Collection("daily_aggregates").
-		Where("user_id", "==", userID).
-		Where("date", ">=", startOfMonth).
-		Where("date", "<", endOfMonth)
-	
-	docs, err := query.Documents(ctx).GetAll()
-	if err != nil {
-		return nil, fmt.Errorf("failed to query daily aggregates: %w", err)
-	}
-	
-	monthly := &MonthlyUsage{
-		UserID:           userID,
-		Year:             year,
-		Month:            int(month),
-		TotalRequests:    0,
-		TotalInputTokens: 0,
-		TotalOutputTokens: 0,
-		TotalCost:        0,
-		DailyUsage:       make([]DailyAggregate, 0, len(docs)),
-		ModelUsage:       make(map[string]ModelStats),
-	}
-	
-	for _, doc := range docs {
-		var daily DailyAggregate
-		if err := doc.DataTo(&daily); err != nil {
-			log.Printf("Error parsing daily aggregate: %v", err)
-			continue
-		}
-		
-		monthly.TotalRequests += daily.TotalRequests
-		monthly.TotalInputTokens += daily.TotalInputTokens
-		monthly.TotalOutputTokens += daily.TotalOutputTokens
-		monthly.TotalCost += daily.TotalCost
-		monthly.DailyUsage = append(monthly.DailyUsage, daily)
-		
-		// 合并模型统计
-		for model, stats := range daily.ModelUsage {
-			monthlyStats := monthly.ModelUsage[model]
-			monthlyStats.RequestCount += stats.RequestCount
-			monthlyStats.InputTokens += stats.InputTokens
-			monthlyStats.OutputTokens += stats.OutputTokens
-			monthlyStats.TotalCost += stats.TotalCost
-			monthly.ModelUsage[model] = monthlyStats
-		}
-	}
-	
-	return monthly, nil
+// MemoryModelStats 内存中的模型使用统计
+type MemoryModelStats struct {
+	RequestCount  int     `json:"request_count"`
+	InputTokens   int     `json:"input_tokens"`
+	OutputTokens  int     `json:"output_tokens"`
+	TotalCost     float64 `json:"total_cost"`
 }
 
 // MonthlyUsage 月度使用统计
@@ -254,6 +64,168 @@ type MonthlyUsage struct {
 	TotalInputTokens  int                   `json:"total_input_tokens"`
 	TotalOutputTokens int                   `json:"total_output_tokens"`
 	TotalCost         float64               `json:"total_cost"`
-	DailyUsage        []DailyAggregate      `json:"daily_usage"`
+	HourlyUsage       []HourlyAggregate     `json:"hourly_usage"`
 	ModelUsage        map[string]ModelStats `json:"model_usage"`
+}
+
+// NewAggregatorService 创建新的聚合服务
+func NewAggregatorService(db *firestore.Client, billingService *BillingService) *AggregatorService {
+	return &AggregatorService{
+		db:                db,
+		billingService:    billingService,
+	}
+}
+
+// AggregateRecords 对传入的usage records进行聚合并更新daily_aggregates using atomic increments
+func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*UsageRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
+
+	// Group records by user and hour for aggregation
+	aggregateMap := make(map[string]*MemoryAggregate)
+	
+	for _, record := range records {
+		// Group by hour: 2025-09-05T14 format
+		hourStr := record.Timestamp.Format("2006-01-02T15")
+		key := fmt.Sprintf("%s_%s", record.UserID, hourStr)
+		
+		aggregate, exists := aggregateMap[key]
+		if !exists {
+			aggregate = &MemoryAggregate{
+				UserID:            record.UserID,
+				Hour:              hourStr,
+				TotalRequests:     0,
+				TotalInputTokens:  0,
+				TotalOutputTokens: 0,
+				TotalCost:         0.0,
+				ModelUsage:        make(map[string]MemoryModelStats),
+			}
+			aggregateMap[key] = aggregate
+		}
+		
+		// Accumulate data in memory
+		aggregate.TotalRequests++
+		aggregate.TotalInputTokens += record.InputTokens
+		aggregate.TotalOutputTokens += record.OutputTokens
+		aggregate.TotalCost += record.TotalCost
+		
+		// Update model-specific stats in memory
+		modelStats := aggregate.ModelUsage[record.Model]
+		modelStats.RequestCount++
+		modelStats.InputTokens += record.InputTokens
+		modelStats.OutputTokens += record.OutputTokens
+		modelStats.TotalCost += record.TotalCost
+		aggregate.ModelUsage[record.Model] = modelStats
+	}
+
+	// Apply atomic increments to Firestore for each hourly aggregate
+	for key, memAggregate := range aggregateMap {
+		if err := as.atomicIncrementHourlyAggregate(ctx, key, memAggregate); err != nil {
+			log.Printf("Error atomically updating hourly aggregate %s: %v", key, err)
+			continue
+		}
+	}
+
+	log.Printf("Successfully aggregated %d records into %d hourly aggregates using atomic increments", len(records), len(aggregateMap))
+	return nil
+}
+
+// atomicIncrementHourlyAggregate 使用原子增量更新hourly aggregate文档 (upsert模式)
+func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context, docID string, memAggregate *MemoryAggregate) error {
+	docRef := as.db.Collection("hourly_aggregates").Doc(docID)
+	
+	// Build upsert data with atomic increments and metadata
+	upsertData := map[string]interface{}{
+		// Atomic increment fields
+		"total_requests":     firestore.Increment(memAggregate.TotalRequests),
+		"total_input_tokens": firestore.Increment(memAggregate.TotalInputTokens),
+		"total_output_tokens": firestore.Increment(memAggregate.TotalOutputTokens),
+		"total_cost":         firestore.Increment(memAggregate.TotalCost),
+		
+		// Metadata fields (only set on create, not updated on merge)
+		"user_id":    memAggregate.UserID,
+		"updated_at": time.Now(),
+	}
+	
+	// Parse and set hour field for new documents
+	if hour, err := time.Parse("2006-01-02T15", memAggregate.Hour); err == nil {
+		upsertData["hour"] = hour
+		upsertData["created_at"] = time.Now()
+	}
+	
+	// Add model-specific atomic increments
+	for model, stats := range memAggregate.ModelUsage {
+		modelPath := fmt.Sprintf("model_usage.%s", model)
+		upsertData[fmt.Sprintf("%s.request_count", modelPath)] = firestore.Increment(stats.RequestCount)
+		upsertData[fmt.Sprintf("%s.input_tokens", modelPath)] = firestore.Increment(stats.InputTokens)
+		upsertData[fmt.Sprintf("%s.output_tokens", modelPath)] = firestore.Increment(stats.OutputTokens)
+		upsertData[fmt.Sprintf("%s.total_cost", modelPath)] = firestore.Increment(stats.TotalCost)
+	}
+	
+	// Upsert with MergeAll - creates document if not exists, merges if exists
+	_, err := docRef.Set(ctx, upsertData, firestore.MergeAll)
+	if err != nil {
+		return fmt.Errorf("failed to atomically upsert hourly aggregate: %w", err)
+	}
+	
+	log.Printf("Atomically upserted hourly aggregate %s: +%d requests, +%d input tokens, +%d output tokens, +$%.6f cost", 
+		docID, memAggregate.TotalRequests, memAggregate.TotalInputTokens, memAggregate.TotalOutputTokens, memAggregate.TotalCost)
+	
+	return nil
+}
+
+
+// GetUserMonthlyUsage 获取用户月度使用统计
+func (as *AggregatorService) GetUserMonthlyUsage(ctx context.Context, userID string, year int, month time.Month) (*MonthlyUsage, error) {
+	startOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0)
+	
+	query := as.db.Collection("hourly_aggregates").
+		Where("user_id", "==", userID).
+		Where("hour", ">=", startOfMonth).
+		Where("hour", "<", endOfMonth)
+	
+	docs, err := query.Documents(ctx).GetAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query hourly aggregates: %w", err)
+	}
+	
+	monthly := &MonthlyUsage{
+		UserID:           userID,
+		Year:             year,
+		Month:            int(month),
+		TotalRequests:    0,
+		TotalInputTokens: 0,
+		TotalOutputTokens: 0,
+		TotalCost:        0,
+		HourlyUsage:      make([]HourlyAggregate, 0, len(docs)),
+		ModelUsage:       make(map[string]ModelStats),
+	}
+	
+	for _, doc := range docs {
+		var hourly HourlyAggregate
+		if err := doc.DataTo(&hourly); err != nil {
+			log.Printf("Error parsing hourly aggregate: %v", err)
+			continue
+		}
+		
+		monthly.TotalRequests += hourly.TotalRequests
+		monthly.TotalInputTokens += hourly.TotalInputTokens
+		monthly.TotalOutputTokens += hourly.TotalOutputTokens
+		monthly.TotalCost += hourly.TotalCost
+		monthly.HourlyUsage = append(monthly.HourlyUsage, hourly)
+		
+		// 合并模型统计
+		for model, stats := range hourly.ModelUsage {
+			monthlyStats := monthly.ModelUsage[model]
+			monthlyStats.RequestCount += stats.RequestCount
+			monthlyStats.InputTokens += stats.InputTokens
+			monthlyStats.OutputTokens += stats.OutputTokens
+			monthlyStats.TotalCost += stats.TotalCost
+			monthly.ModelUsage[model] = monthlyStats
+		}
+	}
+	
+	return monthly, nil
 }

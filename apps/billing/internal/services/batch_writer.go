@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
+
 // BatchWriter 批量写入器，用于优化数据库写入性能
 type BatchWriter struct {
 	client      *firestore.Client
@@ -20,10 +21,11 @@ type BatchWriter struct {
 	stopChan    chan struct{}
 	wg          sync.WaitGroup
 	collection  string
+	aggregator  *AggregatorService
 }
 
 // NewBatchWriter 创建新的批量写入器
-func NewBatchWriter(client *firestore.Client, maxSize int, flushTime time.Duration) *BatchWriter {
+func NewBatchWriter(client *firestore.Client, maxSize int, flushTime time.Duration, billingService *BillingService) *BatchWriter {
 	return &BatchWriter{
 		client:     client,
 		buffer:     make([]*UsageRecord, 0, maxSize),
@@ -31,6 +33,7 @@ func NewBatchWriter(client *firestore.Client, maxSize int, flushTime time.Durati
 		flushTime:  flushTime,
 		stopChan:   make(chan struct{}),
 		collection: "usage_records",
+		aggregator: NewAggregatorService(client, billingService),
 	}
 }
 
@@ -100,22 +103,33 @@ func (bw *BatchWriter) flushLocked() error {
 	ctx := context.Background()
 	batch := bw.client.Batch()
 	
-	// 批量添加文档
+	// 1. Write individual usage records to batch
 	for _, record := range bw.buffer {
 		docRef := bw.client.Collection(bw.collection).Doc(record.ID)
 		batch.Set(docRef, record)
 	}
 	
-	// 执行批量写入
+	// 2. Commit the batch
 	_, err := batch.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
 	
-	log.Printf("Successfully flushed %d records to database", len(bw.buffer))
+	// 3. Update daily aggregates using AggregatorService
+	// Make a copy of the buffer before clearing it
+	recordsCopy := make([]*UsageRecord, len(bw.buffer))
+	copy(recordsCopy, bw.buffer)
 	
-	// 清空缓冲区
+	// Clear buffer first
 	bw.buffer = bw.buffer[:0]
+	
+	// Then aggregate the records
+	if err := bw.aggregator.AggregateRecords(ctx, recordsCopy); err != nil {
+		log.Printf("Error aggregating records: %v", err)
+		// Don't fail the flush if aggregation fails, just log it
+	}
+	
+	log.Printf("Successfully flushed %d records to database", len(recordsCopy))
 	
 	return nil
 }
