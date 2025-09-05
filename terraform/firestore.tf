@@ -38,7 +38,7 @@ resource "google_firestore_index" "hourly_aggregates_user_hour" {
 
   fields {
     field_path = "hour"
-    order      = "ASCENDING"
+    order      = "DESCENDING"
   }
 }
 
