@@ -23,7 +23,9 @@ type HourlyAggregate struct {
 	TotalInputTokens int                `firestore:"total_input_tokens" json:"total_input_tokens"`
 	TotalOutputTokens int               `firestore:"total_output_tokens" json:"total_output_tokens"`
 	TotalCost        float64            `firestore:"total_cost" json:"total_cost"`
-	ModelUsage       map[string]ModelStats `firestore:"model_usage" json:"model_usage"`
+	// Note: ModelUsage is stored as flattened fields like "model_usage.{model}.{metric}"
+	// due to atomic increment requirements, not as a nested map
+	ModelUsage       map[string]ModelStats `firestore:"-" json:"model_usage"`
 	CreatedAt        time.Time          `firestore:"created_at" json:"created_at"`
 	UpdatedAt        time.Time          `firestore:"updated_at" json:"updated_at"`
 }

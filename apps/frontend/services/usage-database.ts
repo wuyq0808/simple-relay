@@ -10,16 +10,18 @@ export interface UsageRecord {
   user_id: string;
 }
 
-export interface DailyUsage {
-  Date: string;
+export interface HourlyUsage {
+  Hour: string;
   Model: string;
   InputTokens: number;
   OutputTokens: number;
+  TotalCost: number;
+  Requests: number;
 }
 
 class FirestoreUsageDatabase {
   private db: Firestore;
-  private collection = 'usage_records';
+  private collection = 'hourly_aggregates';
 
   constructor() {
     const projectId = process.env.GCP_PROJECT_ID;
@@ -35,59 +37,73 @@ class FirestoreUsageDatabase {
     });
   }
 
-  async findByUserEmail(userEmail: string): Promise<DailyUsage[]> {
+  async findByUserEmail(userEmail: string): Promise<HourlyUsage[]> {
     const collection = this.db.collection(this.collection);
-    const snapshot = await collection.where('user_id', '==', userEmail).get();
+    const snapshot = await collection.where('user_id', '==', userEmail).orderBy('hour', 'desc').get();
     
     if (snapshot.empty) {
       return [];
     }
 
-    const records: UsageRecord[] = [];
+    const hourlyUsage: HourlyUsage[] = [];
     snapshot.forEach(doc => {
       const data = doc.data();
-      records.push({
-        id: data.id || doc.id,
-        timestamp: data.timestamp?.toDate() || new Date(data.timestamp),
-        model: data.model || 'unknown-model',
-        input_tokens: parseInt(data.input_tokens) || 0,
-        output_tokens: parseInt(data.output_tokens) || 0,
-        total_cost: parseFloat(data.total_cost) || 0,
-        user_id: data.user_id,
-      });
-    });
-
-    // Group by date and model
-    const dailyUsage = new Map<string, DailyUsage>();
-    
-    for (const record of records) {
-      const date = record.timestamp.toLocaleDateString();
-      const key = `${date}-${record.model}`;
+      const hour = data.hour?.toDate() || new Date(data.hour);
       
-      if (dailyUsage.has(key)) {
-        const existing = dailyUsage.get(key)!;
-        existing.InputTokens += record.input_tokens;
-        existing.OutputTokens += record.output_tokens;
-      } else {
-        dailyUsage.set(key, {
-          Date: date,
-          Model: record.model,
-          InputTokens: record.input_tokens,
-          OutputTokens: record.output_tokens,
+      // Format hour as YYYY-MM-DD HH:00
+      const hourStr = `${hour.getFullYear()}-${(hour.getMonth() + 1).toString().padStart(2, '0')}-${hour.getDate().toString().padStart(2, '0')} ${hour.getHours().toString().padStart(2, '0')}:00`;
+      
+      // Process model usage stats from flattened Firestore fields
+      const modelUsage = this.extractFlattenedModelUsage(data);
+      
+      for (const [modelName, stats] of Object.entries(modelUsage)) {
+        hourlyUsage.push({
+          Hour: hourStr,
+          Model: modelName,
+          InputTokens: stats.input_tokens || 0,
+          OutputTokens: stats.output_tokens || 0,
+          TotalCost: stats.total_cost || 0,
+          Requests: stats.request_count || 0,
         });
       }
-    }
+    });
 
-    // Convert to array and sort by date desc, then by model asc
-    const usage = Array.from(dailyUsage.values());
-    usage.sort((a, b) => {
-      if (a.Date !== b.Date) {
-        return b.Date.localeCompare(a.Date); // Date desc
+    // Sort by hour desc, then by model asc
+    hourlyUsage.sort((a, b) => {
+      if (a.Hour !== b.Hour) {
+        return b.Hour.localeCompare(a.Hour); // Hour desc
       }
       return a.Model.localeCompare(b.Model); // Model asc
     });
 
-    return usage;
+    return hourlyUsage;
+  }
+
+  /**
+   * Extract flattened model usage fields from Firestore document data.
+   * Converts "model_usage.claude-sonnet-4.input_tokens" format
+   * to nested object { "claude-sonnet-4": { input_tokens: value } }
+   */
+  private extractFlattenedModelUsage(data: Record<string, unknown>): Record<string, Record<string, unknown>> {
+    const modelUsage: Record<string, Record<string, unknown>> = {};
+    
+    for (const [key, value] of Object.entries(data)) {
+      if (key.startsWith('model_usage.')) {
+        const parts = key.split('.');
+        if (parts.length === 3) {
+          const [, modelName, metric] = parts;
+          if (!modelUsage[modelName]) {
+            modelUsage[modelName] = {};
+          }
+          modelUsage[modelName][metric] = value;
+        } else {
+          // eslint-disable-next-line no-console
+          console.warn(`Unexpected model_usage field format: ${key}. Expected format: model_usage.{model}.{metric}`);
+        }
+      }
+    }
+    
+    return modelUsage;
   }
 }
 

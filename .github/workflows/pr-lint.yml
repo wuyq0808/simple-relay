@@ -30,3 +30,7 @@ jobs:
       - name: Run ESLint
         working-directory: ./apps/frontend
         run: npm run lint
+
+      - name: Run Stylelint
+        working-directory: ./apps/frontend
+        run: npm run stylelint

@@ -56,10 +56,13 @@
   "usage": {
     "title": "Usage Statistics",
     "description": "Monitor your API usage and token consumption.",
-    "date": "Date",
+    "hour": "Hour",
     "model": "Model",
+    "requests": "Requests",
     "input": "Input",
-    "output": "Output"
+    "output": "Output",
+    "cost": "Cost",
+    "points": "Points"
   },
   "common": {
     "loading": "Loading...",
