@@ -9,7 +9,7 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
-// AggregatorService 数据聚合服务 - 现在由BatchWriter调用而非定时运行
+// AggregatorService 数据聚合服务
 type AggregatorService struct {
 	db              *firestore.Client
 	billingService  *BillingService
@@ -17,7 +17,7 @@ type AggregatorService struct {
 
 // HourlyAggregate 每小时聚合数据
 type HourlyAggregate struct {
-	Hour             time.Time          `firestore:"hour" json:"hour"`           // 精确到小时: 2025-09-05T14:00:00Z
+	Hour             time.Time          `firestore:"hour" json:"hour"`
 	UserID           string             `firestore:"user_id" json:"user_id"`
 	TotalRequests    int                `firestore:"total_requests" json:"total_requests"`
 	TotalInputTokens int                `firestore:"total_input_tokens" json:"total_input_tokens"`
@@ -36,10 +36,10 @@ type ModelStats struct {
 	TotalCost     float64 `firestore:"total_cost" json:"total_cost"`
 }
 
-// MemoryAggregate 内存聚合数据 - 用于在内存中累加再原子更新到Firestore
+// MemoryAggregate 内存聚合数据
 type MemoryAggregate struct {
 	UserID            string                      `json:"user_id"`
-	Hour              string                      `json:"hour"` // YYYY-MM-DDTHH format (2025-09-05T14)
+	Hour              string                      `json:"hour"`
 	TotalRequests     int                         `json:"total_requests"`
 	TotalInputTokens  int                         `json:"total_input_tokens"`
 	TotalOutputTokens int                         `json:"total_output_tokens"`
@@ -76,7 +76,7 @@ func NewAggregatorService(db *firestore.Client, billingService *BillingService) 
 	}
 }
 
-// AggregateRecords 对传入的usage records进行聚合并更新daily_aggregates using atomic increments
+// AggregateRecords 聚合使用记录并更新小时聚合数据
 func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*UsageRecord) error {
 	if len(records) == 0 {
 		return nil
@@ -86,7 +86,7 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 	aggregateMap := make(map[string]*MemoryAggregate)
 	
 	for _, record := range records {
-		// Group by hour: 2025-09-05T14 format
+		// 按小时分组
 		hourStr := record.Timestamp.Format("2006-01-02T15")
 		key := fmt.Sprintf("%s_%s", record.UserID, hourStr)
 		
@@ -104,13 +104,13 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 			aggregateMap[key] = aggregate
 		}
 		
-		// Accumulate data in memory
+		// 在内存中累加数据
 		aggregate.TotalRequests++
 		aggregate.TotalInputTokens += record.InputTokens
 		aggregate.TotalOutputTokens += record.OutputTokens
 		aggregate.TotalCost += record.TotalCost
 		
-		// Update model-specific stats in memory
+		// 更新模型统计数据
 		modelStats := aggregate.ModelUsage[record.Model]
 		modelStats.RequestCount++
 		modelStats.InputTokens += record.InputTokens
@@ -119,7 +119,7 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 		aggregate.ModelUsage[record.Model] = modelStats
 	}
 
-	// Apply atomic increments to Firestore for each hourly aggregate
+	// 对每个小时聚合执行原子增量更新
 	for key, memAggregate := range aggregateMap {
 		if err := as.atomicIncrementHourlyAggregate(ctx, key, memAggregate); err != nil {
 			log.Printf("Error atomically updating hourly aggregate %s: %v", key, err)
@@ -131,30 +131,30 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 	return nil
 }
 
-// atomicIncrementHourlyAggregate 使用原子增量更新hourly aggregate文档 (upsert模式)
+// atomicIncrementHourlyAggregate 使用原子增量更新小时聚合文档
 func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context, docID string, memAggregate *MemoryAggregate) error {
 	docRef := as.db.Collection("hourly_aggregates").Doc(docID)
 	
-	// Build upsert data with atomic increments and metadata
+	// 构建原子增量和元数据的upsert数据
 	upsertData := map[string]interface{}{
-		// Atomic increment fields
+		// 原子增量字段
 		"total_requests":     firestore.Increment(memAggregate.TotalRequests),
 		"total_input_tokens": firestore.Increment(memAggregate.TotalInputTokens),
 		"total_output_tokens": firestore.Increment(memAggregate.TotalOutputTokens),
 		"total_cost":         firestore.Increment(memAggregate.TotalCost),
 		
-		// Metadata fields (only set on create, not updated on merge)
+		// 元数据字段
 		"user_id":    memAggregate.UserID,
 		"updated_at": time.Now(),
 	}
 	
-	// Parse and set hour field for new documents
+	// 解析并设置小时字段
 	if hour, err := time.Parse("2006-01-02T15", memAggregate.Hour); err == nil {
 		upsertData["hour"] = hour
 		upsertData["created_at"] = time.Now()
 	}
 	
-	// Add model-specific atomic increments
+	// 添加模型相关的原子增量
 	for model, stats := range memAggregate.ModelUsage {
 		modelPath := fmt.Sprintf("model_usage.%s", model)
 		upsertData[fmt.Sprintf("%s.request_count", modelPath)] = firestore.Increment(stats.RequestCount)
@@ -163,7 +163,7 @@ func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context,
 		upsertData[fmt.Sprintf("%s.total_cost", modelPath)] = firestore.Increment(stats.TotalCost)
 	}
 	
-	// Upsert with MergeAll - creates document if not exists, merges if exists
+	// 使用MergeAll执行upsert操作
 	_, err := docRef.Set(ctx, upsertData, firestore.MergeAll)
 	if err != nil {
 		return fmt.Errorf("failed to atomically upsert hourly aggregate: %w", err)

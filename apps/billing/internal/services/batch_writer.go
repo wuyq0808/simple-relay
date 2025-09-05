@@ -103,30 +103,30 @@ func (bw *BatchWriter) flushLocked() error {
 	ctx := context.Background()
 	batch := bw.client.Batch()
 	
-	// 1. Write individual usage records to batch
+	// 批量添加使用记录文档
 	for _, record := range bw.buffer {
 		docRef := bw.client.Collection(bw.collection).Doc(record.ID)
 		batch.Set(docRef, record)
 	}
 	
-	// 2. Commit the batch
+	// 执行批量写入
 	_, err := batch.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
 	
-	// 3. Update daily aggregates using AggregatorService
-	// Make a copy of the buffer before clearing it
+	// 使用聚合服务更新小时聚合数据
+	// 清空缓冲区前先复制记录
 	recordsCopy := make([]*UsageRecord, len(bw.buffer))
 	copy(recordsCopy, bw.buffer)
 	
-	// Clear buffer first
+	// 清空缓冲区
 	bw.buffer = bw.buffer[:0]
 	
-	// Then aggregate the records
+	// 执行记录聚合
 	if err := bw.aggregator.AggregateRecords(ctx, recordsCopy); err != nil {
 		log.Printf("Error aggregating records: %v", err)
-		// Don't fail the flush if aggregation fails, just log it
+		// 聚合失败不阻塞刷新操作，仅记录日志
 	}
 	
 	log.Printf("Successfully flushed %d records to database", len(recordsCopy))
