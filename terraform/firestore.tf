@@ -25,8 +25,25 @@ resource "google_firestore_index" "usage_records_user_timestamp" {
   }
 }
 
-# Firestore Index for hourly_aggregates collection
-resource "google_firestore_index" "hourly_aggregates_user_hour" {
+# Firestore Index for hourly_aggregates collection - for cost limit range queries
+resource "google_firestore_index" "hourly_aggregates_user_hour_asc" {
+  project    = var.project_id
+  database   = google_firestore_database.oauth_database.name
+  collection = "hourly_aggregates"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "hour"
+    order      = "ASCENDING"
+  }
+}
+
+# Firestore Index for hourly_aggregates collection - for descending hour queries
+resource "google_firestore_index" "hourly_aggregates_user_hour_desc" {
   project    = var.project_id
   database   = google_firestore_database.oauth_database.name
   collection = "hourly_aggregates"
