@@ -55,7 +55,7 @@
   },
   "usage": {
     "title": "使用统计",
-    "description": "免费账户每日限额为5积分。",
+    "description": "免费账户每日限额5积分。",
     "hour": "小时",
     "model": "模型",
     "requests": "请求数",
