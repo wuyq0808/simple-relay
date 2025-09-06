@@ -1,5 +1,5 @@
 import { Firestore } from '@google-cloud/firestore';
-import { CostLimitDatabase } from './cost-limit-database';
+import { CostLimitDatabase } from './cost-limit-database.js';
 
 export interface User {
   email: string;                    // Primary key
