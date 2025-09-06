@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './VerifyCode.scss';
 
 interface VerifyCodeProps {
@@ -14,10 +15,12 @@ export default function VerifyCode({
   onCodeComplete, 
   onBack 
 }: VerifyCodeProps) {
+  const { t } = useTranslation();
+  
   return (
     <>
       <p className="description">
-        Enter the verification code sent to
+        {t('auth.verificationSent', 'Enter the verification code sent to')}
       </p>
       <p className="email-display">
         {email}
@@ -27,7 +30,7 @@ export default function VerifyCode({
 
       <input
         type="text"
-        placeholder="6-digit code"
+        placeholder={t('auth.codePlaceholder', '6-digit code')}
         onChange={(e) => {
           const code = e.target.value.replace(/\D/g, '').slice(0, 6);
           e.target.value = code;
@@ -46,7 +49,7 @@ export default function VerifyCode({
         onClick={onBack}
         className="secondary-button"
       >
-        Back
+        {t('auth.back', 'Back')}
       </button>
     </>
   );

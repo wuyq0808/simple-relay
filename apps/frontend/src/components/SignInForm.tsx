@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './SignInForm.scss';
 
 interface SignInFormProps {
@@ -9,10 +10,12 @@ interface SignInFormProps {
 }
 
 export default function SignInForm({ email, loading, onEmailChange, onSubmit }: SignInFormProps) {
+  const { t } = useTranslation();
+  
   return (
     <>
       <p className="description">
-        Never fall behind in the AI revolution
+        {t('auth.tagline', 'Never fall behind in the AI revolution')}
       </p>
 
       <hr className="divider" />
@@ -20,7 +23,7 @@ export default function SignInForm({ email, loading, onEmailChange, onSubmit }: 
       <form onSubmit={onSubmit}>
         <input
           type="email"
-          placeholder="Enter your email"
+          placeholder={t('auth.emailPlaceholder', 'Enter your email')}
           value={email}
           onChange={(e) => onEmailChange(e.target.value)}
           disabled={loading}
@@ -32,7 +35,7 @@ export default function SignInForm({ email, loading, onEmailChange, onSubmit }: 
           disabled={loading}
           className="primary-button"
         >
-          {loading ? 'Sending...' : 'Continue'}
+          {loading ? t('auth.sending', 'Sending...') : t('auth.continue', 'Continue')}
         </button>
       </form>
     </>

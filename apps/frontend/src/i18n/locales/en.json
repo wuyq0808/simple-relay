@@ -10,7 +10,20 @@
     "enterCode": "Enter the 6-digit code sent to your email",
     "backToSignIn": "← Back to Sign In",
     "signOut": "Sign Out",
-    "signedInAs": "Signed in as"
+    "signedInAs": "Signed in as",
+    "tagline": "Never fall behind in the AI revolution",
+    "emailPlaceholder": "Enter your email",
+    "continue": "Continue",
+    "sending": "Sending...",
+    "verificationSent": "Enter the verification code sent to",
+    "codePlaceholder": "6-digit code",
+    "back": "Back",
+    "verificationCodeSent": "Verification code sent to your email",
+    "failedToSendCode": "Failed to send verification code",
+    "networkError": "Network error. Please try again.",
+    "enterSixDigits": "Please enter a 6-digit verification code",
+    "verifying": "Verifying...",
+    "invalidCode": "Invalid verification code"
   },
   "apiKeys": {
     "title": "API Keys",

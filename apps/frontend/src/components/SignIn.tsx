@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import SignInForm from './SignInForm';
 
 type MessageType = 'success' | 'error' | '';
@@ -9,6 +10,7 @@ interface SignInProps {
 }
 
 export default function SignIn({ onMessage, onSuccess }: SignInProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -29,12 +31,12 @@ export default function SignIn({ onMessage, onSuccess }: SignInProps) {
       
       if (response.ok) {
         onSuccess(email);
-        onMessage('Verification code sent to your email', 'success');
+        onMessage(t('auth.verificationCodeSent', 'Verification code sent to your email'), 'success');
       } else {
-        onMessage(data.error || 'Failed to send verification code', 'error');
+        onMessage(data.error || t('auth.failedToSendCode', 'Failed to send verification code'), 'error');
       }
     } catch {
-      onMessage('Network error. Please try again.', 'error');
+      onMessage(t('auth.networkError', 'Network error. Please try again.'), 'error');
     } finally {
       setLoading(false);
     }

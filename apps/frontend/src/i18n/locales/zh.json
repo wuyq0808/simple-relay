@@ -10,7 +10,20 @@
     "enterCode": "输入发送到您邮箱的6位验证码",
     "backToSignIn": "← 返回登录",
     "signOut": "退出登录",
-    "signedInAs": "当前登录"
+    "signedInAs": "当前登录",
+    "tagline": "在AI革命中永不落后",
+    "emailPlaceholder": "输入您的邮箱",
+    "continue": "继续",
+    "sending": "发送中...",
+    "verificationSent": "输入发送至以下邮箱的验证码",
+    "codePlaceholder": "6位验证码",
+    "back": "返回",
+    "verificationCodeSent": "验证码已发送至您的邮箱",
+    "failedToSendCode": "验证码发送失败",
+    "networkError": "网络错误，请重试",
+    "enterSixDigits": "请输入6位验证码",
+    "verifying": "验证中...",
+    "invalidCode": "验证码无效"
   },
   "apiKeys": {
     "title": "API密钥",
