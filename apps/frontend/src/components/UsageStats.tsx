@@ -178,10 +178,10 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   {/* Stats */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#333', marginBottom: '8px' }}>
                     <span>
-                      {Math.floor(costLimitInfo.costLimit * 100)} {t('usage.points', 'Points')}
+                      {Math.floor(costLimitInfo.costLimit * 1000)} {t('usage.points', 'Points')}
                     </span>
                     <span style={{ color: costLimitInfo.remaining < 0 ? '#dc3545' : (costLimitInfo.remaining / costLimitInfo.costLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
-                      {costLimitInfo.remaining >= 0 ? `${Math.ceil(costLimitInfo.remaining * 100)} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(costLimitInfo.remaining * 100)}`}
+                      {costLimitInfo.remaining >= 0 ? `${Math.ceil(costLimitInfo.remaining * 1000)} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(costLimitInfo.remaining * 1000)}`}
                     </span>
                   </div>
                   
@@ -215,7 +215,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
           <table className="usage-table">
             <thead>
               <tr>
-                <th>Date</th>
+                <th>{t('usage.date')}</th>
                 <th>{t('usage.model')}</th>
                 <th>{t('usage.requests')}</th>
                 <th>{t('usage.input')}</th>
@@ -262,7 +262,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   <td className="stats-cell">
                     {Object.entries(group.models).map(([modelName, modelStats], index) => (
                       <span key={modelName}>
-                        {(modelStats.totalCost * 100).toFixed(2)}
+                        {Math.ceil(modelStats.totalCost * 1000)}
                         {index < Object.entries(group.models).length - 1 && <br />}
                       </span>
                     ))}
