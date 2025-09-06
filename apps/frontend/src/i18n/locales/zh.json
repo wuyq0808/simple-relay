@@ -68,7 +68,7 @@
   },
   "usage": {
     "title": "使用统计",
-    "description": "免费账户每日限额5积分。",
+    "description": "免费账户每日限额5积分",
     "hour": "小时",
     "model": "模型",
     "requests": "请求数",
@@ -86,7 +86,7 @@
     "exceeded": "已超限",
     "resetsAt": "重置于",
     "date": "日期",
-    "noRecords": "未找到使用记录"
+    "noRecords": "尚无使用记录"
   },
   "common": {
     "loading": "加载中...",
