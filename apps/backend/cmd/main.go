@@ -12,6 +12,7 @@ import (
 
 	"simple-relay/backend/internal/services"
 	"simple-relay/backend/internal/services/provider"
+	"simple-relay/backend/internal/messages"
 	"simple-relay/shared/database"
 
 	"cloud.google.com/go/compute/metadata"
@@ -21,10 +22,17 @@ import (
 
 const (
 	oauthBetaFlag = "oauth-2025-04-20"
-	// DefaultUserID is a temporary hardcoded user ID that will be replaced
-	// with actual user identification from subscription service
-	DefaultUserID = "hardcoded-user-123"
 )
+
+// writeError writes an HTTP error response without adding extra newlines
+// We use this custom function instead of http.Error() because http.Error() 
+// automatically appends a newline (\n) to the response body, which causes
+// formatting issues in API clients that display the error messages
+func writeError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(statusCode)
+	w.Write([]byte(message))
+}
 
 // getIdentityToken retrieves an identity token for service-to-service authentication
 func getIdentityToken(audience string) (string, error) {
@@ -102,6 +110,9 @@ func main() {
 	// Initialize API key service
 	apiKeyService := services.NewApiKeyService(dbService.Client())
 
+	// Initialize usage checker
+	usageChecker := services.NewUsageChecker(dbService.Client())
+
 	// Create reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(config.OfficialTarget)
 
@@ -112,7 +123,19 @@ func main() {
 
 		// Reject request if no valid API key provided
 		if userId == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			writeError(w, messages.ClientErrorMessages.Unauthorized, http.StatusUnauthorized)
+			return
+		}
+
+		// Check daily cost limit before processing request
+		remainingCost, err := usageChecker.CheckDailyCostLimit(req.Context(), userId)
+		if err != nil {
+			log.Printf("Error checking cost limit for user %s: %v", userId, err)
+			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
+			return
+		}
+		if remainingCost <= 0 {
+			writeError(w, messages.ClientErrorMessages.DailyLimitExceeded, http.StatusTooManyRequests)
 			return
 		}
 
@@ -120,7 +143,7 @@ func main() {
 		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
 		if err != nil {
 			log.Printf("Failed to get valid token for user %s: %v", userId, err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
 			return
 		}
 

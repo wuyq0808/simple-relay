@@ -1,4 +1,5 @@
 import { Firestore } from '@google-cloud/firestore';
+import { CostLimitDatabase } from './cost-limit-database.js';
 
 export interface User {
   email: string;                    // Primary key
@@ -32,9 +33,10 @@ class FirestoreUserDatabase {
     const newUser: User = {
       ...user,
       created_at: new Date(),
-      api_enabled: false,
+      api_enabled: true,
     };
     
+    // Create user document
     const docRef = this.db.collection(this.collection).doc(user.email);
     await docRef.set({
       ...newUser,
@@ -43,6 +45,9 @@ class FirestoreUserDatabase {
       verification_expires_at: newUser.verification_expires_at?.toISOString() || null,
       api_enabled: newUser.api_enabled,
     });
+    
+    // Set initial cost limit of 0.05 for new users
+    await CostLimitDatabase.setCostLimit(user.email, 0.05);
     
     return newUser;
   }

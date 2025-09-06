@@ -42,16 +42,25 @@ func NewApiKeyService(client *firestore.Client) *ApiKeyService {
 	}
 }
 
+// cleanupExpiredEntry checks if cache entry is expired and removes it if so
+// Returns the entry if still valid, nil if expired or not found
+func (s *ApiKeyService) cleanupExpiredEntry(apiKey string) *CacheEntry {
+	if entry, exists := s.cache.Get(apiKey); exists {
+		if time.Since(entry.Timestamp) < s.cacheDuration {
+			return entry
+		}
+		// Remove expired entry
+		s.cache.Remove(apiKey)
+	}
+	return nil
+}
+
 // FindUserEmailByApiKey looks up the user email associated with an API key
 // Returns the user email or empty string if not found
 func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string) (string, error) {
 	// Check cache first
-	if entry, exists := s.cache.Get(apiKey); exists {
-		if time.Since(entry.Timestamp) < s.cacheDuration {
-			return entry.UserEmail, nil
-		}
-		// Remove expired entry
-		s.cache.Remove(apiKey)
+	if entry := s.cleanupExpiredEntry(apiKey); entry != nil {
+		return entry.UserEmail, nil
 	}
 
 	// Direct lookup using API key as document ID

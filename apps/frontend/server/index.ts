@@ -13,6 +13,7 @@ import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
 import { ApiKeyDatabase } from '../services/api-key-database.js';
 import { UsageDatabase } from '../services/usage-database.js';
+import { CostLimitDatabase } from '../services/cost-limit-database.js';
 import { 
   validateSignIn,
   validateEmailVerification
@@ -298,6 +299,50 @@ app.get('/api/usage-stats', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching usage stats:', error);
     res.status(500).json({ error: 'Failed to fetch usage stats' });
+  }
+});
+
+app.get('/api/cost-limit', requireAuth, async (req, res) => {
+  try {
+    const email = req.signedCookies.user_email;
+    
+    // Get daily cost limit for user
+    const costLimit = await CostLimitDatabase.getCostLimit(email);
+    
+    // Calculate today's usage (8pm-8pm UTC window)
+    const now = new Date();
+    let windowStart: Date;
+    if (now.getUTCHours() >= 20) {
+      // If it's after 8pm UTC today, the window started at 8pm UTC today
+      windowStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 20, 0, 0, 0);
+    } else {
+      // If it's before 8pm UTC today, the window started at 8pm UTC yesterday
+      const yesterday = new Date(now);
+      yesterday.setUTCDate(now.getUTCDate() - 1);
+      windowStart = new Date(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), yesterday.getUTCDate(), 20, 0, 0, 0);
+    }
+    
+    const windowEnd = new Date(windowStart);
+    windowEnd.setUTCHours(windowStart.getUTCHours() + 24);
+    
+    // Get usage data for current window
+    const todayUsage = await UsageDatabase.findByUserEmailAndTimeRange(email, windowStart, windowEnd);
+    const usedToday = todayUsage.reduce((sum: number, usage) => sum + usage.TotalCost, 0);
+    
+    const dailyLimit = costLimit?.costLimit || 0;
+    const remaining = dailyLimit - usedToday;
+    
+    res.json({
+      costLimit: dailyLimit,
+      usedToday: usedToday,
+      remaining: remaining,
+      updateTime: costLimit?.updateTime || null,
+      windowStart: windowStart.toISOString(),
+      windowEnd: windowEnd.toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching cost limit:', error);
+    res.status(500).json({ error: 'Failed to fetch cost limit' });
   }
 });
 

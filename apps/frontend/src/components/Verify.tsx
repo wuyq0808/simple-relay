@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import VerifyCode from './VerifyCode';
 
 type MessageType = 'success' | 'error' | '';
@@ -10,6 +11,7 @@ interface VerifyProps {
 }
 
 export default function Verify({ email, onMessage, onBack }: VerifyProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   const handleVerificationSubmit = async (code: string) => {
@@ -19,7 +21,7 @@ export default function Verify({ email, onMessage, onBack }: VerifyProps) {
     }
 
     setLoading(true);
-    onMessage('Verifying...');
+    onMessage(t('auth.verifying', 'Verifying...'));
 
     try {
       const response = await fetch('/api/verify', {
@@ -34,7 +36,7 @@ export default function Verify({ email, onMessage, onBack }: VerifyProps) {
         // Force page reload to get the authenticated HTML
         window.location.reload();
       } else {
-        onMessage(data.error || 'Invalid verification code', 'error');
+        onMessage(data.error || t('auth.invalidCode', 'Invalid verification code'), 'error');
       }
     } catch {
       onMessage('Network error. Please try again.', 'error');

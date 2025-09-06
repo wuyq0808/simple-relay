@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import SignInForm from './SignInForm';
 import VerifyCode from './VerifyCode';
 
@@ -11,6 +12,7 @@ interface AuthFlowProps {
 }
 
 export default function AuthFlow({ onMessage, onStateChange }: AuthFlowProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<AuthState>('signin');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,12 +35,12 @@ export default function AuthFlow({ onMessage, onStateChange }: AuthFlowProps) {
       if (response.ok) {
         setState('verify');
         onStateChange('verify');
-        onMessage('Verification code sent to your email', 'success');
+        onMessage(t('auth.verificationCodeSent', 'Verification code sent to your email'), 'success');
       } else {
-        onMessage(data.error || 'Failed to send verification code', 'error');
+        onMessage(data.error || t('auth.failedToSendCode', 'Failed to send verification code'), 'error');
       }
     } catch {
-      onMessage('Network error. Please try again.', 'error');
+      onMessage(t('auth.networkError', 'Network error. Please try again.'), 'error');
     } finally {
       setLoading(false);
     }
@@ -46,12 +48,12 @@ export default function AuthFlow({ onMessage, onStateChange }: AuthFlowProps) {
 
   const handleVerificationSubmit = async (code: string) => {
     if (!code || code.length !== 6) {
-      onMessage('Please enter a 6-digit verification code', 'error');
+      onMessage(t('auth.enterSixDigits', 'Please enter a 6-digit verification code'), 'error');
       return;
     }
 
     setLoading(true);
-    onMessage('Verifying...');
+    onMessage(t('auth.verifying', 'Verifying...'));
 
     try {
       const response = await fetch('/api/verify', {
@@ -66,10 +68,10 @@ export default function AuthFlow({ onMessage, onStateChange }: AuthFlowProps) {
         // Force page reload to get the authenticated HTML
         window.location.reload();
       } else {
-        onMessage(data.error || 'Invalid verification code', 'error');
+        onMessage(data.error || t('auth.invalidCode', 'Invalid verification code'), 'error');
       }
     } catch {
-      onMessage('Network error. Please try again.', 'error');
+      onMessage(t('auth.networkError', 'Network error. Please try again.'), 'error');
     } finally {
       setLoading(false);
     }

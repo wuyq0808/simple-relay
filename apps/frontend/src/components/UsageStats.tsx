@@ -25,6 +25,15 @@ interface GroupedUsage {
   totalCost: number;
 }
 
+interface CostLimitInfo {
+  costLimit: number;
+  usedToday: number;
+  remaining: number;
+  updateTime: string | null;
+  windowStart: string;
+  windowEnd: string;
+}
+
 interface UsageStatsProps {
   userEmail: string;
   onMessage: (message: string) => void;
@@ -33,7 +42,22 @@ interface UsageStatsProps {
 export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
   const { t } = useTranslation();
   const [usageData, setUsageData] = useState<HourlyUsage[]>([]);
+  const [costLimitInfo, setCostLimitInfo] = useState<CostLimitInfo | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Format UTC time window for user's locale
+  const getLocalizedTimeWindow = () => {
+    const utc8pm = new Date();
+    utc8pm.setUTCHours(20, 0, 0, 0);
+    
+    const localTime = utc8pm.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+    
+    return `${t('usage.resetsAt', 'resets at')} ${localTime}`;
+  };
 
   const groupUsageByDay = (data: HourlyUsage[]): GroupedUsage[] => {
     const groups: Record<string, GroupedUsage> = {};
@@ -77,11 +101,9 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
     return Object.values(groups).sort((a, b) => b.day.localeCompare(a.day));
   };
 
-  const fetchUsageStats = useCallback(async () => {
+  const fetchCostLimitInfo = useCallback(async () => {
     try {
-      setLoading(true);
-      
-      const response = await fetch('/api/usage-stats', {
+      const response = await fetch('/api/cost-limit', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -89,20 +111,43 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCostLimitInfo(data);
+      }
+    } catch {
+      // Cost limit info is optional, don't show error if it fails
+    }
+  }, []);
+
+  const fetchUsageStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch both usage stats and cost limit info in parallel
+      const [usageResponse] = await Promise.all([
+        fetch('/api/usage-stats', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }),
+        fetchCostLimitInfo()
+      ]);
+
+      if (!usageResponse.ok) {
+        throw new Error(`HTTP error! status: ${usageResponse.status}`);
       }
 
-      const data = await response.json();
+      const data = await usageResponse.json();
       setUsageData(data);
       setLoading(false);
-    } catch (error) {
+    } catch {
       setLoading(false);
       onMessage('Failed to load usage statistics. Please try again.');
-      // eslint-disable-next-line no-console
-      console.error('Usage stats fetch error:', error);
     }
-  }, [onMessage]);
+  }, [onMessage, fetchCostLimitInfo]);
 
   useEffect(() => {
     fetchUsageStats();
@@ -116,6 +161,55 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
 
   return (
     <div className="usage-stats-container">
+      {/* Daily Cost Limit Section */}
+      {costLimitInfo && (
+        <div className="usage-table-container" style={{ marginBottom: '2rem' }}>
+          <table className="usage-table">
+            <thead>
+              <tr>
+                <th colSpan={2}>
+                  {t('usage.dailyCostLimit', 'Daily Cost Limit')} - {getLocalizedTimeWindow()}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="day-row">
+                <td style={{ padding: '12px', verticalAlign: 'middle', width: '100%' }}>
+                  {/* Stats */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#333', marginBottom: '8px' }}>
+                    <span>
+                      {Math.floor(costLimitInfo.costLimit * 100)} {t('usage.points', 'Points')}
+                    </span>
+                    <span style={{ color: costLimitInfo.remaining < 0 ? '#dc3545' : (costLimitInfo.remaining / costLimitInfo.costLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
+                      {costLimitInfo.remaining >= 0 ? `${Math.ceil(costLimitInfo.remaining * 100)} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(costLimitInfo.remaining * 100)}`}
+                    </span>
+                  </div>
+                  
+                  {/* Progress Bar Container */}
+                  <div style={{ 
+                    width: '100%', 
+                    height: '12px', 
+                    backgroundColor: 'white', 
+                    overflow: 'hidden',
+                    border: '0.5px solid #6c757d'
+                  }}>
+                    {/* Progress Bar Fill - shows remaining */}
+                    <div style={{
+                      width: `${Math.max(0, Math.min(100, (costLimitInfo.remaining / costLimitInfo.costLimit) * 100))}%`,
+                      height: '100%',
+                      backgroundColor: costLimitInfo.remaining < 0 ? '#dc3545' : (costLimitInfo.remaining / costLimitInfo.costLimit < 0.2) ? '#dc3545' : '#28a745',
+                      transition: 'width 0.3s ease'
+                    }}>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Usage Statistics Section */}
       {usageData.length > 0 ? (
         <div className="usage-table-container">
           <table className="usage-table">
@@ -126,7 +220,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                 <th>{t('usage.requests')}</th>
                 <th>{t('usage.input')}</th>
                 <th>{t('usage.output')}</th>
-                <th>{t('usage.points')}</th>
+                <th>{t('usage.consumedPoints')}</th>
               </tr>
             </thead>
             <tbody>
@@ -168,7 +262,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   <td className="stats-cell">
                     {Object.entries(group.models).map(([modelName, modelStats], index) => (
                       <span key={modelName}>
-                        {Math.floor(modelStats.totalCost * 100)}
+                        {(modelStats.totalCost * 100).toFixed(2)}
                         {index < Object.entries(group.models).length - 1 && <br />}
                       </span>
                     ))}
@@ -180,7 +274,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
         </div>
       ) : (
         <div className="empty-state">
-          <p>No usage records found</p>
+          <p>{t('usage.noRecords', 'No usage records found')}</p>
         </div>
       )}
     </div>
