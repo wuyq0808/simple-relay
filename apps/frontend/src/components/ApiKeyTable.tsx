@@ -39,10 +39,10 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         setApiEnabled(data.api_enabled !== undefined ? data.api_enabled : true);
         setAccessApprovalPending(data.access_approval_pending || false);
       } else {
-        onMessage(t('apiKeys.messages.loadError'));
+        onMessage(t('common.error'));
       }
     } catch {
-      onMessage(t('apiKeys.messages.loadError'));
+      onMessage(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         onMessage(`Error: ${error.error}`);
       }
     } catch {
-      onMessage(t('apiKeys.messages.createError'));
+      onMessage(t('common.error'));
     } finally {
       setCreating(false);
     }
@@ -109,10 +109,10 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         onMessage(t('apiKeys.messages.deleted'));
         await loadApiKeys();
       } else {
-        onMessage(t('apiKeys.messages.deleteError'));
+        onMessage(t('common.error'));
       }
     } catch {
-      onMessage(t('apiKeys.messages.deleteError'));
+      onMessage(t('common.error'));
     } finally {
       setDeleting(false);
       hideDeleteModal();
@@ -144,7 +144,7 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         setCopiedCommand(null);
       }, 1000);
     } catch {
-      onMessage(t('apiKeys.messages.copyError'));
+      onMessage(t('common.error'));
     }
   };
 
@@ -162,10 +162,10 @@ export default function ApiKeyTable({ userEmail: _userEmail, onMessage }: ApiKey
         setAccessApprovalPending(true);
         onMessage(t('apiKeys.messages.accessRequested'));
       } else {
-        onMessage(t('apiKeys.messages.error'));
+        onMessage(t('common.error'));
       }
     } catch {
-      onMessage(t('apiKeys.messages.error'));
+      onMessage(t('common.error'));
     }
   };
 
