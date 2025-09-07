@@ -262,7 +262,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   <td className="stats-cell">
                     {Object.entries(group.models).map(([modelName, modelStats], index) => (
                       <span key={modelName}>
-                        {modelStats.totalPoints.toFixed(2)}
+                        {Math.round(modelStats.totalPoints)}
                         {index < Object.entries(group.models).length - 1 && <br />}
                       </span>
                     ))}
