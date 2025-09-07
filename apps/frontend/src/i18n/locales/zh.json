@@ -1,7 +1,7 @@
 {
   "app": {
     "title": "AI快线",
-    "tagline": "快人一步"
+    "tagline": "简单快捷"
   },
   "auth": {
     "verify": "验证",
@@ -11,7 +11,7 @@
     "backToSignIn": "← 返回登录",
     "signOut": "退出登录",
     "signedInAs": "当前登录",
-    "tagline": "快人一步",
+    "tagline": "简单快捷",
     "emailPlaceholder": "请输入您的邮箱",
     "continue": "继续",
     "sending": "发送中...",
@@ -68,7 +68,7 @@
   },
   "usage": {
     "title": "使用统计",
-    "description": "免费账户每日限额5积分",
+    "description": "免费账户每日限额50积分",
     "hour": "小时",
     "model": "模型",
     "requests": "请求数",
