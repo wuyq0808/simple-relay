@@ -1,5 +1,5 @@
 import { Firestore } from '@google-cloud/firestore';
-import { CostLimitDatabase } from './cost-limit-database.js';
+import { PointsLimitDatabase } from './points-limit-database.js';
 
 export interface User {
   email: string;                    // Primary key
@@ -46,8 +46,8 @@ class FirestoreUserDatabase {
       api_enabled: newUser.api_enabled,
     });
     
-    // Set initial cost limit of 0.05 for new users
-    await CostLimitDatabase.setCostLimit(user.email, 0.05);
+    // Set initial points limit of 50 for new users
+    await PointsLimitDatabase.setPointsLimit(user.email, 50);
     
     return newUser;
   }

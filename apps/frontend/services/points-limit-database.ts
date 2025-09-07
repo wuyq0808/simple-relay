@@ -1,14 +1,14 @@
 import { Firestore } from '@google-cloud/firestore';
 
-export interface DailyCostLimit {
+export interface DailyPointsLimit {
   userId: string;           // Primary key - user email or user ID
-  costLimit: number;        // Daily cost limit in dollars
+  pointsLimit: number;      // Daily points limit 
   updateTime: Date;         // When the limit was last updated
 }
 
-class FirestoreCostLimitDatabase {
+class FirestorePointsLimitDatabase {
   private db: Firestore;
-  private collection = 'daily_cost_limits';
+  private collection = 'daily_points_limits';
 
   constructor() {
     const projectId = process.env.GCP_PROJECT_ID;
@@ -24,7 +24,7 @@ class FirestoreCostLimitDatabase {
     });
   }
 
-  async getCostLimit(userId: string): Promise<DailyCostLimit | null> {
+  async getPointsLimit(userId: string): Promise<DailyPointsLimit | null> {
     const docRef = this.db.collection(this.collection).doc(userId);
     const doc = await docRef.get();
     
@@ -35,22 +35,22 @@ class FirestoreCostLimitDatabase {
     const data = doc.data()!;
     return {
       userId: data.userId,
-      costLimit: data.costLimit,
+      pointsLimit: data.pointsLimit,
       updateTime: new Date(data.updateTime),
     };
   }
 
-  async setCostLimit(userId: string, costLimit: number): Promise<DailyCostLimit> {
-    const newLimit: DailyCostLimit = {
+  async setPointsLimit(userId: string, pointsLimit: number): Promise<DailyPointsLimit> {
+    const newLimit: DailyPointsLimit = {
       userId,
-      costLimit,
+      pointsLimit,
       updateTime: new Date(),
     };
     
     const docRef = this.db.collection(this.collection).doc(userId);
     await docRef.set({
       userId: newLimit.userId,
-      costLimit: newLimit.costLimit,
+      pointsLimit: newLimit.pointsLimit,
       updateTime: newLimit.updateTime.toISOString(),
     });
     
@@ -60,4 +60,4 @@ class FirestoreCostLimitDatabase {
 }
 
 // Export singleton instance
-export const CostLimitDatabase = new FirestoreCostLimitDatabase();
+export const PointsLimitDatabase = new FirestorePointsLimitDatabase();

@@ -13,15 +13,15 @@ import (
 
 // BatchWriter 批量写入器，用于优化数据库写入性能
 type BatchWriter struct {
-	client      *firestore.Client
-	buffer      []*UsageRecord
-	bufferMu    sync.Mutex
-	maxSize     int
-	flushTime   time.Duration
-	stopChan    chan struct{}
-	wg          sync.WaitGroup
-	collection  string
-	aggregator  *AggregatorService
+	client     *firestore.Client
+	buffer     []*UsageRecord
+	bufferMu   sync.Mutex
+	maxSize    int
+	flushTime  time.Duration
+	stopChan   chan struct{}
+	wg         sync.WaitGroup
+	collection string
+	aggregator *AggregatorService
 }
 
 // NewBatchWriter 创建新的批量写入器
@@ -123,7 +123,7 @@ func (bw *BatchWriter) flushLocked() error {
 	// 清空缓冲区
 	bw.buffer = bw.buffer[:0]
 	
-	// 执行记录聚合
+	// 执行记录聚合 (includes both cost and points)
 	if err := bw.aggregator.AggregateRecords(ctx, recordsCopy); err != nil {
 		log.Printf("Error aggregating records: %v", err)
 		// 聚合失败不阻塞刷新操作，仅记录日志

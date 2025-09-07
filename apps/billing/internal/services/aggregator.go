@@ -23,6 +23,7 @@ type HourlyAggregate struct {
 	TotalInputTokens int                `firestore:"total_input_tokens" json:"total_input_tokens"`
 	TotalOutputTokens int               `firestore:"total_output_tokens" json:"total_output_tokens"`
 	TotalCost        float64            `firestore:"total_cost" json:"total_cost"`
+	TotalPoints      int                `firestore:"total_points" json:"total_points"`
 	// Note: ModelUsage is stored as flattened fields like "model_usage.{model}.{metric}"
 	// due to atomic increment requirements, not as a nested map
 	ModelUsage       map[string]ModelStats `firestore:"-" json:"model_usage"`
@@ -36,6 +37,7 @@ type ModelStats struct {
 	InputTokens   int     `firestore:"input_tokens" json:"input_tokens"`
 	OutputTokens  int     `firestore:"output_tokens" json:"output_tokens"`
 	TotalCost     float64 `firestore:"total_cost" json:"total_cost"`
+	TotalPoints   int     `firestore:"total_points" json:"total_points"`
 }
 
 // MemoryAggregate 内存聚合数据
@@ -46,6 +48,7 @@ type MemoryAggregate struct {
 	TotalInputTokens  int                         `json:"total_input_tokens"`
 	TotalOutputTokens int                         `json:"total_output_tokens"`
 	TotalCost         float64                     `json:"total_cost"`
+	TotalPoints       int                         `json:"total_points"`
 	ModelUsage        map[string]MemoryModelStats `json:"model_usage"`
 }
 
@@ -55,6 +58,7 @@ type MemoryModelStats struct {
 	InputTokens   int     `json:"input_tokens"`
 	OutputTokens  int     `json:"output_tokens"`
 	TotalCost     float64 `json:"total_cost"`
+	TotalPoints   int     `json:"total_points"`
 }
 
 // MonthlyUsage 月度使用统计
@@ -101,16 +105,19 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 				TotalInputTokens:  0,
 				TotalOutputTokens: 0,
 				TotalCost:         0.0,
+				TotalPoints:       0,
 				ModelUsage:        make(map[string]MemoryModelStats),
 			}
 			aggregateMap[key] = aggregate
 		}
 		
 		// 在内存中累加数据
+		points := ConvertCostToPoints(record.TotalCost)
 		aggregate.TotalRequests++
 		aggregate.TotalInputTokens += record.InputTokens
 		aggregate.TotalOutputTokens += record.OutputTokens
 		aggregate.TotalCost += record.TotalCost
+		aggregate.TotalPoints += points
 		
 		// 更新模型统计数据
 		modelStats := aggregate.ModelUsage[record.Model]
@@ -118,6 +125,7 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 		modelStats.InputTokens += record.InputTokens
 		modelStats.OutputTokens += record.OutputTokens
 		modelStats.TotalCost += record.TotalCost
+		modelStats.TotalPoints += points
 		aggregate.ModelUsage[record.Model] = modelStats
 	}
 
@@ -144,6 +152,7 @@ func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context,
 		"total_input_tokens": firestore.Increment(memAggregate.TotalInputTokens),
 		"total_output_tokens": firestore.Increment(memAggregate.TotalOutputTokens),
 		"total_cost":         firestore.Increment(memAggregate.TotalCost),
+		"total_points":       firestore.Increment(memAggregate.TotalPoints),
 		
 		// 元数据字段
 		"user_id":    memAggregate.UserID,
@@ -163,6 +172,7 @@ func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context,
 		upsertData[fmt.Sprintf("%s.input_tokens", modelPath)] = firestore.Increment(stats.InputTokens)
 		upsertData[fmt.Sprintf("%s.output_tokens", modelPath)] = firestore.Increment(stats.OutputTokens)
 		upsertData[fmt.Sprintf("%s.total_cost", modelPath)] = firestore.Increment(stats.TotalCost)
+		upsertData[fmt.Sprintf("%s.total_points", modelPath)] = firestore.Increment(stats.TotalPoints)
 	}
 	
 	// 使用MergeAll执行upsert操作
@@ -171,8 +181,8 @@ func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context,
 		return fmt.Errorf("failed to atomically upsert hourly aggregate: %w", err)
 	}
 	
-	log.Printf("Atomically upserted hourly aggregate %s: +%d requests, +%d input tokens, +%d output tokens, +$%.6f cost", 
-		docID, memAggregate.TotalRequests, memAggregate.TotalInputTokens, memAggregate.TotalOutputTokens, memAggregate.TotalCost)
+	log.Printf("Atomically upserted hourly aggregate %s: +%d requests, +%d input tokens, +%d output tokens, +$%.6f cost, +%d points", 
+		docID, memAggregate.TotalRequests, memAggregate.TotalInputTokens, memAggregate.TotalOutputTokens, memAggregate.TotalCost, memAggregate.TotalPoints)
 	
 	return nil
 }

@@ -19,7 +19,7 @@ simple-relay-468808
 - `hourly_aggregates` - Hourly aggregated billing data
 - `user_token_bindings` - User token binding system
 - `app_config` - Application configuration settings
-- `daily_cost_limits` - Daily cost limits per user (userId, costLimit, updateTime)
+- `daily_points_limits` - Daily points limits per user (userId, pointsLimit, updateTime)
 
 ### Script Usage
 ```bash
@@ -48,10 +48,10 @@ simple-relay-468808
 ./scripts/verify-billing-consistency.sh -p simple-relay-468808 -d simple-relay-db-staging
 ./scripts/verify-billing-consistency.sh -p simple-relay-468808 -d simple-relay-db-staging -u USER_EMAIL -h 2025-09-05T01 -v
 
-# Manage daily cost limits
-./scripts/manage-cost-limits.sh set USER_EMAIL COST_LIMIT -p simple-relay-468808 -d simple-relay-db-staging
-./scripts/manage-cost-limits.sh get USER_EMAIL -p simple-relay-468808 -d simple-relay-db-staging
-./scripts/manage-cost-limits.sh list -p simple-relay-468808 -d simple-relay-db-staging
+# Manage daily points limits  
+./scripts/manage-points-limits.sh set USER_EMAIL POINTS_LIMIT -p simple-relay-468808 -d simple-relay-db-staging
+./scripts/manage-points-limits.sh get USER_EMAIL -p simple-relay-468808 -d simple-relay-db-staging
+./scripts/manage-points-limits.sh list -p simple-relay-468808 -d simple-relay-db-staging
 ```
 
 ## Development Server Rules

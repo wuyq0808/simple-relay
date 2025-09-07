@@ -16,6 +16,7 @@ export interface HourlyUsage {
   InputTokens: number;
   OutputTokens: number;
   TotalCost: number;
+  TotalPoints: number;
   Requests: number;
 }
 
@@ -63,6 +64,7 @@ class FirestoreUsageDatabase {
           InputTokens: (stats.input_tokens as number) || 0,
           OutputTokens: (stats.output_tokens as number) || 0,
           TotalCost: (stats.total_cost as number) || 0,
+          TotalPoints: (stats.total_points as number) || 0,
           Requests: (stats.request_count as number) || 0,
         });
       }
@@ -110,6 +112,7 @@ class FirestoreUsageDatabase {
           InputTokens: (stats.input_tokens as number) || 0,
           OutputTokens: (stats.output_tokens as number) || 0,
           TotalCost: (stats.total_cost as number) || 0,
+          TotalPoints: (stats.total_points as number) || 0,
           Requests: (stats.request_count as number) || 0,
         });
       }
