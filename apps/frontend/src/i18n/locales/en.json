@@ -67,7 +67,7 @@
   },
   "usage": {
     "title": "Usage Statistics",
-    "description": "Free accounts have a 5-point daily limit.",
+    "description": "View your usage statistics and points consumption.",
     "hour": "Hour",
     "model": "Model",
     "requests": "Requests",
