@@ -145,7 +145,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       setLoading(false);
     } catch {
       setLoading(false);
-      onMessage('Failed to load usage statistics. Please try again.');
+      onMessage(t('apiKeys.messages.error'));
     }
   }, [onMessage, fetchPointsLimitInfo]);
 
