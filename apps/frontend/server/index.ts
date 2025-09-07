@@ -13,7 +13,7 @@ import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
 import { ApiKeyDatabase } from '../services/api-key-database.js';
 import { UsageDatabase } from '../services/usage-database.js';
-import { CostLimitDatabase } from '../services/cost-limit-database.js';
+import { PointsLimitDatabase } from '../services/points-limit-database.js';
 import { 
   validateSignIn,
   validateEmailVerification
@@ -302,12 +302,12 @@ app.get('/api/usage-stats', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/cost-limit', requireAuth, async (req, res) => {
+app.get('/api/points-limit', requireAuth, async (req, res) => {
   try {
     const email = req.signedCookies.user_email;
     
-    // Get daily cost limit for user
-    const costLimit = await CostLimitDatabase.getCostLimit(email);
+    // Get daily points limit for user
+    const pointsLimit = await PointsLimitDatabase.getPointsLimit(email);
     
     // Calculate today's usage (8pm-8pm UTC window)
     const now = new Date();
@@ -327,22 +327,22 @@ app.get('/api/cost-limit', requireAuth, async (req, res) => {
     
     // Get usage data for current window
     const todayUsage = await UsageDatabase.findByUserEmailAndTimeRange(email, windowStart, windowEnd);
-    const usedToday = todayUsage.reduce((sum: number, usage) => sum + usage.TotalCost, 0);
+    const usedToday = todayUsage.reduce((sum: number, usage) => sum + usage.TotalPoints, 0);
     
-    const dailyLimit = costLimit?.costLimit || 0;
+    const dailyLimit = pointsLimit?.pointsLimit || 0;
     const remaining = dailyLimit - usedToday;
     
     res.json({
-      costLimit: dailyLimit,
+      pointsLimit: dailyLimit,
       usedToday: usedToday,
       remaining: remaining,
-      updateTime: costLimit?.updateTime || null,
+      updateTime: pointsLimit?.updateTime || null,
       windowStart: windowStart.toISOString(),
       windowEnd: windowEnd.toISOString()
     });
   } catch (error) {
-    console.error('Error fetching cost limit:', error);
-    res.status(500).json({ error: 'Failed to fetch cost limit' });
+    console.error('Error fetching points limit:', error);
+    res.status(500).json({ error: 'Failed to fetch points limit' });
   }
 });
 
