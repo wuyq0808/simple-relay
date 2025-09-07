@@ -44,8 +44,7 @@
     "messages": {
       "created": "API key created successfully",
       "deleted": "API key deleted successfully",
-      "accessRequested": "Access requested",
-      "error": "System error, please retry later"
+      "accessRequested": "Access requested"
     }
   },
   "usageGuide": {
@@ -68,7 +67,7 @@
   },
   "usage": {
     "title": "Usage Statistics",
-    "description": "Free accounts have a 5-point daily limit.",
+    "description": "View your usage statistics and points consumption.",
     "hour": "Hour",
     "model": "Model",
     "requests": "Requests",
@@ -77,7 +76,7 @@
     "cost": "Cost",
     "points": "Points",
     "consumedPoints": "Consumed Points",
-    "dailyCostLimit": "Daily Cost Limit",
+    "dailyPointsLimit": "Daily Points Limit",
     "limit": "Limit",
     "usedToday": "Used Today",
     "remaining": "Remaining",
@@ -92,6 +91,7 @@
     "loading": "Loading...",
     "close": "Close",
     "copy": "Copy",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "error": "System error, please retry later"
   }
 }

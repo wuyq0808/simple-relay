@@ -33,7 +33,7 @@ type ApiKeyService struct {
 func NewApiKeyService(client *firestore.Client) *ApiKeyService {
 	// Create LRU cache with capacity of 1000 entries
 	cache, _ := lru.New[string, *CacheEntry](1000)
-	
+
 	return &ApiKeyService{
 		client:        client,
 		collection:    "api_key_bindings",
@@ -85,5 +85,3 @@ func (s *ApiKeyService) FindUserEmailByApiKey(ctx context.Context, apiKey string
 
 	return binding.UserEmail, nil
 }
-
-

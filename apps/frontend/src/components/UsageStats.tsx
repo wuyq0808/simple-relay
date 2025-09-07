@@ -7,7 +7,7 @@ interface HourlyUsage {
   Model: string;
   InputTokens: number;
   OutputTokens: number;
-  TotalCost: number;
+  TotalPoints: number;
   Requests: number;
 }
 
@@ -17,16 +17,16 @@ interface GroupedUsage {
     requests: number;
     inputTokens: number;
     outputTokens: number;
-    totalCost: number;
+    totalPoints: number;
   }>;
   totalRequests: number;
   totalInputTokens: number;
   totalOutputTokens: number;
-  totalCost: number;
+  totalPoints: number;
 }
 
-interface CostLimitInfo {
-  costLimit: number;
+interface PointsLimitInfo {
+  pointsLimit: number;
   usedToday: number;
   remaining: number;
   updateTime: string | null;
@@ -42,7 +42,7 @@ interface UsageStatsProps {
 export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
   const { t } = useTranslation();
   const [usageData, setUsageData] = useState<HourlyUsage[]>([]);
-  const [costLimitInfo, setCostLimitInfo] = useState<CostLimitInfo | null>(null);
+  const [pointsLimitInfo, setPointsLimitInfo] = useState<PointsLimitInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Format UTC time window for user's locale
@@ -73,7 +73,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
           totalRequests: 0,
           totalInputTokens: 0,
           totalOutputTokens: 0,
-          totalCost: 0,
+          totalPoints: 0,
         };
       }
       
@@ -83,27 +83,27 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
           requests: 0,
           inputTokens: 0,
           outputTokens: 0,
-          totalCost: 0,
+          totalPoints: 0,
         };
       }
       
       groups[day].models[usage.Model].requests += usage.Requests;
       groups[day].models[usage.Model].inputTokens += usage.InputTokens;
       groups[day].models[usage.Model].outputTokens += usage.OutputTokens;
-      groups[day].models[usage.Model].totalCost += usage.TotalCost;
+      groups[day].models[usage.Model].totalPoints += usage.TotalPoints;
       
       groups[day].totalRequests += usage.Requests;
       groups[day].totalInputTokens += usage.InputTokens;
       groups[day].totalOutputTokens += usage.OutputTokens;
-      groups[day].totalCost += usage.TotalCost;
+      groups[day].totalPoints += usage.TotalPoints;
     });
     
     return Object.values(groups).sort((a, b) => b.day.localeCompare(a.day));
   };
 
-  const fetchCostLimitInfo = useCallback(async () => {
+  const fetchPointsLimitInfo = useCallback(async () => {
     try {
-      const response = await fetch('/api/cost-limit', {
+      const response = await fetch('/api/points-limit', {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -113,10 +113,10 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
 
       if (response.ok) {
         const data = await response.json();
-        setCostLimitInfo(data);
+        setPointsLimitInfo(data);
       }
     } catch {
-      // Cost limit info is optional, don't show error if it fails
+      // Points limit info is optional, don't show error if it fails
     }
   }, []);
 
@@ -124,7 +124,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
     try {
       setLoading(true);
       
-      // Fetch both usage stats and cost limit info in parallel
+      // Fetch both usage stats and points limit info in parallel
       const [usageResponse] = await Promise.all([
         fetch('/api/usage-stats', {
           method: 'GET',
@@ -133,7 +133,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
             'Content-Type': 'application/json',
           },
         }),
-        fetchCostLimitInfo()
+        fetchPointsLimitInfo()
       ]);
 
       if (!usageResponse.ok) {
@@ -145,9 +145,9 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       setLoading(false);
     } catch {
       setLoading(false);
-      onMessage('Failed to load usage statistics. Please try again.');
+      onMessage(t('common.error'));
     }
-  }, [onMessage, fetchCostLimitInfo]);
+  }, [onMessage, fetchPointsLimitInfo, t]);
 
   useEffect(() => {
     fetchUsageStats();
@@ -161,14 +161,14 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
 
   return (
     <div className="usage-stats-container">
-      {/* Daily Cost Limit Section */}
-      {costLimitInfo && (
+      {/* Daily Points Limit Section */}
+      {pointsLimitInfo && (
         <div className="usage-table-container" style={{ marginBottom: '2rem' }}>
           <table className="usage-table">
             <thead>
               <tr>
                 <th colSpan={2}>
-                  {t('usage.dailyCostLimit', 'Daily Cost Limit')} - {getLocalizedTimeWindow()}
+                  {t('usage.dailyPointsLimit', 'Daily Points Limit')} - {getLocalizedTimeWindow()}
                 </th>
               </tr>
             </thead>
@@ -178,10 +178,10 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   {/* Stats */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#333', marginBottom: '8px' }}>
                     <span>
-                      {Math.floor(costLimitInfo.costLimit * 1000)} {t('usage.points', 'Points')}
+                      {Math.floor(pointsLimitInfo.pointsLimit)} {t('usage.points', 'Points')}
                     </span>
-                    <span style={{ color: costLimitInfo.remaining < 0 ? '#dc3545' : (costLimitInfo.remaining / costLimitInfo.costLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
-                      {costLimitInfo.remaining >= 0 ? `${Math.ceil(costLimitInfo.remaining * 1000)} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(costLimitInfo.remaining * 1000)}`}
+                    <span style={{ color: pointsLimitInfo.remaining < 0 ? '#dc3545' : (pointsLimitInfo.remaining / pointsLimitInfo.pointsLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
+                      {pointsLimitInfo.remaining >= 0 ? `${Math.ceil(pointsLimitInfo.remaining)} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(pointsLimitInfo.remaining)}`}
                     </span>
                   </div>
                   
@@ -195,9 +195,9 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   }}>
                     {/* Progress Bar Fill - shows remaining */}
                     <div style={{
-                      width: `${Math.max(0, Math.min(100, (costLimitInfo.remaining / costLimitInfo.costLimit) * 100))}%`,
+                      width: `${Math.max(0, Math.min(100, (pointsLimitInfo.remaining / pointsLimitInfo.pointsLimit) * 100))}%`,
                       height: '100%',
-                      backgroundColor: costLimitInfo.remaining < 0 ? '#dc3545' : (costLimitInfo.remaining / costLimitInfo.costLimit < 0.2) ? '#dc3545' : '#28a745',
+                      backgroundColor: pointsLimitInfo.remaining < 0 ? '#dc3545' : (pointsLimitInfo.remaining / pointsLimitInfo.pointsLimit < 0.2) ? '#dc3545' : '#28a745',
                       transition: 'width 0.3s ease'
                     }}>
                     </div>
@@ -262,7 +262,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   <td className="stats-cell">
                     {Object.entries(group.models).map(([modelName, modelStats], index) => (
                       <span key={modelName}>
-                        {Math.ceil(modelStats.totalCost * 1000)}
+                        {Math.round(modelStats.totalPoints)}
                         {index < Object.entries(group.models).length - 1 && <br />}
                       </span>
                     ))}

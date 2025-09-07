@@ -47,4 +47,3 @@ func (s *CostLimitService) GetCostLimit(ctx context.Context, userID string) (flo
 
 	return limit.CostLimit, nil
 }
-

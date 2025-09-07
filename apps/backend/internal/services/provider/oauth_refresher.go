@@ -51,11 +51,9 @@ func NewOAuthRefresher(oauthStore *OAuthStore) *OAuthRefresher {
 	}
 }
 
-
-
 func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OAuthCredentials, error) {
 	ctx := context.Background()
-	
+
 	var refreshedCredentials *OAuthCredentials
 	err := or.oauthStore.db.Client().RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		// Read current credentials
@@ -64,36 +62,36 @@ func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OA
 		if err != nil && status.Code(err) != codes.NotFound {
 			return fmt.Errorf("failed to read credentials: %w", err)
 		}
-		
+
 		if !doc.Exists() {
 			return fmt.Errorf("credentials document not found")
 		}
-		
+
 		var currentCreds OAuthCredentials
 		if err := doc.DataTo(&currentCreds); err != nil {
 			return fmt.Errorf("failed to parse current credentials: %w", err)
 		}
-		
+
 		now := time.Now()
-		
+
 		// Check if credentials are not expired anymore
 		if now.Before(currentCreds.ExpiresAt) {
 			log.Printf("Credentials for account %s were already refreshed by another process", credentials.AccountUUID)
 			refreshedCredentials = &currentCreds
 			return nil
 		}
-		
+
 		// Write to acquire lock
 		refreshStartedAt := now
 		currentCreds.RefreshStartedAt = refreshStartedAt
-		
+
 		err = tx.Set(docRef, currentCreds)
 		if err != nil {
 			return fmt.Errorf("failed to acquire refresh lock: %w", err)
 		}
-		
+
 		log.Printf("Refreshing credentials for account %s", credentials.AccountUUID)
-		
+
 		// HTTP request within transaction
 		reqData := OAuthRefreshRequest{
 			GrantType:    "refresh_token",
@@ -140,7 +138,7 @@ func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OA
 		// Write updated credentials
 		now = time.Now()
 		expiresAt := now.Add(time.Duration(refreshResp.ExpiresIn) * time.Second)
-		
+
 		newCredentials := OAuthCredentials{
 			AccessToken:      refreshResp.AccessToken,
 			RefreshToken:     refreshResp.RefreshToken,
@@ -153,22 +151,22 @@ func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OA
 			UpdatedAt:        now,
 			RefreshStartedAt: refreshStartedAt,
 		}
-		
+
 		err = tx.Set(docRef, newCredentials)
 		if err != nil {
 			return fmt.Errorf("failed to save refreshed credentials: %w", err)
 		}
-		
+
 		// Store refreshed credentials to return
 		refreshedCredentials = &newCredentials
-		
+
 		log.Printf("Successfully refreshed credentials for account %s", refreshResp.Account.UUID)
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return refreshedCredentials, nil
 }
