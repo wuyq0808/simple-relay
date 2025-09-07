@@ -46,8 +46,8 @@ class FirestoreUserDatabase {
       api_enabled: newUser.api_enabled,
     });
     
-    // Set initial points limit of 50 for new users
-    await PointsLimitDatabase.setPointsLimit(user.email, 50);
+    // Set initial points limit of 500 for new users
+    await PointsLimitDatabase.setPointsLimit(user.email, 500);
     
     return newUser;
   }
