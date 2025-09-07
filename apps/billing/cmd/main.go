@@ -15,13 +15,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 type Config struct {
 	ProjectID      string
 	DatabaseName   string
 	BillingEnabled bool
 }
-
 
 func loadConfig() *Config {
 	// Load .env file for local development
@@ -49,26 +47,26 @@ func loadConfig() *Config {
 // parseSSEForUsageData extracts model and usage data from message_start and message_delta events
 func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 	lines := strings.Split(sseData, "\n")
-	
+
 	var messageID, model string
 	var finalUsage map[string]interface{}
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
+
 		if strings.HasPrefix(line, "data: ") {
 			jsonData := strings.TrimPrefix(line, "data: ")
 			if jsonData == "[DONE]" {
 				continue
 			}
-			
+
 			var event map[string]interface{}
 			if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
 				continue
 			}
-			
+
 			eventType, _ := event["type"].(string)
-			
+
 			// Handle different event types
 			if eventType == "message_start" {
 				// Extract message ID and model from message_start event
@@ -94,33 +92,32 @@ func parseSSEForUsageData(sseData string) (*services.ClaudeMessage, error) {
 			}
 		}
 	}
-	
+
 	// Ensure we have all required data
 	if messageID == "" || model == "" || finalUsage == nil || len(finalUsage) == 0 {
 		return nil, fmt.Errorf("missing required data: messageID=%s, model=%s, usage=%v", messageID, model, finalUsage)
 	}
-	
+
 	// Create message with extracted data
 	messageData := map[string]interface{}{
 		"id":    messageID,
 		"model": model,
 		"usage": finalUsage,
 	}
-	
+
 	// Convert to ClaudeMessage struct
 	messageJSON, err := json.Marshal(messageData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal message: %w", err)
 	}
-	
+
 	var message services.ClaudeMessage
 	if err := json.Unmarshal(messageJSON, &message); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal into ClaudeMessage: %w", err)
 	}
-	
+
 	return &message, nil
 }
-
 
 func main() {
 	config := loadConfig()
@@ -182,14 +179,14 @@ func main() {
 
 		// Process SSE data - extract message_stop and pass to ProcessResponse
 		bodyStr := string(responseBody)
-		
+
 		// Only process SSE streams - use guard clause for early return
 		if !strings.HasPrefix(bodyStr, "event:") && !strings.HasPrefix(bodyStr, "data:") {
 			log.Printf("Skipping non-SSE response for billing")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		
+
 		// Parse SSE stream to extract usage data from message_start and message_delta events
 		message, err := parseSSEForUsageData(bodyStr)
 		if err != nil {
@@ -197,7 +194,7 @@ func main() {
 			http.Error(w, "Error parsing SSE stream", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Use ProcessRequest with the parsed message
 		err = billingService.ProcessRequest(message, userID, requestID)
 		if err != nil {

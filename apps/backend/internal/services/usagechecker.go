@@ -36,7 +36,6 @@ func NewUsageChecker(client *firestore.Client) *UsageChecker {
 	}
 }
 
-
 // cleanupExpiredEntry checks if cache entry is expired and removes it if so
 // Returns the entry if still valid, nil if expired or not found
 func (uc *UsageChecker) cleanupExpiredEntry(userID string) *UsageCacheEntry {
@@ -164,4 +163,3 @@ func (uc *UsageChecker) getCurrentDailyWindow() (time.Time, time.Time) {
 
 	return windowStart, windowEnd
 }
-

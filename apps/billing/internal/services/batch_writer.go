@@ -10,7 +10,6 @@ import (
 	"cloud.google.com/go/firestore"
 )
 
-
 // BatchWriter 批量写入器，用于优化数据库写入性能
 type BatchWriter struct {
 	client     *firestore.Client
@@ -47,7 +46,7 @@ func (bw *BatchWriter) Start() {
 func (bw *BatchWriter) Stop() error {
 	close(bw.stopChan)
 	bw.wg.Wait()
-	
+
 	// 刷新剩余的数据
 	return bw.flush()
 }
@@ -56,24 +55,24 @@ func (bw *BatchWriter) Stop() error {
 func (bw *BatchWriter) Add(record *UsageRecord) error {
 	bw.bufferMu.Lock()
 	defer bw.bufferMu.Unlock()
-	
+
 	bw.buffer = append(bw.buffer, record)
-	
+
 	// 如果缓冲区满了，立即刷新
 	if len(bw.buffer) >= bw.maxSize {
 		return bw.flushLocked()
 	}
-	
+
 	return nil
 }
 
 // run 运行批量写入器的主循环
 func (bw *BatchWriter) run() {
 	defer bw.wg.Done()
-	
+
 	ticker := time.NewTicker(bw.flushTime)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -90,7 +89,7 @@ func (bw *BatchWriter) run() {
 func (bw *BatchWriter) flush() error {
 	bw.bufferMu.Lock()
 	defer bw.bufferMu.Unlock()
-	
+
 	return bw.flushLocked()
 }
 
@@ -99,38 +98,38 @@ func (bw *BatchWriter) flushLocked() error {
 	if len(bw.buffer) == 0 {
 		return nil
 	}
-	
+
 	ctx := context.Background()
 	batch := bw.client.Batch()
-	
+
 	// 批量添加使用记录文档
 	for _, record := range bw.buffer {
 		docRef := bw.client.Collection(bw.collection).Doc(record.ID)
 		batch.Set(docRef, record)
 	}
-	
+
 	// 执行批量写入
 	_, err := batch.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
-	
+
 	// 使用聚合服务更新小时聚合数据
 	// 清空缓冲区前先复制记录
 	recordsCopy := make([]*UsageRecord, len(bw.buffer))
 	copy(recordsCopy, bw.buffer)
-	
+
 	// 清空缓冲区
 	bw.buffer = bw.buffer[:0]
-	
+
 	// 执行记录聚合 (includes both cost and points)
 	if err := bw.aggregator.AggregateRecords(ctx, recordsCopy); err != nil {
 		log.Printf("Error aggregating records: %v", err)
 		// 聚合失败不阻塞刷新操作，仅记录日志
 	}
-	
+
 	log.Printf("Successfully flushed %d records to database", len(recordsCopy))
-	
+
 	return nil
 }
 
@@ -138,7 +137,7 @@ func (bw *BatchWriter) flushLocked() error {
 func (bw *BatchWriter) GetBufferSize() int {
 	bw.bufferMu.Lock()
 	defer bw.bufferMu.Unlock()
-	
+
 	return len(bw.buffer)
 }
 
@@ -146,9 +145,9 @@ func (bw *BatchWriter) GetBufferSize() int {
 func (bw *BatchWriter) SetMaxSize(size int) {
 	bw.bufferMu.Lock()
 	defer bw.bufferMu.Unlock()
-	
+
 	bw.maxSize = size
-	
+
 	// 如果当前缓冲区超过新的大小限制，立即刷新
 	if len(bw.buffer) >= bw.maxSize {
 		bw.flushLocked()

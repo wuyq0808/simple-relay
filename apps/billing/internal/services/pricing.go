@@ -33,7 +33,7 @@ func NewPricingCalculator() *PricingCalculator {
 				InputPricePerMillion:  1.0,
 				OutputPricePerMillion: 5.0,
 			},
-			
+
 			// Claude 3 系列
 			"claude-3-opus": {
 				InputPricePerMillion:  15.0,
@@ -59,7 +59,7 @@ func NewPricingCalculator() *PricingCalculator {
 				InputPricePerMillion:  0.25,
 				OutputPricePerMillion: 1.25,
 			},
-			
+
 			// Claude 2 系列
 			"claude-2.1": {
 				InputPricePerMillion:  8.0,
@@ -69,7 +69,7 @@ func NewPricingCalculator() *PricingCalculator {
 				InputPricePerMillion:  8.0,
 				OutputPricePerMillion: 24.0,
 			},
-			
+
 			// Claude Instant
 			"claude-instant-1.2": {
 				InputPricePerMillion:  0.8,
@@ -83,18 +83,18 @@ func NewPricingCalculator() *PricingCalculator {
 func (pc *PricingCalculator) Calculate(model string, inputTokens int, outputTokens int) (inputCost float64, outputCost float64) {
 	// 标准化模型名称
 	modelKey := pc.normalizeModelName(model)
-	
+
 	// 获取定价信息
 	pricing, exists := pc.modelPricing[modelKey]
 	if !exists {
 		// 如果找不到精确匹配，尝试部分匹配
 		pricing = pc.findBestMatchPricing(modelKey)
 	}
-	
+
 	// 计算成本（价格是per million tokens）
 	inputCost = float64(inputTokens) * pricing.InputPricePerMillion / 1_000_000
 	outputCost = float64(outputTokens) * pricing.OutputPricePerMillion / 1_000_000
-	
+
 	return inputCost, outputCost
 }
 
@@ -108,21 +108,21 @@ func (pc *PricingCalculator) GetTotalCost(model string, inputTokens int, outputT
 func (pc *PricingCalculator) normalizeModelName(model string) string {
 	// 转换为小写
 	model = strings.ToLower(model)
-	
+
 	// 移除常见的版本后缀变体
 	model = strings.TrimSuffix(model, "-latest")
-	
+
 	// 如果包含日期格式但不在我们的映射中，尝试提取基础模型名
 	if strings.Contains(model, "-20") {
 		parts := strings.Split(model, "-20")
 		baseModel := parts[0]
-		
+
 		// 检查是否有基础模型的定价
 		if _, exists := pc.modelPricing[baseModel]; exists {
 			return baseModel
 		}
 	}
-	
+
 	return model
 }
 
@@ -134,7 +134,7 @@ func (pc *PricingCalculator) findBestMatchPricing(modelKey string) ModelPricing 
 			return pricing
 		}
 	}
-	
+
 	// 默认定价（使用Sonnet的定价作为默认）
 	return ModelPricing{
 		InputPricePerMillion:  3.0,

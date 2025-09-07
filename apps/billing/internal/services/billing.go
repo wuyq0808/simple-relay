@@ -39,10 +39,10 @@ type ClaudeAPIResponse struct {
 		Type string `json:"type"`
 	} `json:"content"`
 	Usage struct {
-		InputTokens             int `json:"input_tokens"`
-		OutputTokens            int `json:"output_tokens"`
+		InputTokens              int `json:"input_tokens"`
+		OutputTokens             int `json:"output_tokens"`
 		CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
-		CacheReadInputTokens    int `json:"cache_read_input_tokens,omitempty"`
+		CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
 	} `json:"usage"`
 	StopReason string `json:"stop_reason"`
 }
@@ -56,20 +56,20 @@ type ClaudeMessage struct {
 		Type string `json:"type"`
 	} `json:"content"`
 	Usage struct {
-		InputTokens             int `json:"input_tokens"`
-		OutputTokens            int `json:"output_tokens"`
+		InputTokens              int `json:"input_tokens"`
+		OutputTokens             int `json:"output_tokens"`
 		CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
-		CacheReadInputTokens    int `json:"cache_read_input_tokens,omitempty"`
+		CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
 	} `json:"usage"`
 	StopReason string `json:"stop_reason"`
 }
 
 // ClaudeAPIRequest Claude API请求结构
 type ClaudeAPIRequest struct {
-	Model    string      `json:"model"`
-	Messages []Message   `json:"messages"`
-	System   string      `json:"system,omitempty"`
-	MaxTokens int        `json:"max_tokens"`
+	Model     string    `json:"model"`
+	Messages  []Message `json:"messages"`
+	System    string    `json:"system,omitempty"`
+	MaxTokens int       `json:"max_tokens"`
 }
 
 // Message 消息结构
@@ -94,13 +94,13 @@ func NewBillingService(dbService *database.Service, enabled bool) *BillingServic
 		pricing:   NewPricingCalculator(),
 		enabled:   enabled,
 	}
-	
+
 	// 初始化批量写入器
 	if enabled && dbService != nil {
 		service.batchWriter = NewBatchWriter(dbService.Client(), 100, 5*time.Second, service)
 		service.batchWriter.Start()
 	}
-	
+
 	return service
 }
 
@@ -129,12 +129,12 @@ func (bs *BillingService) ProcessResponse(message *ClaudeMessage, userID string,
 	if message.Usage.InputTokens == 0 && message.Usage.OutputTokens == 0 {
 		log.Printf("Warning: No usage tokens found in message for request %s", requestID)
 	}
-	
+
 	// Use message ID as requestID if not provided
 	if requestID == "" {
 		requestID = message.ID
 	}
-	
+
 	record := &UsageRecord{
 		ID:               fmt.Sprintf("%s_%d", requestID, time.Now().UnixNano()),
 		UserID:           userID,
@@ -149,12 +149,11 @@ func (bs *BillingService) ProcessResponse(message *ClaudeMessage, userID string,
 		Status:           "success",
 	}
 
-	log.Printf("Successfully parsed usage: Model=%s, Input=%d, Output=%d", 
+	log.Printf("Successfully parsed usage: Model=%s, Input=%d, Output=%d",
 		record.Model, record.InputTokens, record.OutputTokens)
 
 	return record, nil
 }
-
 
 // ProcessRequest 处理请求并计算账单
 func (bs *BillingService) ProcessRequest(message *ClaudeMessage, userID string, requestID string) error {
@@ -174,7 +173,7 @@ func (bs *BillingService) ProcessRequest(message *ClaudeMessage, userID string, 
 		return fmt.Errorf("error recording usage: %w", err)
 	}
 
-	log.Printf("Usage recorded: Model=%s, Input=%d, Output=%d, Cost=$%.4f", 
+	log.Printf("Usage recorded: Model=%s, Input=%d, Output=%d, Cost=$%.4f",
 		record.Model, record.InputTokens, record.OutputTokens, record.TotalCost)
 
 	return nil
@@ -226,27 +225,26 @@ func (bs *BillingService) GetDailyAggregate(ctx context.Context, userID string, 
 
 	// 聚合统计
 	aggregate := map[string]interface{}{
-		"date":          startOfDay,
-		"user_id":       userID,
-		"total_requests": len(records),
-		"total_input_tokens": 0,
+		"date":                startOfDay,
+		"user_id":             userID,
+		"total_requests":      len(records),
+		"total_input_tokens":  0,
 		"total_output_tokens": 0,
-		"total_cost":    0.0,
-		"models_used":   make(map[string]int),
+		"total_cost":          0.0,
+		"models_used":         make(map[string]int),
 	}
 
 	for _, record := range records {
 		aggregate["total_input_tokens"] = aggregate["total_input_tokens"].(int) + record.InputTokens
 		aggregate["total_output_tokens"] = aggregate["total_output_tokens"].(int) + record.OutputTokens
 		aggregate["total_cost"] = aggregate["total_cost"].(float64) + record.TotalCost
-		
+
 		modelsUsed := aggregate["models_used"].(map[string]int)
 		modelsUsed[record.Model]++
 	}
 
 	return aggregate, nil
 }
-
 
 // Close 关闭计费服务
 func (bs *BillingService) Close() error {

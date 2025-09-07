@@ -147,7 +147,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       setLoading(false);
       onMessage(t('common.error'));
     }
-  }, [onMessage, fetchPointsLimitInfo]);
+  }, [onMessage, fetchPointsLimitInfo, t]);
 
   useEffect(() => {
     fetchUsageStats();
