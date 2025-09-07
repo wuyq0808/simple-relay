@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"simple-relay/shared/database"
+
 	"cloud.google.com/go/firestore"
 	"github.com/hashicorp/golang-lru/v2/expirable"
-	"simple-relay/shared/database"
 )
 
 type OAuthCredentials struct {
@@ -48,7 +49,8 @@ func NewOAuthStore(db *database.Service) *OAuthStore {
 func (store *OAuthStore) GetRandomCredentials() (*OAuthCredentials, error) {
 	ctx := context.Background()
 
-	query := store.db.Client().Collection("oauth_tokens")
+	query := store.db.Client().Collection("oauth_tokens").
+		Where("rate_limit_headers", "==", nil)
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
@@ -190,7 +192,6 @@ func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding,
 		store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +234,6 @@ func (store *OAuthStore) SaveRateLimitHeadersByToken(accessToken string, headers
 		{Path: "rate_limit_headers", Value: headers},
 		{Path: "updated_at", Value: time.Now()},
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to save rate limit headers: %w", err)
 	}
