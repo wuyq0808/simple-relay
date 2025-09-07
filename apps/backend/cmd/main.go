@@ -192,7 +192,7 @@ func main() {
 
 			// Return 529 (overloaded) to client instead of 429
 			resp.StatusCode = 529
-			resp.Status = "529 Switching Lanes"
+			resp.Status = messages.ClientErrorMessages.TokenOverloaded
 			
 			// Clear all headers from the response
 			for key := range resp.Header {
