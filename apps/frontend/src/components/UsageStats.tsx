@@ -126,7 +126,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       
       // Fetch both usage stats and points limit info in parallel
       const [usageResponse] = await Promise.all([
-        fetch('/api/points-stats', {
+        fetch('/api/usage-stats', {
           method: 'GET',
           credentials: 'include',
           headers: {
