@@ -14,8 +14,8 @@ export default function QRCodeIcon() {
         const response = await fetch('/api/config');
         const data = await response.json();
         setQrCodeLink(data.qr_code_link);
-      } catch (error) {
-        console.error('Error fetching config:', error);
+      } catch {
+        // Config fetch failed - component will show "Coming Soon"
       }
     };
 
@@ -36,8 +36,8 @@ export default function QRCodeIcon() {
         .then((url) => {
           setQrCodeDataUrl(url);
         })
-        .catch((error) => {
-          console.error('Error generating QR code:', error);
+        .catch(() => {
+          // QR code generation failed - component will show "Coming Soon"
         })
         .finally(() => {
           setLoading(false);
