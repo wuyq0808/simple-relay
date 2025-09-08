@@ -1,6 +1,7 @@
 package services
 
 import (
+	"log"
 	"strings"
 )
 
@@ -30,8 +31,22 @@ func NewPricingCalculator() *PricingCalculator {
 				OutputPricePerMillion: 15.0,
 			},
 			"claude-3-5-haiku": {
-				InputPricePerMillion:  1.0,
-				OutputPricePerMillion: 5.0,
+				InputPricePerMillion:  0.80,
+				OutputPricePerMillion: 4.0,
+			},
+			"claude-3-5-haiku-20241022": {
+				InputPricePerMillion:  0.80,
+				OutputPricePerMillion: 4.0,
+			},
+
+			// Claude 4 系列
+			"claude-opus-4-1-20250805": {
+				InputPricePerMillion:  15.0,
+				OutputPricePerMillion: 75.0,
+			},
+			"claude-sonnet-4-20250514": {
+				InputPricePerMillion:  3.0,
+				OutputPricePerMillion: 15.0,
 			},
 
 			// Claude 3 系列
@@ -81,13 +96,13 @@ func NewPricingCalculator() *PricingCalculator {
 
 // Calculate 计算给定模型和token数量的成本
 func (pc *PricingCalculator) Calculate(model string, inputTokens int, outputTokens int) (inputCost float64, outputCost float64) {
-	// 标准化模型名称
-	modelKey := pc.normalizeModelName(model)
+	// 转换为小写以进行不区分大小写的匹配
+	modelKey := strings.ToLower(model)
 
 	// 获取定价信息
 	pricing, exists := pc.modelPricing[modelKey]
 	if !exists {
-		// 如果找不到精确匹配，尝试部分匹配
+		// 如果找不到精确匹配，尝试基于模型类型的匹配
 		pricing = pc.findBestMatchPricing(modelKey)
 	}
 
@@ -104,65 +119,33 @@ func (pc *PricingCalculator) GetTotalCost(model string, inputTokens int, outputT
 	return inputCost + outputCost
 }
 
-// normalizeModelName 标准化模型名称
-func (pc *PricingCalculator) normalizeModelName(model string) string {
-	// 转换为小写
-	model = strings.ToLower(model)
-
-	// 移除常见的版本后缀变体
-	model = strings.TrimSuffix(model, "-latest")
-
-	// 如果包含日期格式但不在我们的映射中，尝试提取基础模型名
-	if strings.Contains(model, "-20") {
-		parts := strings.Split(model, "-20")
-		baseModel := parts[0]
-
-		// 检查是否有基础模型的定价
-		if _, exists := pc.modelPricing[baseModel]; exists {
-			return baseModel
-		}
-	}
-
-	return model
-}
-
-// findBestMatchPricing 查找最匹配的定价
+// findBestMatchPricing 基于模型名称模式查找定价
 func (pc *PricingCalculator) findBestMatchPricing(modelKey string) ModelPricing {
-	// 尝试查找包含关系
-	for key, pricing := range pc.modelPricing {
-		if strings.Contains(modelKey, key) || strings.Contains(key, modelKey) {
-			return pricing
+	// 基于模型类型的简单模式匹配
+	if strings.Contains(modelKey, "opus") {
+		// Opus models: $15/$75
+		return ModelPricing{
+			InputPricePerMillion:  15.0,
+			OutputPricePerMillion: 75.0,
+		}
+	} else if strings.Contains(modelKey, "sonnet") {
+		// Sonnet models: $3/$15
+		return ModelPricing{
+			InputPricePerMillion:  3.0,
+			OutputPricePerMillion: 15.0,
+		}
+	} else if strings.Contains(modelKey, "haiku") {
+		// Haiku models: Use latest 3.5 pricing $0.80/$4
+		return ModelPricing{
+			InputPricePerMillion:  0.80,
+			OutputPricePerMillion: 4.0,
 		}
 	}
 
 	// 默认定价（使用Sonnet的定价作为默认）
+	log.Printf("ERROR: Model '%s' doesn't match any known pattern (opus/sonnet/haiku), using default Sonnet pricing ($3/$15 per million tokens)", modelKey)
 	return ModelPricing{
 		InputPricePerMillion:  3.0,
 		OutputPricePerMillion: 15.0,
 	}
-}
-
-// GetModelPricing 获取特定模型的定价信息
-func (pc *PricingCalculator) GetModelPricing(model string) (ModelPricing, bool) {
-	modelKey := pc.normalizeModelName(model)
-	pricing, exists := pc.modelPricing[modelKey]
-	return pricing, exists
-}
-
-// UpdateModelPricing 更新模型定价（用于动态调整价格）
-func (pc *PricingCalculator) UpdateModelPricing(model string, inputPrice, outputPrice float64) {
-	modelKey := pc.normalizeModelName(model)
-	pc.modelPricing[modelKey] = ModelPricing{
-		InputPricePerMillion:  inputPrice,
-		OutputPricePerMillion: outputPrice,
-	}
-}
-
-// GetSupportedModels 获取所有支持的模型列表
-func (pc *PricingCalculator) GetSupportedModels() []string {
-	models := make([]string, 0, len(pc.modelPricing))
-	for model := range pc.modelPricing {
-		models = append(models, model)
-	}
-	return models
 }
