@@ -34,6 +34,15 @@ class FirestoreUserDatabase {
     // Get default API access setting from config, fallback to false
     const defaultApiEnabled = await ConfigService.getConfig('default_api_enabled') ?? false;
     
+    // Get default daily points limit from config (required)
+    const defaultDailyPointsLimit = await ConfigService.getConfig('default_daily_points_limit');
+    if (defaultDailyPointsLimit === null || defaultDailyPointsLimit === undefined) {
+      throw new Error('default_daily_points_limit configuration is not set');
+    }
+    if (typeof defaultDailyPointsLimit !== 'number' || defaultDailyPointsLimit <= 0) {
+      throw new Error(`default_daily_points_limit must be a positive number, got: ${defaultDailyPointsLimit}`);
+    }
+    
     const newUser: User = {
       ...user,
       created_at: new Date(),
@@ -50,8 +59,8 @@ class FirestoreUserDatabase {
       api_enabled: newUser.api_enabled,
     });
     
-    // Set initial points limit of 500 for new users
-    await PointsLimitDatabase.setPointsLimit(user.email, 500);
+    // Set initial points limit for new users from config
+    await PointsLimitDatabase.setPointsLimit(user.email, defaultDailyPointsLimit);
     
     return newUser;
   }

@@ -100,18 +100,23 @@ app.post('/api/signin', ipRateLimit, validateSignIn, async (req, res) => {
   const verificationCode = generateVerificationCode();
   const verificationExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  if (existingUser) {
-    await UserDatabase.updateUser(email, {
-      verification_token: verificationCode,
-      verification_expires_at: verificationExpiresAt
-    });
-  } else {
-    await UserDatabase.create({
-      email,
-      last_login: null,
-      verification_token: verificationCode,
-      verification_expires_at: verificationExpiresAt
-    });
+  try {
+    if (existingUser) {
+      await UserDatabase.updateUser(email, {
+        verification_token: verificationCode,
+        verification_expires_at: verificationExpiresAt
+      });
+    } else {
+      await UserDatabase.create({
+        email,
+        last_login: null,
+        verification_token: verificationCode,
+        verification_expires_at: verificationExpiresAt
+      });
+    }
+  } catch (error) {
+    console.error('Error creating/updating user:', error);
+    return res.status(500).json({ error: 'Failed to process user registration' });
   }
 
   try {
