@@ -1,8 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
 import './QRCodeIcon.scss';
 
 export default function QRCodeIcon() {
   const [showQR, setShowQR] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const [qrCodeLink, setQrCodeLink] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        const data = await response.json();
+        setQrCodeLink(data.qr_code_link);
+      } catch (error) {
+        console.error('Error fetching config:', error);
+      }
+    };
+
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
+    if (qrCodeLink && !qrCodeDataUrl) {
+      setLoading(true);
+      QRCode.toDataURL(qrCodeLink, {
+        width: 140,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      })
+        .then((url) => {
+          setQrCodeDataUrl(url);
+        })
+        .catch((error) => {
+          console.error('Error generating QR code:', error);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [qrCodeLink, qrCodeDataUrl]);
 
   return (
     <div 
@@ -28,11 +69,28 @@ export default function QRCodeIcon() {
       
       {showQR && (
         <div className="qr-popup">
-          <img 
-            src="/src/assets/qr-code.png" 
-            alt="QR Code" 
-            className="qr-image"
-          />
+          {loading && (
+            <div className="qr-loading">
+              <div className="loading-spinner"></div>
+              <p>Generating QR Code...</p>
+            </div>
+          )}
+          
+          {qrCodeDataUrl && !loading && (
+            <img 
+              src={qrCodeDataUrl} 
+              alt="QR Code" 
+              className="qr-image"
+            />
+          )}
+          
+          {!qrCodeLink && !loading && (
+            <div className="qr-placeholder">
+              <div className="qr-placeholder-content">
+                <p className="coming-soon-text">Coming Soon</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

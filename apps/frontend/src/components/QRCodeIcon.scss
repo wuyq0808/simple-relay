@@ -80,6 +80,77 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.qr-placeholder {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+}
+
+.qr-placeholder-content {
+  text-align: center;
+  color: #666;
+}
+
+.qr-placeholder-icon {
+  opacity: 0.4;
+  margin-bottom: 8px;
+}
+
+.qr-placeholder-text {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 4px 0;
+  color: #555;
+}
+
+.qr-placeholder-hint {
+  font-size: 10px;
+  color: #888;
+  font-style: italic;
+}
+
+.coming-soon-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #666;
+  margin: 0;
+  text-align: center;
+}
+
+.qr-loading {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  
+  p {
+    font-size: 12px;
+    margin: 8px 0 0 0;
+  }
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
