@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import '../styles/base.scss';
 import SignIn from './SignIn';
 import Verify from './Verify';
+import QRCodeIcon from './QRCodeIcon';
 
 type MessageType = 'success' | 'error' | '';
 type AuthState = 'signin' | 'verify';
@@ -35,6 +36,7 @@ function LoginPanel() {
         
         <h1 className="app-title">
           {t('app.title')}
+          <QRCodeIcon />
         </h1>
 
         {authState === 'signin' && (
