@@ -1,5 +1,6 @@
 import { Firestore } from '@google-cloud/firestore';
 import { PointsLimitDatabase } from './points-limit-database.js';
+import { ConfigService } from './config.js';
 
 export interface User {
   email: string;                    // Primary key
@@ -30,10 +31,13 @@ class FirestoreUserDatabase {
   }
 
   async create(user: Omit<User, 'created_at' | 'api_enabled'>): Promise<User> {
+    // Get default API access setting from config, fallback to false
+    const defaultApiEnabled = await ConfigService.getConfig('default_api_enabled') ?? false;
+    
     const newUser: User = {
       ...user,
       created_at: new Date(),
-      api_enabled: true,
+      api_enabled: Boolean(defaultApiEnabled),
     };
     
     // Create user document
