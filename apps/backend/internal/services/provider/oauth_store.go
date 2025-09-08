@@ -49,8 +49,7 @@ func NewOAuthStore(db *database.Service) *OAuthStore {
 func (store *OAuthStore) GetRandomCredentials() (*OAuthCredentials, error) {
 	ctx := context.Background()
 
-	query := store.db.Client().Collection("oauth_tokens").
-		Where("rate_limit_headers", "==", nil)
+	query := store.db.Client().Collection("oauth_tokens")
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
