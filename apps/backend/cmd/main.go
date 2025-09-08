@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -129,14 +128,14 @@ func main() {
 			return
 		}
 
-		// Check daily cost limit before processing request
-		remainingCost, err := usageChecker.CheckDailyCostLimit(req.Context(), userId)
+		// Check daily points limit before processing request
+		remainingPoints, err := usageChecker.CheckDailyPointsLimit(req.Context(), userId)
 		if err != nil {
-			log.Printf("Error checking cost limit for user %s: %v", userId, err)
-			writeError(w, fmt.Sprintf("%s: %v", messages.ClientErrorMessages.InternalServerError, err), http.StatusInternalServerError)
+			log.Printf("Error checking points limit for user %s: %v", userId, err)
+			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
 			return
 		}
-		if remainingCost <= 0 {
+		if remainingPoints <= 0 {
 			w.Header().Set("X-Should-Retry", "false")
 			writeError(w, messages.ClientErrorMessages.DailyLimitExceeded, http.StatusTooManyRequests)
 			return
