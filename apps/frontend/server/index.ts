@@ -12,7 +12,7 @@ const base62 = baseX(BASE62);
 import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
 import { ApiKeyDatabase } from '../services/api-key-database.js';
-import { UsageDatabase } from '../services/usage-database.js';
+import { UsageDatabase, HourlyUsage } from '../services/usage-database.js';
 import { PointsLimitDatabase } from '../services/points-limit-database.js';
 import { 
   validateSignIn,
@@ -78,6 +78,18 @@ app.post('/api/signin', ipRateLimit, validateSignIn, async (req, res) => {
       const signupEnabled = await ConfigService.getConfig('signup_enabled');
       if (signupEnabled === false) {
         return res.status(403).json({ error: 'Sign up is currently disabled' });
+      }
+
+      // Check if max user limit is reached
+      const maxUsers = await ConfigService.getConfig('max_registered_users');
+      if (typeof maxUsers !== 'number' || maxUsers <= 0) {
+        console.error('max_registered_users config must be a positive number, got:', maxUsers);
+        return res.status(500).json({ error: 'Configuration service error' });
+      }
+      
+      const currentUserCount = await UserDatabase.countUsers();
+      if (currentUserCount >= maxUsers) {
+        return res.status(403).json({ error: 'Maximum number of registered users reached' });
       }
     } catch (error) {
       console.error('Error checking signup config:', error);
@@ -327,7 +339,7 @@ app.get('/api/points-limit', requireAuth, async (req, res) => {
     
     // Get usage data for current window
     const todayUsage = await UsageDatabase.findByUserEmailAndTimeRange(email, windowStart, windowEnd);
-    const usedToday = todayUsage.reduce((sum: number, usage) => sum + usage.TotalPoints, 0);
+    const usedToday = todayUsage.reduce((sum: number, usage: HourlyUsage) => sum + usage.TotalPoints, 0);
     
     const dailyLimit = pointsLimit?.pointsLimit || 0;
     const remaining = dailyLimit - usedToday;

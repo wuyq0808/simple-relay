@@ -119,6 +119,11 @@ class FirestoreUserDatabase {
     return user.verification_expires_at > new Date();
   }
 
+  // Get total count of registered users
+  async countUsers(): Promise<number> {
+    const snapshot = await this.db.collection(this.collection).count().get();
+    return snapshot.data().count;
+  }
 
 }
 

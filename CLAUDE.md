@@ -52,6 +52,24 @@ simple-relay-468808
 ./scripts/manage-points-limits.sh set USER_EMAIL POINTS_LIMIT -p simple-relay-468808 -d simple-relay-db-staging
 ./scripts/manage-points-limits.sh get USER_EMAIL -p simple-relay-468808 -d simple-relay-db-staging
 ./scripts/manage-points-limits.sh list -p simple-relay-468808 -d simple-relay-db-staging
+
+# Manage configuration settings
+./scripts/config-manager.sh read CONFIG_KEY -p simple-relay-468808 -d DATABASE_NAME
+./scripts/config-manager.sh write CONFIG_KEY VALUE "Description" -p simple-relay-468808 -d DATABASE_NAME
+./scripts/config-manager.sh read -p simple-relay-468808 -d DATABASE_NAME  # Read all configs
+
+# Manage OAuth tokens
+./scripts/manage-oauth-tokens.sh add USER_EMAIL ACCESS_TOKEN REFRESH_TOKEN "Org Name" -p simple-relay-468808 -d DATABASE_NAME
+./scripts/manage-oauth-tokens.sh list -p simple-relay-468808 -d DATABASE_NAME
+./scripts/manage-oauth-tokens.sh delete USER_EMAIL -p simple-relay-468808 -d DATABASE_NAME
+```
+
+## User Registration Limits
+```bash
+# Manage max user limit (current: 1000 for both staging/production)
+./scripts/config-manager.sh read max_registered_users -p simple-relay-468808 -d DATABASE_NAME
+./scripts/config-manager.sh write max_registered_users 500 "Max users" -p simple-relay-468808 -d DATABASE_NAME
+./scripts/config-manager.sh write max_registered_users 0 "Unlimited" -p simple-relay-468808 -d DATABASE_NAME  # Disable limit
 ```
 
 ## Development Server Rules
