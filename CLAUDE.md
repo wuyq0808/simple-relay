@@ -57,6 +57,11 @@ simple-relay-468808
 ./scripts/config-manager.sh read CONFIG_KEY -p simple-relay-468808 -d DATABASE_NAME
 ./scripts/config-manager.sh write CONFIG_KEY VALUE "Description" -p simple-relay-468808 -d DATABASE_NAME
 ./scripts/config-manager.sh read -p simple-relay-468808 -d DATABASE_NAME  # Read all configs
+
+# Manage OAuth tokens
+./scripts/manage-oauth-tokens.sh add USER_EMAIL ACCESS_TOKEN REFRESH_TOKEN "Org Name" -p simple-relay-468808 -d DATABASE_NAME
+./scripts/manage-oauth-tokens.sh list -p simple-relay-468808 -d DATABASE_NAME
+./scripts/manage-oauth-tokens.sh delete USER_EMAIL -p simple-relay-468808 -d DATABASE_NAME
 ```
 
 ## User Registration Limits
