@@ -339,7 +339,7 @@ app.get('/api/points-limit', requireAuth, async (req, res) => {
     
     // Get usage data for current window
     const todayUsage = await UsageDatabase.findByUserEmailAndTimeRange(email, windowStart, windowEnd);
-    const usedToday = todayUsage.reduce((sum: number, usage: any) => sum + (usage.TotalPoints || 0), 0);
+    const usedToday = todayUsage.reduce((sum: number, usage) => sum + ((usage as { TotalPoints?: number }).TotalPoints || 0), 0);
     
     const dailyLimit = pointsLimit?.pointsLimit || 0;
     const remaining = dailyLimit - usedToday;
