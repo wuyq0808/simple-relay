@@ -11,16 +11,16 @@ import (
 
 // UsageCacheEntry represents a cached usage check result
 type UsageCacheEntry struct {
-	RemainingCost float64
-	Timestamp     time.Time
+	RemainingPoints int
+	Timestamp       time.Time
 }
 
-// UsageChecker handles daily cost limit checking
+// UsageChecker handles daily points limit checking
 type UsageChecker struct {
-	client           *firestore.Client
-	costLimitService *CostLimitService
-	cache            *lru.Cache[string, *UsageCacheEntry]
-	cacheDuration    time.Duration
+	client              *firestore.Client
+	pointsLimitService  *PointsLimitService
+	cache               *lru.Cache[string, *UsageCacheEntry]
+	cacheDuration       time.Duration
 }
 
 // NewUsageChecker creates a new usage checker
@@ -29,10 +29,10 @@ func NewUsageChecker(client *firestore.Client) *UsageChecker {
 	cache, _ := lru.New[string, *UsageCacheEntry](1000)
 
 	return &UsageChecker{
-		client:           client,
-		costLimitService: NewCostLimitService(client),
-		cache:            cache,
-		cacheDuration:    24 * time.Hour, // 24 hour cache
+		client:             client,
+		pointsLimitService: NewPointsLimitService(client),
+		cache:              cache,
+		cacheDuration:      24 * time.Hour, // 24 hour cache
 	}
 }
 
@@ -49,12 +49,12 @@ func (uc *UsageChecker) cleanupExpiredEntry(userID string) *UsageCacheEntry {
 	return nil
 }
 
-// calculateRemainingCostFromDB calculates remaining cost by querying database
-func (uc *UsageChecker) calculateRemainingCostFromDB(ctx context.Context, userID string) (float64, error) {
-	// Get user's cost limit (defaults to 0 if not set)
-	limitAmount, err := uc.costLimitService.GetCostLimit(ctx, userID)
+// calculateRemainingPointsFromDB calculates remaining points by querying database
+func (uc *UsageChecker) calculateRemainingPointsFromDB(ctx context.Context, userID string) (int, error) {
+	// Get user's points limit (defaults to 0 if not set)
+	limitAmount, err := uc.pointsLimitService.GetPointsLimit(ctx, userID)
 	if err != nil {
-		return 0, fmt.Errorf("error getting cost limit: %w", err)
+		return 0, fmt.Errorf("error getting points limit: %w", err)
 	}
 
 	// If limit is 0, return 0 directly (no usage allowed) - don't cache
@@ -68,57 +68,57 @@ func (uc *UsageChecker) calculateRemainingCostFromDB(ctx context.Context, userID
 		return 0, fmt.Errorf("error getting current usage: %w", err)
 	}
 
-	// Calculate remaining cost (positive = under limit, negative = over limit)
-	remainingCost := limitAmount - currentUsage
+	// Calculate remaining points (positive = under limit, negative = over limit)
+	remainingPoints := limitAmount - currentUsage
 
-	return remainingCost, nil
+	return remainingPoints, nil
 }
 
 // refreshCacheInBackground updates cache entry in background
 func (uc *UsageChecker) refreshCacheInBackground(userID string) {
 	bgCtx := context.Background()
-	if freshCost, err := uc.calculateRemainingCostFromDB(bgCtx, userID); err == nil {
+	if freshPoints, err := uc.calculateRemainingPointsFromDB(bgCtx, userID); err == nil {
 		// Only cache if not zero (zero limits are not cached)
-		if freshCost != 0 {
+		if freshPoints != 0 {
 			uc.cache.Add(userID, &UsageCacheEntry{
-				RemainingCost: freshCost,
-				Timestamp:     time.Now(),
+				RemainingPoints: freshPoints,
+				Timestamp:       time.Now(),
 			})
 		}
 	}
 }
 
-// CheckDailyCostLimit checks if user has exceeded their daily cost limit
-// Returns remaining cost (negative if over limit, positive if under limit)
-func (uc *UsageChecker) CheckDailyCostLimit(ctx context.Context, userID string) (float64, error) {
+// CheckDailyPointsLimit checks if user has exceeded their daily points limit
+// Returns remaining points (negative if over limit, positive if under limit)
+func (uc *UsageChecker) CheckDailyPointsLimit(ctx context.Context, userID string) (int, error) {
 	// Check cache first
 	if entry := uc.cleanupExpiredEntry(userID); entry != nil {
 		// If cache is older than 1 minute, refresh in background
 		if time.Since(entry.Timestamp) > 1*time.Minute {
 			go uc.refreshCacheInBackground(userID)
 		}
-		return entry.RemainingCost, nil
+		return entry.RemainingPoints, nil
 	}
 
 	// Calculate from database
-	remainingCost, err := uc.calculateRemainingCostFromDB(ctx, userID)
+	remainingPoints, err := uc.calculateRemainingPointsFromDB(ctx, userID)
 	if err != nil {
 		return 0, err
 	}
 
 	// Cache the result (only if not zero)
-	if remainingCost != 0 {
+	if remainingPoints != 0 {
 		uc.cache.Add(userID, &UsageCacheEntry{
-			RemainingCost: remainingCost,
-			Timestamp:     time.Now(),
+			RemainingPoints: remainingPoints,
+			Timestamp:       time.Now(),
 		})
 	}
 
-	return remainingCost, nil
+	return remainingPoints, nil
 }
 
-// getCurrentDailyUsage calculates the total cost for the current 24-hour period (8pm-8pm UTC)
-func (uc *UsageChecker) getCurrentDailyUsage(ctx context.Context, userID string) (float64, error) {
+// getCurrentDailyUsage calculates the total points for the current 24-hour period (8pm-8pm UTC)
+func (uc *UsageChecker) getCurrentDailyUsage(ctx context.Context, userID string) (int, error) {
 	startTime, endTime := uc.getCurrentDailyWindow()
 
 	// Query hourly aggregates for the 8pm-8pm UTC window
@@ -132,15 +132,15 @@ func (uc *UsageChecker) getCurrentDailyUsage(ctx context.Context, userID string)
 		return 0, fmt.Errorf("failed to query hourly aggregates: %w", err)
 	}
 
-	var totalCost float64
+	var totalPoints int
 	for _, doc := range docs {
 		data := doc.Data()
-		if cost, ok := data["total_cost"].(float64); ok {
-			totalCost += cost
+		if points, ok := data["total_points"].(int64); ok {
+			totalPoints += int(points)
 		}
 	}
 
-	return totalCost, nil
+	return totalPoints, nil
 }
 
 // getCurrentDailyWindow returns the start and end times for the current 8pm-8pm UTC window
