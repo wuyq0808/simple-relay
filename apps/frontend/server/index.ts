@@ -12,7 +12,7 @@ const base62 = baseX(BASE62);
 import { UserDatabase } from '../services/user-database.js';
 import { ConfigService } from '../services/config.js';
 import { ApiKeyDatabase } from '../services/api-key-database.js';
-import { UsageDatabase } from '../services/usage-database.js';
+import { UsageDatabase, HourlyUsage } from '../services/usage-database.js';
 import { PointsLimitDatabase } from '../services/points-limit-database.js';
 import { 
   validateSignIn,
@@ -339,7 +339,7 @@ app.get('/api/points-limit', requireAuth, async (req, res) => {
     
     // Get usage data for current window
     const todayUsage = await UsageDatabase.findByUserEmailAndTimeRange(email, windowStart, windowEnd);
-    const usedToday = todayUsage.reduce((sum: number, usage) => sum + ((usage as { TotalPoints?: number }).TotalPoints || 0), 0);
+    const usedToday = todayUsage.reduce((sum: number, usage: HourlyUsage) => sum + usage.TotalPoints, 0);
     
     const dailyLimit = pointsLimit?.pointsLimit || 0;
     const remaining = dailyLimit - usedToday;
