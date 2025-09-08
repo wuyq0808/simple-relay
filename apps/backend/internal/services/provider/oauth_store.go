@@ -3,11 +3,14 @@ package provider
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
 	"time"
+
+	"simple-relay/shared/database"
 
 	"cloud.google.com/go/firestore"
 	"github.com/hashicorp/golang-lru/v2/expirable"
-	"simple-relay/shared/database"
 )
 
 type OAuthCredentials struct {
@@ -45,9 +48,59 @@ func NewOAuthStore(db *database.Service) *OAuthStore {
 	}
 }
 
-func (store *OAuthStore) GetRandomCredentials() (*OAuthCredentials, error) {
+// parseCredentialsFromDocs converts Firestore documents to OAuthCredentials, skipping malformed ones
+func parseCredentialsFromDocs(docs []*firestore.DocumentSnapshot) []*OAuthCredentials {
+	var credentials []*OAuthCredentials
+	for _, doc := range docs {
+		var cred OAuthCredentials
+		if err := doc.DataTo(&cred); err != nil {
+			continue // Skip malformed credentials
+		}
+		credentials = append(credentials, &cred)
+	}
+	return credentials
+}
+
+// pickRandomCredential selects a random credential from the available pool
+func pickRandomCredential(credentials []*OAuthCredentials) (*OAuthCredentials, error) {
+	if len(credentials) == 0 {
+		return nil, fmt.Errorf("no credentials provided for random selection")
+	}
+	randomIndex := time.Now().UnixNano() % int64(len(credentials))
+	return credentials[randomIndex], nil
+}
+
+// filterOutRateLimitedCredentials filters out rate-limited credentials and logs those that are filtered out
+func filterOutRateLimitedCredentials(allCredentials []*OAuthCredentials) []*OAuthCredentials {
+	var availableCredentials []*OAuthCredentials
+	
+	for _, credentials := range allCredentials {
+		// Only include credentials that don't have rate limit headers
+		if credentials.RateLimitHeaders == nil {
+			availableCredentials = append(availableCredentials, credentials)
+		} else {
+			logRateLimitedToken(credentials)
+		}
+	}
+	
+	return availableCredentials
+}
+
+// logRateLimitedToken logs details about a rate-limited token for monitoring and debugging
+func logRateLimitedToken(credentials *OAuthCredentials) {
+	// Flatten headers for readable logging
+	var headerPairs []string
+	for key, value := range credentials.RateLimitHeaders {
+		headerPairs = append(headerPairs, fmt.Sprintf("%s=%s", key, value))
+	}
+	log.Printf("Token rate-limited - AccountEmail: %s, AccountUUID: %s, Headers: [%s]", 
+		credentials.AccountEmail, credentials.AccountUUID, strings.Join(headerPairs, ", "))
+}
+
+func (store *OAuthStore) GetValidCredentials() (*OAuthCredentials, error) {
 	ctx := context.Background()
 
+	// Step 1: Get all credentials from database
 	query := store.db.Client().Collection("oauth_tokens")
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
@@ -58,24 +111,23 @@ func (store *OAuthStore) GetRandomCredentials() (*OAuthCredentials, error) {
 		return nil, fmt.Errorf("no credentials found in database")
 	}
 
-	randomIndex := time.Now().UnixNano() % int64(len(docs))
-	doc := docs[randomIndex]
+	// Step 2: Parse documents into credentials (pure function)
+	allCredentials := parseCredentialsFromDocs(docs)
 
-	var credentials OAuthCredentials
-	err = doc.DataTo(&credentials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse credentials data: %w", err)
+	// Step 3: Filter out rate-limited credentials (pure function)
+	availableCredentials := filterOutRateLimitedCredentials(allCredentials)
+
+	if len(availableCredentials) == 0 {
+		return nil, fmt.Errorf("no available credentials found - all credentials are rate-limited")
 	}
 
-	return &credentials, nil
-}
-
-func (store *OAuthStore) GetValidCredentials() (*OAuthCredentials, error) {
-	credentials, err := store.GetRandomCredentials()
+	// Step 4: Pick random credential from available pool (pure function)
+	credentials, err := pickRandomCredential(availableCredentials)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get OAuth access token: %w", err)
+		return nil, fmt.Errorf("failed to pick random credential: %w", err)
 	}
 
+	// Step 5: Check if credential is expired and refresh if needed
 	now := time.Now()
 	if credentials.ExpiresAt.After(now) {
 		return credentials, nil
@@ -190,7 +242,6 @@ func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding,
 		store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +284,6 @@ func (store *OAuthStore) SaveRateLimitHeadersByToken(accessToken string, headers
 		{Path: "rate_limit_headers", Value: headers},
 		{Path: "updated_at", Value: time.Now()},
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to save rate limit headers: %w", err)
 	}

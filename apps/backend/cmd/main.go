@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -132,7 +133,7 @@ func main() {
 		remainingCost, err := usageChecker.CheckDailyCostLimit(req.Context(), userId)
 		if err != nil {
 			log.Printf("Error checking cost limit for user %s: %v", userId, err)
-			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
+			writeError(w, fmt.Sprintf("%s: %v", messages.ClientErrorMessages.InternalServerError, err), http.StatusInternalServerError)
 			return
 		}
 		if remainingCost <= 0 {
