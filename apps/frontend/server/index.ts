@@ -79,6 +79,18 @@ app.post('/api/signin', ipRateLimit, validateSignIn, async (req, res) => {
       if (signupEnabled === false) {
         return res.status(403).json({ error: 'Sign up is currently disabled' });
       }
+
+      // Check if max user limit is reached
+      const maxUsers = await ConfigService.getConfig('max_registered_users');
+      if (typeof maxUsers !== 'number' || maxUsers <= 0) {
+        console.error('max_registered_users config must be a positive number, got:', maxUsers);
+        return res.status(500).json({ error: 'Configuration service error' });
+      }
+      
+      const currentUserCount = await UserDatabase.countUsers();
+      if (currentUserCount >= maxUsers) {
+        return res.status(403).json({ error: 'Maximum number of registered users reached' });
+      }
     } catch (error) {
       console.error('Error checking signup config:', error);
       return res.status(500).json({ error: 'Configuration service unavailable' });
@@ -327,7 +339,7 @@ app.get('/api/points-limit', requireAuth, async (req, res) => {
     
     // Get usage data for current window
     const todayUsage = await UsageDatabase.findByUserEmailAndTimeRange(email, windowStart, windowEnd);
-    const usedToday = todayUsage.reduce((sum: number, usage) => sum + usage.TotalPoints, 0);
+    const usedToday = todayUsage.reduce((sum: number, usage: any) => sum + (usage.TotalPoints || 0), 0);
     
     const dailyLimit = pointsLimit?.pointsLimit || 0;
     const remaining = dailyLimit - usedToday;
