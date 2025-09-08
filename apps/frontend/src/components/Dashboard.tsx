@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import LogoutPanel from './LogoutPanel';
 import ApiKeyTable from './ApiKeyTable';
 import UsageStats from './UsageStats';
+import QRCodeIcon from './QRCodeIcon';
 import './Dashboard.scss';
 
 interface DashboardProps {
@@ -46,6 +47,7 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
         <div className="sidebar-content">
           <h1 className="app-title">
             {t('app.title')}
+            <QRCodeIcon />
           </h1>
           <p className="tagline">
             {t('app.tagline')}

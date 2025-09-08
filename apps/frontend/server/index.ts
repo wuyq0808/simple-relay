@@ -363,6 +363,20 @@ app.get('/api/points-limit', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/config', async (_req, res) => {
+  try {
+    // Get public configuration values that can be shared with frontend
+    const qrCodeLink = await ConfigService.getConfig('qr_code_link');
+    
+    res.json({
+      qr_code_link: qrCodeLink || null
+    });
+  } catch (error) {
+    console.error('Error fetching config:', error);
+    res.status(500).json({ error: 'Failed to fetch configuration' });
+  }
+});
+
 app.get('*', (_req: Request, res: Response) => {
   try {
     const htmlPath = path.join(process.cwd(), 'dist/index.html');
