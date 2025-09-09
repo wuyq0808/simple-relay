@@ -117,8 +117,9 @@ add_oauth_token() {
 EOF
 
     # Make the API call using file input to avoid parameter size issues
-    curl -s -X POST \
-        "https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE}/documents/oauth_tokens" \
+    # Use PATCH with documentId to create/update with specific document ID (account_uuid)
+    curl -s -X PATCH \
+        "https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE}/documents/oauth_tokens/${account_uuid}" \
         -H "Authorization: Bearer ${gcp_token}" \
         -H "Content-Type: application/json" \
         -d @/tmp/oauth_payload.json > /tmp/oauth_response.json

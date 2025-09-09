@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"simple-relay/backend/internal/messages"
 	"simple-relay/backend/internal/services"
@@ -95,6 +96,13 @@ func loadConfig() *Config {
 	}
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func main() {
 	config := loadConfig()
 
@@ -119,14 +127,17 @@ func main() {
 
 	// Create a custom handler that checks authentication before proxying
 	proxyHandler := func(w http.ResponseWriter, req *http.Request) {
+		log.Printf("[DEBUG] Request received: %s %s", req.Method, req.URL.Path)
 		// Extract user ID from API key
 		userId := extractUserIdFromAPIKey(req, apiKeyService)
 
 		// Reject request if no valid API key provided
 		if userId == "" {
+			log.Printf("[DEBUG] No valid user ID found from API key")
 			writeError(w, messages.ClientErrorMessages.Unauthorized, http.StatusUnauthorized)
 			return
 		}
+		log.Printf("[DEBUG] Found user ID: %s", userId)
 
 		// Check daily points limit before processing request
 		remainingPoints, err := usageChecker.CheckDailyPointsLimit(req.Context(), userId)
@@ -142,12 +153,15 @@ func main() {
 		}
 
 		// Get OAuth token for user
+		log.Printf("[DEBUG] Getting OAuth token for user %s", userId)
 		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
 		if err != nil {
-			log.Printf("Failed to get valid token for user %s: %v", userId, err)
+			log.Printf("[DEBUG] ERROR: Failed to get valid token for user %s: %v", userId, err)
 			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
 			return
 		}
+		log.Printf("[DEBUG] Successfully got token for user %s: expires=%s", 
+			userId, tokenBinding.ExpiresAt.Format(time.RFC3339))
 
 		// Store user ID and access token in request context for proxy director
 		ctx := context.WithValue(req.Context(), "userId", userId)
@@ -159,6 +173,7 @@ func main() {
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
 		accessToken := req.Context().Value("accessToken").(string)
+		log.Printf("[DEBUG] Proxying request with token: %s...", accessToken[:min(20, len(accessToken))])
 
 		// Use official target URL and OAuth token
 		req.URL.Scheme = config.OfficialTarget.Scheme
