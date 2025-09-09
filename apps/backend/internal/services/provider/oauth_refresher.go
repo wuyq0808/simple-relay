@@ -52,20 +52,25 @@ func NewOAuthRefresher(oauthStore *OAuthStore) *OAuthRefresher {
 }
 
 func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OAuthCredentials, error) {
+	log.Printf("[DEBUG] RefreshCredentials called for account: %s", credentials.AccountUUID)
 	ctx := context.Background()
 
 	var refreshedCredentials *OAuthCredentials
 	err := or.oauthStore.db.Client().RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		// Read current credentials
 		docRef := or.oauthStore.db.Client().Collection("oauth_tokens").Doc(credentials.AccountUUID)
+		log.Printf("[DEBUG] Looking for oauth_tokens document with ID: %s", credentials.AccountUUID)
 		doc, err := tx.Get(docRef)
 		if err != nil && status.Code(err) != codes.NotFound {
+			log.Printf("[DEBUG] Error reading credentials document: %v", err)
 			return fmt.Errorf("failed to read credentials: %w", err)
 		}
 
 		if !doc.Exists() {
+			log.Printf("[DEBUG] ERROR: Credentials document not found for account UUID: %s", credentials.AccountUUID)
 			return fmt.Errorf("credentials document not found")
 		}
+		log.Printf("[DEBUG] Found credentials document for account %s", credentials.AccountUUID)
 
 		var currentCreds OAuthCredentials
 		if err := doc.DataTo(&currentCreds); err != nil {
@@ -76,10 +81,13 @@ func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OA
 
 		// Check if credentials are not expired anymore
 		if now.Before(currentCreds.ExpiresAt) {
-			log.Printf("Credentials for account %s were already refreshed by another process", credentials.AccountUUID)
+			log.Printf("[DEBUG] Credentials for account %s were already refreshed by another process (expires=%s)", 
+				credentials.AccountUUID, currentCreds.ExpiresAt.Format(time.RFC3339))
 			refreshedCredentials = &currentCreds
 			return nil
 		}
+		log.Printf("[DEBUG] Credentials need refresh: expires=%s, now=%s", 
+			currentCreds.ExpiresAt.Format(time.RFC3339), now.Format(time.RFC3339))
 
 		// Write to acquire lock
 		refreshStartedAt := now
@@ -90,7 +98,7 @@ func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OA
 			return fmt.Errorf("failed to acquire refresh lock: %w", err)
 		}
 
-		log.Printf("Refreshing credentials for account %s", credentials.AccountUUID)
+		log.Printf("[DEBUG] Starting OAuth refresh for account %s", credentials.AccountUUID)
 
 		// HTTP request within transaction
 		reqData := OAuthRefreshRequest{
@@ -127,8 +135,10 @@ func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OA
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
+			log.Printf("[DEBUG] OAuth refresh failed with status %d, response: %s", resp.StatusCode, string(respBody))
 			return fmt.Errorf("credentials refresh failed with status: %d", resp.StatusCode)
 		}
+		log.Printf("[DEBUG] OAuth refresh API returned status 200")
 
 		var refreshResp OAuthRefreshResponse
 		if err := json.Unmarshal(respBody, &refreshResp); err != nil {
@@ -160,7 +170,8 @@ func (or *OAuthRefresher) RefreshCredentials(credentials *OAuthCredentials) (*OA
 		// Store refreshed credentials to return
 		refreshedCredentials = &newCredentials
 
-		log.Printf("Successfully refreshed credentials for account %s", refreshResp.Account.UUID)
+		log.Printf("[DEBUG] Successfully refreshed credentials for account %s, new expiry: %s", 
+			refreshResp.Account.UUID, expiresAt.Format(time.RFC3339))
 		return nil
 	})
 
