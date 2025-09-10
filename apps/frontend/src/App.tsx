@@ -58,7 +58,7 @@ function App() {
       <>
         <Dashboard userEmail={userEmail!} onMessage={setMessage} />
         {message && (
-          <MessageToast message={message} />
+          <MessageToast message={message} onClose={() => setMessage('')} />
         )}
       </>
     );
