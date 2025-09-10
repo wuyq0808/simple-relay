@@ -7,6 +7,8 @@ interface HourlyUsage {
   Model: string;
   InputTokens: number;
   OutputTokens: number;
+  CacheReadTokens: number;
+  CacheWriteTokens: number;
   TotalPoints: number;
   Requests: number;
 }
@@ -17,11 +19,15 @@ interface GroupedUsage {
     requests: number;
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
     totalPoints: number;
   }>;
   totalRequests: number;
   totalInputTokens: number;
   totalOutputTokens: number;
+  totalCacheReadTokens: number;
+  totalCacheWriteTokens: number;
   totalPoints: number;
 }
 
@@ -73,6 +79,8 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
           totalRequests: 0,
           totalInputTokens: 0,
           totalOutputTokens: 0,
+          totalCacheReadTokens: 0,
+          totalCacheWriteTokens: 0,
           totalPoints: 0,
         };
       }
@@ -83,6 +91,8 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
           requests: 0,
           inputTokens: 0,
           outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
           totalPoints: 0,
         };
       }
@@ -90,11 +100,15 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       groups[day].models[usage.Model].requests += usage.Requests;
       groups[day].models[usage.Model].inputTokens += usage.InputTokens;
       groups[day].models[usage.Model].outputTokens += usage.OutputTokens;
+      groups[day].models[usage.Model].cacheReadTokens += usage.CacheReadTokens || 0;
+      groups[day].models[usage.Model].cacheWriteTokens += usage.CacheWriteTokens || 0;
       groups[day].models[usage.Model].totalPoints += usage.TotalPoints;
       
       groups[day].totalRequests += usage.Requests;
       groups[day].totalInputTokens += usage.InputTokens;
       groups[day].totalOutputTokens += usage.OutputTokens;
+      groups[day].totalCacheReadTokens += usage.CacheReadTokens || 0;
+      groups[day].totalCacheWriteTokens += usage.CacheWriteTokens || 0;
       groups[day].totalPoints += usage.TotalPoints;
     });
     
@@ -220,7 +234,9 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                 <th>{t('usage.requests')}</th>
                 <th>{t('usage.input')}</th>
                 <th>{t('usage.output')}</th>
-                <th>{t('usage.consumedPoints')}</th>
+                <th>{t('usage.cacheR', 'CacheR')}</th>
+                <th>{t('usage.cacheW', 'CacheW')}</th>
+                <th>{t('usage.points', 'Points')}</th>
               </tr>
             </thead>
             <tbody>
@@ -255,6 +271,22 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                     {Object.entries(group.models).map(([modelName, modelStats], index) => (
                       <span key={modelName}>
                         {modelStats.outputTokens.toLocaleString()}
+                        {index < Object.entries(group.models).length - 1 && <br />}
+                      </span>
+                    ))}
+                  </td>
+                  <td className="stats-cell">
+                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                      <span key={modelName}>
+                        {modelStats.cacheReadTokens > 0 ? modelStats.cacheReadTokens.toLocaleString() : '-'}
+                        {index < Object.entries(group.models).length - 1 && <br />}
+                      </span>
+                    ))}
+                  </td>
+                  <td className="stats-cell">
+                    {Object.entries(group.models).map(([modelName, modelStats], index) => (
+                      <span key={modelName}>
+                        {modelStats.cacheWriteTokens > 0 ? modelStats.cacheWriteTokens.toLocaleString() : '-'}
                         {index < Object.entries(group.models).length - 1 && <br />}
                       </span>
                     ))}

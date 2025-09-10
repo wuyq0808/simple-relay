@@ -73,6 +73,8 @@
     "requests": "请求数",
     "input": "输入",
     "output": "输出",
+    "cacheR": "缓存读",
+    "cacheW": "缓存写",
     "cost": "成本",
     "points": "积分",
     "consumedPoints": "消耗积分",

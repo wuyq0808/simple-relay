@@ -42,23 +42,27 @@ type ModelStats struct {
 
 // MemoryAggregate 内存聚合数据
 type MemoryAggregate struct {
-	UserID            string                      `json:"user_id"`
-	Hour              string                      `json:"hour"`
-	TotalRequests     int                         `json:"total_requests"`
-	TotalInputTokens  int                         `json:"total_input_tokens"`
-	TotalOutputTokens int                         `json:"total_output_tokens"`
-	TotalCost         float64                     `json:"total_cost"`
-	TotalPoints       int                         `json:"total_points"`
-	ModelUsage        map[string]MemoryModelStats `json:"model_usage"`
+	UserID               string                      `json:"user_id"`
+	Hour                 string                      `json:"hour"`
+	TotalRequests        int                         `json:"total_requests"`
+	TotalInputTokens     int                         `json:"total_input_tokens"`
+	TotalOutputTokens    int                         `json:"total_output_tokens"`
+	TotalCacheReadTokens int                         `json:"total_cache_read_tokens"`
+	TotalCacheWriteTokens int                        `json:"total_cache_write_tokens"`
+	TotalCost            float64                     `json:"total_cost"`
+	TotalPoints          int                         `json:"total_points"`
+	ModelUsage           map[string]MemoryModelStats `json:"model_usage"`
 }
 
 // MemoryModelStats 内存中的模型使用统计
 type MemoryModelStats struct {
-	RequestCount int     `json:"request_count"`
-	InputTokens  int     `json:"input_tokens"`
-	OutputTokens int     `json:"output_tokens"`
-	TotalCost    float64 `json:"total_cost"`
-	TotalPoints  int     `json:"total_points"`
+	RequestCount     int     `json:"request_count"`
+	InputTokens      int     `json:"input_tokens"`
+	OutputTokens     int     `json:"output_tokens"`
+	CacheReadTokens  int     `json:"cache_read_tokens"`
+	CacheWriteTokens int     `json:"cache_write_tokens"`
+	TotalCost        float64 `json:"total_cost"`
+	TotalPoints      int     `json:"total_points"`
 }
 
 // MonthlyUsage 月度使用统计
@@ -99,14 +103,16 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 		aggregate, exists := aggregateMap[key]
 		if !exists {
 			aggregate = &MemoryAggregate{
-				UserID:            record.UserID,
-				Hour:              hourStr,
-				TotalRequests:     0,
-				TotalInputTokens:  0,
-				TotalOutputTokens: 0,
-				TotalCost:         0.0,
-				TotalPoints:       0,
-				ModelUsage:        make(map[string]MemoryModelStats),
+				UserID:               record.UserID,
+				Hour:                 hourStr,
+				TotalRequests:        0,
+				TotalInputTokens:     0,
+				TotalOutputTokens:    0,
+				TotalCacheReadTokens: 0,
+				TotalCacheWriteTokens: 0,
+				TotalCost:            0.0,
+				TotalPoints:          0,
+				ModelUsage:           make(map[string]MemoryModelStats),
 			}
 			aggregateMap[key] = aggregate
 		}
@@ -116,6 +122,8 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 		aggregate.TotalRequests++
 		aggregate.TotalInputTokens += record.InputTokens
 		aggregate.TotalOutputTokens += record.OutputTokens
+		aggregate.TotalCacheReadTokens += record.CacheReadTokens
+		aggregate.TotalCacheWriteTokens += record.CacheWriteTokens
 		aggregate.TotalCost += record.TotalCost
 		aggregate.TotalPoints += points
 
@@ -124,6 +132,8 @@ func (as *AggregatorService) AggregateRecords(ctx context.Context, records []*Us
 		modelStats.RequestCount++
 		modelStats.InputTokens += record.InputTokens
 		modelStats.OutputTokens += record.OutputTokens
+		modelStats.CacheReadTokens += record.CacheReadTokens
+		modelStats.CacheWriteTokens += record.CacheWriteTokens
 		modelStats.TotalCost += record.TotalCost
 		modelStats.TotalPoints += points
 		aggregate.ModelUsage[record.Model] = modelStats
@@ -148,11 +158,13 @@ func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context,
 	// 构建原子增量和元数据的upsert数据
 	upsertData := map[string]interface{}{
 		// 原子增量字段
-		"total_requests":      firestore.Increment(memAggregate.TotalRequests),
-		"total_input_tokens":  firestore.Increment(memAggregate.TotalInputTokens),
-		"total_output_tokens": firestore.Increment(memAggregate.TotalOutputTokens),
-		"total_cost":          firestore.Increment(memAggregate.TotalCost),
-		"total_points":        firestore.Increment(memAggregate.TotalPoints),
+		"total_requests":         firestore.Increment(memAggregate.TotalRequests),
+		"total_input_tokens":     firestore.Increment(memAggregate.TotalInputTokens),
+		"total_output_tokens":    firestore.Increment(memAggregate.TotalOutputTokens),
+		"total_cache_read_tokens": firestore.Increment(memAggregate.TotalCacheReadTokens),
+		"total_cache_write_tokens": firestore.Increment(memAggregate.TotalCacheWriteTokens),
+		"total_cost":             firestore.Increment(memAggregate.TotalCost),
+		"total_points":           firestore.Increment(memAggregate.TotalPoints),
 
 		// 元数据字段
 		"user_id":    memAggregate.UserID,
@@ -171,6 +183,8 @@ func (as *AggregatorService) atomicIncrementHourlyAggregate(ctx context.Context,
 		upsertData[fmt.Sprintf("%s.request_count", modelPath)] = firestore.Increment(stats.RequestCount)
 		upsertData[fmt.Sprintf("%s.input_tokens", modelPath)] = firestore.Increment(stats.InputTokens)
 		upsertData[fmt.Sprintf("%s.output_tokens", modelPath)] = firestore.Increment(stats.OutputTokens)
+		upsertData[fmt.Sprintf("%s.cache_read_tokens", modelPath)] = firestore.Increment(stats.CacheReadTokens)
+		upsertData[fmt.Sprintf("%s.cache_write_tokens", modelPath)] = firestore.Increment(stats.CacheWriteTokens)
 		upsertData[fmt.Sprintf("%s.total_cost", modelPath)] = firestore.Increment(stats.TotalCost)
 		upsertData[fmt.Sprintf("%s.total_points", modelPath)] = firestore.Increment(stats.TotalPoints)
 	}

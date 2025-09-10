@@ -200,7 +200,7 @@
 .usage-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 12px;
 
   th {
     background-color: #f8f9fa;
@@ -214,7 +214,9 @@
     &:nth-child(3),
     &:nth-child(4),
     &:nth-child(5),
-    &:nth-child(6) {
+    &:nth-child(6),
+    &:nth-child(7),
+    &:nth-child(8) {
       text-align: right;
     }
   }
@@ -227,7 +229,9 @@
     &:nth-child(3),
     &:nth-child(4),
     &:nth-child(5),
-    &:nth-child(6) {
+    &:nth-child(6),
+    &:nth-child(7),
+    &:nth-child(8) {
       text-align: right;
     }
   }
@@ -254,6 +258,7 @@
     
     .stats-cell {
       text-align: right;
+      color: #666;
     }
   }
 }
@@ -263,7 +268,7 @@
   padding: 2px 6px;
   border-radius: 3px;
   font-family: Monaco, 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
 }
 
