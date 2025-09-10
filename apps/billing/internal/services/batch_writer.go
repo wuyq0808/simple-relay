@@ -12,27 +12,29 @@ import (
 
 // BatchWriter 批量写入器，用于优化数据库写入性能
 type BatchWriter struct {
-	client     *firestore.Client
-	buffer     []*UsageRecord
-	bufferMu   sync.Mutex
-	maxSize    int
-	flushTime  time.Duration
-	stopChan   chan struct{}
-	wg         sync.WaitGroup
-	collection string
-	aggregator *AggregatorService
+	client              *firestore.Client
+	buffer              []*UsageRecord
+	bufferMu            sync.Mutex
+	maxSize             int
+	flushTime           time.Duration
+	stopChan            chan struct{}
+	wg                  sync.WaitGroup
+	collection          string
+	aggregator          *AggregatorService
+	upstreamAggregator  *UpstreamAggregatorService
 }
 
 // NewBatchWriter 创建新的批量写入器
 func NewBatchWriter(client *firestore.Client, maxSize int, flushTime time.Duration, billingService *BillingService) *BatchWriter {
 	return &BatchWriter{
-		client:     client,
-		buffer:     make([]*UsageRecord, 0, maxSize),
-		maxSize:    maxSize,
-		flushTime:  flushTime,
-		stopChan:   make(chan struct{}),
-		collection: "usage_records",
-		aggregator: NewAggregatorService(client, billingService),
+		client:             client,
+		buffer:             make([]*UsageRecord, 0, maxSize),
+		maxSize:            maxSize,
+		flushTime:          flushTime,
+		stopChan:           make(chan struct{}),
+		collection:         "usage_records",
+		aggregator:         NewAggregatorService(client, billingService),
+		upstreamAggregator: NewUpstreamAggregatorService(client, billingService),
 	}
 }
 
@@ -124,7 +126,13 @@ func (bw *BatchWriter) flushLocked() error {
 
 	// 执行记录聚合 (includes both cost and points)
 	if err := bw.aggregator.AggregateRecords(ctx, recordsCopy); err != nil {
-		log.Printf("Error aggregating records: %v", err)
+		log.Printf("Error aggregating user records: %v", err)
+		// 聚合失败不阻塞刷新操作，仅记录日志
+	}
+
+	// 执行上游账户聚合
+	if err := bw.upstreamAggregator.AggregateRecords(ctx, recordsCopy); err != nil {
+		log.Printf("Error aggregating upstream account records: %v", err)
 		// 聚合失败不阻塞刷新操作，仅记录日志
 	}
 
