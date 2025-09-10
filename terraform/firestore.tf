@@ -75,3 +75,38 @@ resource "google_firestore_index" "usage_records_model_timestamp" {
     order      = "DESCENDING"
   }
 }
+
+# Firestore Index for usage_records collection - by upstream account UUID and timestamp
+resource "google_firestore_index" "usage_records_upstream_account_timestamp" {
+  project    = var.project_id
+  database   = google_firestore_database.oauth_database.name
+  collection = "usage_records"
+
+  fields {
+    field_path = "upstream_account_uuid"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "timestamp"
+    order      = "DESCENDING"
+  }
+}
+
+# Firestore Index for upstream_account_hourly_aggregates collection - supports range queries
+# Document ID format: {upstream_account_uuid}_{hour} makes upstream_account_uuid effectively the partition key
+resource "google_firestore_index" "upstream_account_hourly_aggregates_account_hour" {
+  project    = var.project_id
+  database   = google_firestore_database.oauth_database.name
+  collection = "upstream_account_hourly_aggregates"
+
+  fields {
+    field_path = "upstream_account_uuid"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "hour"
+    order      = "ASCENDING"
+  }
+}
