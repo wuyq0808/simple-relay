@@ -7,28 +7,31 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/firestore"
 	"simple-relay/shared/database"
+
+	"cloud.google.com/go/firestore"
 )
 
 // UsageRecord 记录单次API调用的使用情况
 type UsageRecord struct {
-	ID                   string    `firestore:"id" json:"id"`
-	UserID               string    `firestore:"user_id" json:"user_id"`
-	UpstreamAccountUUID  string    `firestore:"upstream_account_uuid" json:"upstream_account_uuid"`
-	ClientIP             string    `firestore:"client_ip" json:"client_ip"`
-	Model                string    `firestore:"model" json:"model"`
-	InputTokens          int       `firestore:"input_tokens" json:"input_tokens"`
-	OutputTokens         int       `firestore:"output_tokens" json:"output_tokens"`
-	CacheReadTokens      int       `firestore:"cache_read_tokens" json:"cache_read_tokens"`
-	CacheWriteTokens     int       `firestore:"cache_write_tokens" json:"cache_write_tokens"`
-	TotalCost            float64   `firestore:"total_cost" json:"total_cost"`
-	InputCost            float64   `firestore:"input_cost" json:"input_cost"`
-	OutputCost           float64   `firestore:"output_cost" json:"output_cost"`
-	RequestID            string    `firestore:"request_id" json:"request_id"`
-	Timestamp            time.Time `firestore:"timestamp" json:"timestamp"`
-	Status               string    `firestore:"status" json:"status"`
-	ErrorMessage         string    `firestore:"error_message,omitempty" json:"error_message,omitempty"`
+	ID                  string    `firestore:"id" json:"id"`
+	UserID              string    `firestore:"user_id" json:"user_id"`
+	UpstreamAccountUUID string    `firestore:"upstream_account_uuid" json:"upstream_account_uuid"`
+	ClientIP            string    `firestore:"client_ip" json:"client_ip"`
+	Model               string    `firestore:"model" json:"model"`
+	InputTokens         int       `firestore:"input_tokens" json:"input_tokens"`
+	OutputTokens        int       `firestore:"output_tokens" json:"output_tokens"`
+	CacheReadTokens     int       `firestore:"cache_read_tokens" json:"cache_read_tokens"`
+	CacheWriteTokens    int       `firestore:"cache_write_tokens" json:"cache_write_tokens"`
+	TotalCost           float64   `firestore:"total_cost" json:"total_cost"`
+	InputCost           float64   `firestore:"input_cost" json:"input_cost"`
+	OutputCost          float64   `firestore:"output_cost" json:"output_cost"`
+	CacheReadCost       float64   `firestore:"cache_read_cost" json:"cache_read_cost"`
+	CacheWriteCost      float64   `firestore:"cache_write_cost" json:"cache_write_cost"`
+	RequestID           string    `firestore:"request_id" json:"request_id"`
+	Timestamp           time.Time `firestore:"timestamp" json:"timestamp"`
+	Status              string    `firestore:"status" json:"status"`
+	ErrorMessage        string    `firestore:"error_message,omitempty" json:"error_message,omitempty"`
 }
 
 // ClaudeAPIResponse Claude API响应结构
@@ -114,11 +117,19 @@ func (bs *BillingService) RecordUsage(ctx context.Context, record *UsageRecord) 
 	bs.mu.Lock()
 	defer bs.mu.Unlock()
 
-	// 计算成本
-	inputCost, outputCost := bs.pricing.Calculate(record.Model, record.InputTokens, record.OutputTokens)
+	// 计算成本（包括缓存token成本）
+	inputCost, outputCost, cacheReadCost, cacheWriteCost := bs.pricing.CalculateWithCache(
+		record.Model,
+		record.InputTokens,
+		record.OutputTokens,
+		record.CacheReadTokens,
+		record.CacheWriteTokens,
+	)
 	record.InputCost = inputCost
 	record.OutputCost = outputCost
-	record.TotalCost = inputCost + outputCost
+	record.CacheReadCost = cacheReadCost
+	record.CacheWriteCost = cacheWriteCost
+	record.TotalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost
 
 	// 添加到批量写入队列
 	return bs.batchWriter.Add(record)
@@ -175,8 +186,8 @@ func (bs *BillingService) ProcessRequest(message *ClaudeMessage, userID string, 
 		return fmt.Errorf("error recording usage: %w", err)
 	}
 
-	log.Printf("Usage recorded: Model=%s, Input=%d, Output=%d, Cost=$%.4f",
-		record.Model, record.InputTokens, record.OutputTokens, record.TotalCost)
+	log.Printf("Usage recorded: Model=%s, Input=%d, Output=%d, CacheRead=%d, CacheWrite=%d, Cost=$%.4f",
+		record.Model, record.InputTokens, record.OutputTokens, record.CacheReadTokens, record.CacheWriteTokens, record.TotalCost)
 
 	return nil
 }

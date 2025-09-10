@@ -73,6 +73,8 @@
     "requests": "Requests",
     "input": "Input",
     "output": "Output",
+    "cacheR": "CacheR",
+    "cacheW": "CacheW",
     "cost": "Cost",
     "points": "Points",
     "consumedPoints": "Consumed Points",

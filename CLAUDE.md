@@ -17,6 +17,7 @@ simple-relay-468808
 - `oauth_tokens` - OAuth token data
 - `usage_records` - Billing usage records  
 - `hourly_aggregates` - Hourly aggregated billing data
+- `upstream_account_hourly_aggregates` - Hourly aggregated billing data by OAuth account UUID
 - `user_token_bindings` - User token binding system
 - `app_config` - Application configuration settings
 - `daily_points_limits` - Daily points limits per user (userId, pointsLimit, updateTime)
@@ -62,6 +63,13 @@ simple-relay-468808
 ./scripts/manage-oauth-tokens.sh add USER_EMAIL ACCESS_TOKEN REFRESH_TOKEN "Org Name" -p simple-relay-468808 -d DATABASE_NAME
 ./scripts/manage-oauth-tokens.sh list -p simple-relay-468808 -d DATABASE_NAME
 ./scripts/manage-oauth-tokens.sh delete USER_EMAIL -p simple-relay-468808 -d DATABASE_NAME
+
+# Monitor upstream OAuth account usage
+./scripts/monitor-upstream-accounts.sh --days 7  # Show last 7 days (default)
+./scripts/monitor-upstream-accounts.sh --days 30  # Show last 30 days
+./scripts/monitor-upstream-accounts.sh --days 1  # Show today's usage
+./scripts/monitor-upstream-accounts.sh -d simple-relay-db-staging --days 1  # Check staging today
+./scripts/monitor-upstream-accounts.sh -p simple-relay-468808 -d simple-relay-db-production --days 7  # Production usage
 ```
 
 ## User Registration Limits

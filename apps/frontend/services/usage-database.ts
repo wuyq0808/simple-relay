@@ -15,6 +15,8 @@ export interface HourlyUsage {
   Model: string;
   InputTokens: number;
   OutputTokens: number;
+  CacheReadTokens: number;
+  CacheWriteTokens: number;
   TotalCost: number;
   TotalPoints: number;
   Requests: number;
@@ -63,6 +65,8 @@ class FirestoreUsageDatabase {
           Model: modelName,
           InputTokens: (stats.input_tokens as number) || 0,
           OutputTokens: (stats.output_tokens as number) || 0,
+          CacheReadTokens: (stats.cache_read_tokens as number) || 0,
+          CacheWriteTokens: (stats.cache_write_tokens as number) || 0,
           TotalCost: (stats.total_cost as number) || 0,
           TotalPoints: (stats.total_points as number) || 0,
           Requests: (stats.request_count as number) || 0,
@@ -111,6 +115,8 @@ class FirestoreUsageDatabase {
           Model: modelName,
           InputTokens: (stats.input_tokens as number) || 0,
           OutputTokens: (stats.output_tokens as number) || 0,
+          CacheReadTokens: (stats.cache_read_tokens as number) || 0,
+          CacheWriteTokens: (stats.cache_write_tokens as number) || 0,
           TotalCost: (stats.total_cost as number) || 0,
           TotalPoints: (stats.total_points as number) || 0,
           Requests: (stats.request_count as number) || 0,
