@@ -13,21 +13,22 @@ import (
 
 // UsageRecord 记录单次API调用的使用情况
 type UsageRecord struct {
-	ID               string    `firestore:"id" json:"id"`
-	UserID           string    `firestore:"user_id" json:"user_id"`
-	ClientIP         string    `firestore:"client_ip" json:"client_ip"`
-	Model            string    `firestore:"model" json:"model"`
-	InputTokens      int       `firestore:"input_tokens" json:"input_tokens"`
-	OutputTokens     int       `firestore:"output_tokens" json:"output_tokens"`
-	CacheReadTokens  int       `firestore:"cache_read_tokens" json:"cache_read_tokens"`
-	CacheWriteTokens int       `firestore:"cache_write_tokens" json:"cache_write_tokens"`
-	TotalCost        float64   `firestore:"total_cost" json:"total_cost"`
-	InputCost        float64   `firestore:"input_cost" json:"input_cost"`
-	OutputCost       float64   `firestore:"output_cost" json:"output_cost"`
-	RequestID        string    `firestore:"request_id" json:"request_id"`
-	Timestamp        time.Time `firestore:"timestamp" json:"timestamp"`
-	Status           string    `firestore:"status" json:"status"`
-	ErrorMessage     string    `firestore:"error_message,omitempty" json:"error_message,omitempty"`
+	ID                   string    `firestore:"id" json:"id"`
+	UserID               string    `firestore:"user_id" json:"user_id"`
+	UpstreamAccountUUID  string    `firestore:"upstream_account_uuid" json:"upstream_account_uuid"`
+	ClientIP             string    `firestore:"client_ip" json:"client_ip"`
+	Model                string    `firestore:"model" json:"model"`
+	InputTokens          int       `firestore:"input_tokens" json:"input_tokens"`
+	OutputTokens         int       `firestore:"output_tokens" json:"output_tokens"`
+	CacheReadTokens      int       `firestore:"cache_read_tokens" json:"cache_read_tokens"`
+	CacheWriteTokens     int       `firestore:"cache_write_tokens" json:"cache_write_tokens"`
+	TotalCost            float64   `firestore:"total_cost" json:"total_cost"`
+	InputCost            float64   `firestore:"input_cost" json:"input_cost"`
+	OutputCost           float64   `firestore:"output_cost" json:"output_cost"`
+	RequestID            string    `firestore:"request_id" json:"request_id"`
+	Timestamp            time.Time `firestore:"timestamp" json:"timestamp"`
+	Status               string    `firestore:"status" json:"status"`
+	ErrorMessage         string    `firestore:"error_message,omitempty" json:"error_message,omitempty"`
 }
 
 // ClaudeAPIResponse Claude API响应结构
@@ -124,7 +125,7 @@ func (bs *BillingService) RecordUsage(ctx context.Context, record *UsageRecord) 
 }
 
 // ProcessResponse 处理Claude API响应并提取计费信息
-func (bs *BillingService) ProcessResponse(message *ClaudeMessage, userID string, clientIP string, requestID string) (*UsageRecord, error) {
+func (bs *BillingService) ProcessResponse(message *ClaudeMessage, userID string, upstreamAccountUUID string, clientIP string, requestID string) (*UsageRecord, error) {
 	// Validate that we have usage information
 	if message.Usage.InputTokens == 0 && message.Usage.OutputTokens == 0 {
 		log.Printf("Warning: No usage tokens found in message for request %s", requestID)
@@ -136,17 +137,18 @@ func (bs *BillingService) ProcessResponse(message *ClaudeMessage, userID string,
 	}
 
 	record := &UsageRecord{
-		ID:               fmt.Sprintf("%s_%d", requestID, time.Now().UnixNano()),
-		UserID:           userID,
-		ClientIP:         clientIP,
-		Model:            message.Model,
-		InputTokens:      message.Usage.InputTokens,
-		OutputTokens:     message.Usage.OutputTokens,
-		CacheReadTokens:  message.Usage.CacheReadInputTokens,
-		CacheWriteTokens: message.Usage.CacheCreationInputTokens,
-		RequestID:        requestID,
-		Timestamp:        time.Now(),
-		Status:           "success",
+		ID:                  fmt.Sprintf("%s_%d", requestID, time.Now().UnixNano()),
+		UserID:              userID,
+		UpstreamAccountUUID: upstreamAccountUUID,
+		ClientIP:            clientIP,
+		Model:               message.Model,
+		InputTokens:         message.Usage.InputTokens,
+		OutputTokens:        message.Usage.OutputTokens,
+		CacheReadTokens:     message.Usage.CacheReadInputTokens,
+		CacheWriteTokens:    message.Usage.CacheCreationInputTokens,
+		RequestID:           requestID,
+		Timestamp:           time.Now(),
+		Status:              "success",
 	}
 
 	log.Printf("Successfully parsed usage: Model=%s, Input=%d, Output=%d",
@@ -156,13 +158,13 @@ func (bs *BillingService) ProcessResponse(message *ClaudeMessage, userID string,
 }
 
 // ProcessRequest 处理请求并计算账单
-func (bs *BillingService) ProcessRequest(message *ClaudeMessage, userID string, requestID string) error {
+func (bs *BillingService) ProcessRequest(message *ClaudeMessage, userID string, upstreamAccountUUID string, requestID string) error {
 	if !bs.enabled {
 		return nil
 	}
 
 	// 处理响应获取usage信息
-	record, err := bs.ProcessResponse(message, userID, "", requestID)
+	record, err := bs.ProcessResponse(message, userID, upstreamAccountUUID, "", requestID)
 	if err != nil {
 		return fmt.Errorf("error processing message: %w", err)
 	}

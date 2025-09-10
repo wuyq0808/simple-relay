@@ -13,7 +13,7 @@ import (
 
 	"simple-relay/backend/internal/messages"
 	"simple-relay/backend/internal/services"
-	"simple-relay/backend/internal/services/provider"
+	"simple-relay/backend/internal/services/upstream"
 	"simple-relay/shared/database"
 
 	"cloud.google.com/go/compute/metadata"
@@ -114,7 +114,7 @@ func main() {
 	defer dbService.Close()
 
 	// Initialize OAuth store
-	oauthStore := provider.NewOAuthStore(dbService)
+	oauthStore := upstream.NewOAuthStore(dbService)
 
 	// Initialize API key service
 	apiKeyService := services.NewApiKeyService(dbService.Client())
@@ -127,17 +127,17 @@ func main() {
 
 	// Create a custom handler that checks authentication before proxying
 	proxyHandler := func(w http.ResponseWriter, req *http.Request) {
-		log.Printf("[DEBUG] Request received: %s %s", req.Method, req.URL.Path)
+		log.Printf("[OAUTH] Request received: %s %s", req.Method, req.URL.Path)
 		// Extract user ID from API key
 		userId := extractUserIdFromAPIKey(req, apiKeyService)
 
 		// Reject request if no valid API key provided
 		if userId == "" {
-			log.Printf("[DEBUG] No valid user ID found from API key")
+			log.Printf("[OAUTH] No valid user ID found from API key")
 			writeError(w, messages.ClientErrorMessages.Unauthorized, http.StatusUnauthorized)
 			return
 		}
-		log.Printf("[DEBUG] Found user ID: %s", userId)
+		log.Printf("[OAUTH] Found user ID: %s", userId)
 
 		// Check daily points limit before processing request
 		remainingPoints, err := usageChecker.CheckDailyPointsLimit(req.Context(), userId)
@@ -153,19 +153,20 @@ func main() {
 		}
 
 		// Get OAuth token for user
-		log.Printf("[DEBUG] Getting OAuth token for user %s", userId)
+		log.Printf("[OAUTH] Getting OAuth token for user %s", userId)
 		tokenBinding, err := oauthStore.GetValidTokenForUser(userId)
 		if err != nil {
-			log.Printf("[DEBUG] ERROR: Failed to get valid token for user %s: %v", userId, err)
+			log.Printf("[OAUTH] ERROR: Failed to get valid token for user %s: %v", userId, err)
 			writeError(w, messages.ClientErrorMessages.InternalServerError, http.StatusInternalServerError)
 			return
 		}
-		log.Printf("[DEBUG] Successfully got token for user %s: expires=%s", 
+		log.Printf("[OAUTH] Successfully got token for user %s: expires=%s", 
 			userId, tokenBinding.ExpiresAt.Format(time.RFC3339))
 
-		// Store user ID and access token in request context for proxy director
+		// Store user ID, access token, and account UUID in request context for proxy director
 		ctx := context.WithValue(req.Context(), "userId", userId)
 		ctx = context.WithValue(ctx, "accessToken", tokenBinding.AccessToken)
+		ctx = context.WithValue(ctx, "upstreamAccountUUID", tokenBinding.AccountUUID)
 		req = req.WithContext(ctx)
 		proxy.ServeHTTP(w, req)
 	}
@@ -173,7 +174,7 @@ func main() {
 	// Set target URL for all requests and add OAuth token
 	proxy.Director = func(req *http.Request) {
 		accessToken := req.Context().Value("accessToken").(string)
-		log.Printf("[DEBUG] Proxying request with token: %s...", accessToken[:min(20, len(accessToken))])
+		log.Printf("[OAUTH] Proxying request with token: %s...", accessToken[:min(20, len(accessToken))])
 
 		// Use official target URL and OAuth token
 		req.URL.Scheme = config.OfficialTarget.Scheme
@@ -245,11 +246,12 @@ func main() {
 				Closer: billingPW,
 			}
 
-			// Get user ID from request context
+			// Get user ID and account UUID from request context
 			userId := resp.Request.Context().Value("userId").(string)
+			accountUUID := resp.Request.Context().Value("upstreamAccountUUID").(string)
 
 			// Start streaming to billing service
-			go sendToBillingService(billingPR, resp, config, userId)
+			go sendToBillingService(billingPR, resp, config, userId, accountUUID)
 		}
 
 		return nil
@@ -276,7 +278,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
-func sendToBillingService(reader io.Reader, resp *http.Response, config *Config, userId string) {
+func sendToBillingService(reader io.Reader, resp *http.Response, config *Config, userId string, accountUUID string) {
 	// Get identity token for service-to-service authentication
 	idToken, err := getIdentityToken(config.BillingServiceURL)
 	if err != nil {
@@ -293,6 +295,7 @@ func sendToBillingService(reader io.Reader, resp *http.Response, config *Config,
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+idToken)
 	req.Header.Set("X-User-ID", userId)
+	req.Header.Set("X-Upstream-Account-UUID", accountUUID)
 
 	// Forward all response headers to billing service
 	for key, values := range resp.Header {
