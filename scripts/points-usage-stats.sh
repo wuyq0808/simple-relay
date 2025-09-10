@@ -247,9 +247,11 @@ EOF
     echo ""
 done
 
-# Display grand total
-echo "================================"
-echo -e "${BLUE}Grand Total: ${GRAND_TOTAL} points${NC}"
+# Only display grand total for single day queries
+if [[ $DAYS_BACK -eq 1 ]]; then
+    echo "================================"
+    echo -e "${BLUE}Grand Total: ${GRAND_TOTAL} points${NC}"
+fi
 echo ""
 echo "✅ Analysis complete!"
 

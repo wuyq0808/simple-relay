@@ -30,7 +30,7 @@ export default function UsageGuide({ isOpen, onClose, backendUrl, onMessage }: U
 
   if (!isOpen) return null;
 
-  const installCommand = `npm install -g @anthropic-ai/claude-cli`;
+  const installCommand = `npm install -g @anthropic-ai/claude-code`;
   const oneTimeCommand = `ANTHROPIC_AUTH_TOKEN=your-api-key ANTHROPIC_BASE_URL=${backendUrl} claude`;
   const sessionCommand = `export ANTHROPIC_AUTH_TOKEN=your-api-key\nexport ANTHROPIC_BASE_URL=${backendUrl}\nclaude`;
 
@@ -129,7 +129,7 @@ export default function UsageGuide({ isOpen, onClose, backendUrl, onMessage }: U
           <h2>{t('usageGuide.tips')}</h2>
           <ul>
             <li><Trans i18nKey="usageGuide.replaceKey" components={{ code: <code /> }} /></li>
-            <li>{t('usageGuide.useButton')}</li>
+            <li><Trans i18nKey="usageGuide.envVarNote" components={{ code: <code /> }} /></li>
           </ul>
         </div>
         

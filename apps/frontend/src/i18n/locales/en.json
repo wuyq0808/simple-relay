@@ -58,7 +58,7 @@
     "sessionExport": "Export for session",
     "tips": "Tips",
     "replaceKey": "Replace <code>your-api-key</code> with your actual API key",
-    "useButton": "Use the Copy button next to each key for convenience",
+    "envVarNote": "Note the environment variable name: use <code>ANTHROPIC_AUTH_TOKEN</code> instead of <code>ANTHROPIC_API_KEY</code>",
     "close": "Close"
   },
   "tabs": {
