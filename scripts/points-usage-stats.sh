@@ -113,7 +113,7 @@ echo "$RESPONSE" | jq -r '
   [.[] | select(.document) | .document.fields | {
     hour: .hour.timestampValue,
     user: .user_id.stringValue,
-    points: (.total_points.integerValue // .total_points.doubleValue // 0 | tonumber)
+    points: ((.total_points.integerValue // .total_points.doubleValue // 0 | tonumber) / 10000 | round)
   }] |
   map({
     date: (.hour | split("T")[0]),
@@ -219,7 +219,7 @@ EOF
     WINDOW_STATS=$(echo "$WINDOW_RESPONSE" | jq -r '
       [.[] | select(.document) | .document.fields | {
         user: .user_id.stringValue,
-        points: (.total_points.integerValue // .total_points.doubleValue // 0 | tonumber)
+        points: ((.total_points.integerValue // .total_points.doubleValue // 0 | tonumber) / 10000 | round)
       }] |
       group_by(.user) |
       map({

@@ -1,4 +1,5 @@
 import { Firestore } from '@google-cloud/firestore';
+import { pointsToDisplayPoints } from './points-converter';
 
 export interface UsageRecord {
   id: string;
@@ -68,7 +69,7 @@ class FirestoreUsageDatabase {
           CacheReadTokens: (stats.cache_read_tokens as number) || 0,
           CacheWriteTokens: (stats.cache_write_tokens as number) || 0,
           TotalCost: (stats.total_cost as number) || 0,
-          TotalPoints: (stats.total_points as number) || 0,
+          TotalPoints: pointsToDisplayPoints((stats.total_points as number) || 0),
           Requests: (stats.request_count as number) || 0,
         });
       }
@@ -118,7 +119,7 @@ class FirestoreUsageDatabase {
           CacheReadTokens: (stats.cache_read_tokens as number) || 0,
           CacheWriteTokens: (stats.cache_write_tokens as number) || 0,
           TotalCost: (stats.total_cost as number) || 0,
-          TotalPoints: (stats.total_points as number) || 0,
+          TotalPoints: pointsToDisplayPoints((stats.total_points as number) || 0),
           Requests: (stats.request_count as number) || 0,
         });
       }
