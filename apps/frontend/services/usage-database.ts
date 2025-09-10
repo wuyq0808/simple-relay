@@ -1,5 +1,5 @@
 import { Firestore } from '@google-cloud/firestore';
-import { pointsToDisplayPoints } from './points-converter';
+import { pointsToDisplayPoints } from './points-converter.js';
 
 export interface UsageRecord {
   id: string;
