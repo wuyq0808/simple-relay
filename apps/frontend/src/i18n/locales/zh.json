@@ -58,7 +58,7 @@
     "sessionExport": "会话导出",
     "tips": "提示",
     "replaceKey": "将<code>your-api-key</code>替换为您的实际API密钥",
-    "useButton": "使用每个密钥旁边的复制按钮以便操作",
+    "envVarNote": "注意环境变量名称，使用<code>ANTHROPIC_AUTH_TOKEN</code> 而不是 <code>ANTHROPIC_API_KEY</code>",
     "close": "关闭"
   },
   "tabs": {
