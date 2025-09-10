@@ -1,4 +1,4 @@
-package provider
+package upstream
 
 import (
 	"context"
@@ -98,29 +98,29 @@ func logRateLimitedToken(credentials *OAuthCredentials) {
 }
 
 func (store *OAuthStore) GetValidCredentials() (*OAuthCredentials, error) {
-	log.Printf("[DEBUG] GetValidCredentials called")
+	log.Printf("[OAUTH] GetValidCredentials called")
 	ctx := context.Background()
 
 	// Step 1: Get all credentials from database
 	query := store.db.Client().Collection("oauth_tokens")
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
-		log.Printf("[DEBUG] Failed to get credentials from database: %v", err)
+		log.Printf("[OAUTH] Failed to get credentials from database: %v", err)
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
 	}
 
-	log.Printf("[DEBUG] Found %d credentials in database", len(docs))
+	log.Printf("[OAUTH] Found %d credentials in database", len(docs))
 	if len(docs) == 0 {
 		return nil, fmt.Errorf("no credentials found in database")
 	}
 
 	// Step 2: Parse documents into credentials (pure function)
 	allCredentials := parseCredentialsFromDocs(docs)
-	log.Printf("[DEBUG] Parsed %d valid credentials from documents", len(allCredentials))
+	log.Printf("[OAUTH] Parsed %d valid credentials from documents", len(allCredentials))
 
 	// Step 3: Filter out rate-limited credentials (pure function)
 	availableCredentials := filterOutRateLimitedCredentials(allCredentials)
-	log.Printf("[DEBUG] %d credentials available after filtering rate-limited ones", len(availableCredentials))
+	log.Printf("[OAUTH] %d credentials available after filtering rate-limited ones", len(availableCredentials))
 
 	if len(availableCredentials) == 0 {
 		return nil, fmt.Errorf("no available credentials found - all credentials are rate-limited")
@@ -129,33 +129,33 @@ func (store *OAuthStore) GetValidCredentials() (*OAuthCredentials, error) {
 	// Step 4: Pick random credential from available pool (pure function)
 	credentials, err := pickRandomCredential(availableCredentials)
 	if err != nil {
-		log.Printf("[DEBUG] Failed to pick random credential: %v", err)
+		log.Printf("[OAUTH] Failed to pick random credential: %v", err)
 		return nil, fmt.Errorf("failed to pick random credential: %w", err)
 	}
-	log.Printf("[DEBUG] Picked credential: account=%s, expires=%s", 
+	log.Printf("[OAUTH] Picked credential: account=%s, expires=%s", 
 		credentials.AccountUUID, credentials.ExpiresAt.Format(time.RFC3339))
 
 	// Step 5: Check if credential is expired and refresh if needed
 	now := time.Now()
 	if credentials.ExpiresAt.After(now) {
-		log.Printf("[DEBUG] Credential is still valid, returning without refresh")
+		log.Printf("[OAUTH] Credential is still valid, returning without refresh")
 		return credentials, nil
 	}
-	log.Printf("[DEBUG] Credential is expired (expires=%s, now=%s), refreshing...", 
+	log.Printf("[OAUTH] Credential is expired (expires=%s, now=%s), refreshing...", 
 		credentials.ExpiresAt.Format(time.RFC3339), now.Format(time.RFC3339))
 
 	refresher := NewOAuthRefresher(store)
 	refreshedCredentials, err := refresher.RefreshCredentials(credentials)
 	if err != nil {
-		log.Printf("[DEBUG] Failed to refresh credentials: %v", err)
+		log.Printf("[OAUTH] Failed to refresh credentials: %v", err)
 		return nil, fmt.Errorf("failed to refresh OAuth credentials: %w", err)
 	}
-	log.Printf("[DEBUG] Successfully refreshed credentials: account=%s, new_expires=%s", 
+	log.Printf("[OAUTH] Successfully refreshed credentials: account=%s, new_expires=%s", 
 		refreshedCredentials.AccountUUID, refreshedCredentials.ExpiresAt.Format(time.RFC3339))
 
 	// Verify the refreshed credentials are actually valid
 	if refreshedCredentials.ExpiresAt.Before(time.Now()) {
-		log.Printf("[DEBUG] ERROR: Refreshed credentials are still expired!")
+		log.Printf("[OAUTH] ERROR: Refreshed credentials are still expired!")
 		return nil, fmt.Errorf("refreshed credentials are still expired")
 	}
 
@@ -184,20 +184,19 @@ func (store *OAuthStore) GetUserTokenBinding(userID string) (*UserTokenBinding, 
 }
 
 func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding, error) {
-	log.Printf("[DEBUG] GetValidTokenForUser called for user: %s", userID)
+	log.Printf("[OAUTH] GetValidTokenForUser called for user: %s", userID)
 	
 	// Check cache first for valid tokens
 	if cached, exists := store.userTokenCache.Get(userID); exists {
-		log.Printf("[DEBUG] Found cached token for user %s, expires at: %s, current time: %s", 
+		log.Printf("[OAUTH] Found cached token for user %s, expires at: %s, current time: %s", 
 			userID, cached.ExpiresAt.Format(time.RFC3339), time.Now().Format(time.RFC3339))
 		if cached.ExpiresAt.After(time.Now()) {
-			log.Printf("[DEBUG] Using cached token for user %s (still valid)", userID)
+			log.Printf("[OAUTH] Using cached token for user %s (still valid)", userID)
 			return cached, nil
 		}
-		log.Printf("[DEBUG] Cached token for user %s is expired, removing from cache", userID)
-		store.userTokenCache.Remove(userID)
+		log.Printf("[OAUTH] Cached token for user %s is expired, getting fresh token", userID)
 	} else {
-		log.Printf("[DEBUG] No cached token found for user %s", userID)
+		log.Printf("[OAUTH] No cached token found for user %s", userID)
 	}
 
 	ctx := context.Background()
@@ -211,15 +210,15 @@ func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding,
 
 		// Case 1: No binding exists for user - create new binding
 		if txErr != nil {
-			log.Printf("[DEBUG] No binding exists for user %s (error: %v), creating new binding", userID, txErr)
+			log.Printf("[OAUTH] No binding exists for user %s (error: %v), creating new binding", userID, txErr)
 			// Any error here means document doesn't exist (NotFound) or other transient issues
 			// In either case, we'll create a new binding with fresh credentials
 			validCreds, credsErr := store.GetValidCredentials()
 			if credsErr != nil {
-				log.Printf("[DEBUG] Failed to get valid credentials for user %s: %v", userID, credsErr)
+				log.Printf("[OAUTH] Failed to get valid credentials for user %s: %v", userID, credsErr)
 				return fmt.Errorf("failed to get valid token for new user binding: %w", credsErr)
 			}
-			log.Printf("[DEBUG] Got valid credentials for new binding: account=%s, expires=%s", 
+			log.Printf("[OAUTH] Got valid credentials for new binding: account=%s, expires=%s", 
 				validCreds.AccountUUID, validCreds.ExpiresAt.Format(time.RFC3339))
 
 			binding = &UserTokenBinding{
@@ -240,29 +239,29 @@ func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding,
 
 		// Case 2: Binding exists - parse and check validity
 		if parseErr := doc.DataTo(&binding); parseErr != nil {
-			log.Printf("[DEBUG] Failed to parse binding for user %s: %v", userID, parseErr)
+			log.Printf("[OAUTH] Failed to parse binding for user %s: %v", userID, parseErr)
 			return fmt.Errorf("failed to parse user token binding: %w", parseErr)
 		}
-		log.Printf("[DEBUG] Found existing binding for user %s: account=%s, expires=%s", 
+		log.Printf("[OAUTH] Found existing binding for user %s: account=%s, expires=%s", 
 			userID, binding.AccountUUID, binding.ExpiresAt.Format(time.RFC3339))
 
 		now := time.Now()
 		if binding.ExpiresAt.After(now) {
 			// Token is still valid, use as-is
-			log.Printf("[DEBUG] Existing binding for user %s is still valid", userID)
+			log.Printf("[OAUTH] Existing binding for user %s is still valid", userID)
 			resultBinding = binding
 			store.userTokenCache.Add(resultBinding.UserID, resultBinding)
 			return nil
 		}
-		log.Printf("[DEBUG] Existing binding for user %s is expired, getting fresh credentials", userID)
+		log.Printf("[OAUTH] Existing binding for user %s is expired, getting fresh credentials", userID)
 
 		// Case 3: Binding exists but token is expired - refresh with new credentials
 		freshCreds, credsErr := store.GetValidCredentials()
 		if credsErr != nil {
-			log.Printf("[DEBUG] Failed to get fresh credentials for user %s: %v", userID, credsErr)
+			log.Printf("[OAUTH] Failed to get fresh credentials for user %s: %v", userID, credsErr)
 			return fmt.Errorf("failed to get fresh token for user %s: %w", userID, credsErr)
 		}
-		log.Printf("[DEBUG] Got fresh credentials for user %s: account=%s, expires=%s", 
+		log.Printf("[OAUTH] Got fresh credentials for user %s: account=%s, expires=%s", 
 			userID, freshCreds.AccountUUID, freshCreds.ExpiresAt.Format(time.RFC3339))
 
 		binding.AccessToken = freshCreds.AccessToken

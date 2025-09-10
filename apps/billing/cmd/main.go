@@ -166,6 +166,13 @@ func main() {
 			return
 		}
 
+		// Get upstream account UUID from header
+		upstreamAccountUUID := r.Header.Get("X-Upstream-Account-UUID")
+		if upstreamAccountUUID == "" {
+			http.Error(w, "X-Upstream-Account-UUID header is required", http.StatusBadRequest)
+			return
+		}
+
 		// Read raw response body (Claude API response)
 		responseBody, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -196,7 +203,7 @@ func main() {
 		}
 
 		// Use ProcessRequest with the parsed message
-		err = billingService.ProcessRequest(message, userID, requestID)
+		err = billingService.ProcessRequest(message, userID, upstreamAccountUUID, requestID)
 		if err != nil {
 			log.Printf("Error processing billing request for user %s: %v", userID, err)
 			http.Error(w, "Error processing billing", http.StatusInternalServerError)
