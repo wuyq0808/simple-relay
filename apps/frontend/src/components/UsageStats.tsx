@@ -193,10 +193,10 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   {/* Stats */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#333', marginBottom: '8px' }}>
                     <span>
-                      {Math.floor(pointsToDisplayPoints(pointsLimitInfo.pointsLimit))} {t('usage.points', 'Points')}
+                      {pointsToDisplayPoints(pointsLimitInfo.pointsLimit).toFixed(2)} {t('usage.points', 'Points')}
                     </span>
                     <span style={{ color: pointsLimitInfo.remaining < 0 ? '#dc3545' : (pointsLimitInfo.remaining / pointsLimitInfo.pointsLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
-                      {pointsLimitInfo.remaining >= 0 ? `${Math.ceil(pointsToDisplayPoints(pointsLimitInfo.remaining))} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(pointsToDisplayPoints(pointsLimitInfo.remaining))}`}
+                      {pointsLimitInfo.remaining >= 0 ? `${pointsToDisplayPoints(pointsLimitInfo.remaining).toFixed(2)} ${t('usage.remaining', 'remaining')}` : `${pointsToDisplayPoints(pointsLimitInfo.remaining).toFixed(2)}`}
                     </span>
                   </div>
                   
@@ -295,7 +295,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   <td className="stats-cell">
                     {Object.entries(group.models).map(([modelName, modelStats], index) => (
                       <span key={modelName}>
-                        {Math.round(modelStats.totalPoints)}
+                        {modelStats.totalPoints.toFixed(2)}
                         {index < Object.entries(group.models).length - 1 && <br />}
                       </span>
                     ))}
