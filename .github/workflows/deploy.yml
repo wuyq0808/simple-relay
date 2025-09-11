@@ -163,11 +163,15 @@ jobs:
         docker build --build-arg VITE_BACKEND_URL="${{ env.BACKEND_URL }}" -t "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}" .
         docker push "${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/simple-relay/simple-frontend:${{ github.sha }}"
 
+  e2e-tests:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/backend-e2e-tests-reusable.yml
+
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: [terraform-plan, docker-build-backend, docker-build-billing, docker-build-frontend]
+    needs: [terraform-plan, docker-build-backend, docker-build-billing, docker-build-frontend, e2e-tests]
     environment: ${{ inputs.deploy_environment }}
     concurrency: 
       group: deploy-${{ inputs.deploy_environment }}

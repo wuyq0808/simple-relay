@@ -363,6 +363,84 @@ app.get('/api/points-limit', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/debug-hourly-aggregates', requireAuth, async (req, res) => {
+  try {
+    const email = req.signedCookies.user_email;
+    
+    // Calculate today's usage window (8pm-8pm UTC)
+    const now = new Date();
+    let windowStart: Date;
+    if (now.getUTCHours() >= 20) {
+      windowStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 20, 0, 0, 0);
+    } else {
+      const yesterday = new Date(now);
+      yesterday.setUTCDate(now.getUTCDate() - 1);
+      windowStart = new Date(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), yesterday.getUTCDate(), 20, 0, 0, 0);
+    }
+    const windowEnd = new Date(windowStart);
+    windowEnd.setUTCHours(windowStart.getUTCHours() + 24);
+
+    // Get raw documents
+    const collection = UsageDatabase['db'].collection('hourly_aggregates');
+    const snapshot = await collection
+      .where('user_id', '==', email)
+      .where('hour', '>=', windowStart)
+      .where('hour', '<', windowEnd)
+      .get();
+
+    const documents = [];
+    let totalPointsSum = 0;
+    let modelPointsSum = 0;
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const hour = data.hour?.toDate() || new Date(data.hour);
+      
+      // Extract model usage fields
+      const modelUsageFields = {};
+      let docModelSum = 0;
+      
+      for (const [key, value] of Object.entries(data)) {
+        if (key.startsWith('model_usage.') && key.endsWith('.total_points')) {
+          const model = key.split('.')[1];
+          modelUsageFields[model] = value;
+          docModelSum += value;
+        }
+      }
+      
+      const docData = {
+        id: doc.id,
+        hour: hour.toISOString(),
+        simple_total_points: data.total_points || 0,
+        model_usage_fields: modelUsageFields,
+        model_points_sum: docModelSum,
+        difference: (data.total_points || 0) - docModelSum,
+        raw_data: data
+      };
+      
+      documents.push(docData);
+      totalPointsSum += (data.total_points || 0);
+      modelPointsSum += docModelSum;
+    });
+
+    res.json({
+      user_email: email,
+      window_start: windowStart.toISOString(),
+      window_end: windowEnd.toISOString(),
+      documents: documents,
+      summary: {
+        total_simple_points: totalPointsSum,
+        total_model_points: modelPointsSum,
+        overall_difference: totalPointsSum - modelPointsSum,
+        is_consistent: Math.abs(totalPointsSum - modelPointsSum) < 0.001
+      }
+    });
+  } catch (error) {
+    console.error('Error debugging hourly aggregates:', error);
+    res.status(500).json({ error: 'Failed to debug hourly aggregates' });
+  }
+});
+
 app.get('/api/config', async (_req, res) => {
   try {
     // Get public configuration values that can be shared with frontend

@@ -254,13 +254,6 @@ func main() {
 }
 
 func sendToBillingService(reader io.Reader, resp *http.Response, config *Config, userId string, accountUUID string) {
-	// Get identity token for service-to-service authentication
-	idToken, err := getIdentityToken(config.BillingServiceURL)
-	if err != nil {
-		log.Printf("Error getting identity token: %v", err)
-		return
-	}
-
 	// Stream the response body directly from pipe reader
 	req, err := http.NewRequest("POST", config.BillingServiceURL, reader)
 	if err != nil {
@@ -268,7 +261,16 @@ func sendToBillingService(reader io.Reader, resp *http.Response, config *Config,
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+idToken)
+	
+	// Only get identity token if not disabled (for testing)
+	if os.Getenv("DISABLE_IDENTITY_TOKEN") != "true" {
+		idToken, err := getIdentityToken(config.BillingServiceURL)
+		if err != nil {
+			log.Printf("Error getting identity token: %v", err)
+			return
+		}
+		req.Header.Set("Authorization", "Bearer "+idToken)
+	}
 	req.Header.Set("X-User-ID", userId)
 	req.Header.Set("X-Upstream-Account-UUID", accountUUID)
 

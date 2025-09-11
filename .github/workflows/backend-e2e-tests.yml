@@ -1,0 +1,13 @@
+name: Backend E2E Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/backend-e2e-tests.yml'
+      - '.github/workflows/backend-e2e-tests-reusable.yml'
+
+jobs:
+  e2e-tests:
+    uses: ./.github/workflows/backend-e2e-tests-reusable.yml
