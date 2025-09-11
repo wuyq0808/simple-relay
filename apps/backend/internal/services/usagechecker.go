@@ -138,7 +138,7 @@ func (uc *UsageChecker) getCurrentDailyUsage(ctx context.Context, userID string)
 	var totalPoints int
 	for _, doc := range docs {
 		data := doc.Data()
-		if points, ok := data["total_points"].(int64); ok {
+		if points, ok := data["total_points"].(float64); ok {
 			totalPoints += int(points)
 		}
 	}
