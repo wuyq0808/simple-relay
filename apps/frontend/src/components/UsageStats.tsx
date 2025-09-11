@@ -103,14 +103,14 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       groups[day].models[usage.Model].outputTokens += usage.OutputTokens;
       groups[day].models[usage.Model].cacheReadTokens += usage.CacheReadTokens || 0;
       groups[day].models[usage.Model].cacheWriteTokens += usage.CacheWriteTokens || 0;
-      groups[day].models[usage.Model].totalPoints += usage.TotalPoints;
+      groups[day].models[usage.Model].totalPoints += pointsToDisplayPoints(usage.TotalPoints);
       
       groups[day].totalRequests += usage.Requests;
       groups[day].totalInputTokens += usage.InputTokens;
       groups[day].totalOutputTokens += usage.OutputTokens;
       groups[day].totalCacheReadTokens += usage.CacheReadTokens || 0;
       groups[day].totalCacheWriteTokens += usage.CacheWriteTokens || 0;
-      groups[day].totalPoints += usage.TotalPoints;
+      groups[day].totalPoints += pointsToDisplayPoints(usage.TotalPoints);
     });
     
     return Object.values(groups).sort((a, b) => b.day.localeCompare(a.day));
