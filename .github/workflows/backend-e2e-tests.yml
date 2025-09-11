@@ -25,9 +25,9 @@ jobs:
 
       - name: Start Firestore Emulator
         run: |
-          # Use docker-compose from our test directory
+          # Use docker compose from our test directory
           cd apps/backend/e2e_test
-          docker-compose -f docker-compose.test.yml up -d
+          docker compose -f docker-compose.test.yml up -d
           
           # Wait for emulator to be ready
           echo "Waiting for Firestore emulator to start..."
@@ -38,7 +38,7 @@ jobs:
             fi
             if [ $i -eq 30 ]; then
               echo "Firestore emulator failed to start"
-              docker-compose -f docker-compose.test.yml logs
+              docker compose -f docker-compose.test.yml logs
               exit 1
             fi
             sleep 1
@@ -63,7 +63,7 @@ jobs:
         if: always()
         run: |
           cd apps/backend/e2e_test
-          docker-compose -f docker-compose.test.yml down
+          docker compose -f docker-compose.test.yml down
 
       - name: Upload test logs on failure
         if: failure()
