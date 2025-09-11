@@ -12,14 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     name: E2E Integration Tests
 
-    services:
-      firestore:
-        image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
-        ports:
-          - 8080:8080
-        env:
-          FIRESTORE_PROJECT_ID: test-project
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,9 +25,12 @@ jobs:
 
       - name: Start Firestore Emulator
         run: |
-          docker exec ${{ job.services.firestore.id }} gcloud emulators firestore start --host-port=0.0.0.0:8080 --project=test-project &
-          sleep 5
+          # Use docker-compose from our test directory
+          cd apps/backend/e2e_test
+          docker-compose -f docker-compose.test.yml up -d
+          
           # Wait for emulator to be ready
+          echo "Waiting for Firestore emulator to start..."
           for i in {1..30}; do
             if curl -s http://localhost:8080 > /dev/null 2>&1; then
               echo "Firestore emulator is ready"
@@ -43,6 +38,7 @@ jobs:
             fi
             if [ $i -eq 30 ]; then
               echo "Firestore emulator failed to start"
+              docker-compose -f docker-compose.test.yml logs
               exit 1
             fi
             sleep 1
@@ -62,6 +58,12 @@ jobs:
           
           # Run E2E tests
           go test -v ./e2e_test/... -run "TestE2E" -timeout 60s
+
+      - name: Stop Firestore Emulator
+        if: always()
+        run: |
+          cd apps/backend/e2e_test
+          docker-compose -f docker-compose.test.yml down
 
       - name: Upload test logs on failure
         if: failure()
