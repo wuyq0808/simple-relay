@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loading from './Loading';
-import { pointsToDisplayPoints } from '../../services/points-converter.js';
 
 interface HourlyUsage {
   Hour: string;
@@ -103,14 +102,14 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
       groups[day].models[usage.Model].outputTokens += usage.OutputTokens;
       groups[day].models[usage.Model].cacheReadTokens += usage.CacheReadTokens || 0;
       groups[day].models[usage.Model].cacheWriteTokens += usage.CacheWriteTokens || 0;
-      groups[day].models[usage.Model].totalPoints += pointsToDisplayPoints(usage.TotalPoints);
+      groups[day].models[usage.Model].totalPoints += usage.TotalPoints;
       
       groups[day].totalRequests += usage.Requests;
       groups[day].totalInputTokens += usage.InputTokens;
       groups[day].totalOutputTokens += usage.OutputTokens;
       groups[day].totalCacheReadTokens += usage.CacheReadTokens || 0;
       groups[day].totalCacheWriteTokens += usage.CacheWriteTokens || 0;
-      groups[day].totalPoints += pointsToDisplayPoints(usage.TotalPoints);
+      groups[day].totalPoints += usage.TotalPoints;
     });
     
     return Object.values(groups).sort((a, b) => b.day.localeCompare(a.day));
@@ -193,10 +192,10 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   {/* Stats */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#333', marginBottom: '8px' }}>
                     <span>
-                      {pointsToDisplayPoints(pointsLimitInfo.pointsLimit).toFixed(2)} {t('usage.points', 'Points')}
+                      {Math.round(pointsLimitInfo.pointsLimit)} {t('usage.points', 'Points')}
                     </span>
                     <span style={{ color: pointsLimitInfo.remaining < 0 ? '#dc3545' : (pointsLimitInfo.remaining / pointsLimitInfo.pointsLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
-                      {pointsLimitInfo.remaining >= 0 ? `${pointsToDisplayPoints(pointsLimitInfo.remaining).toFixed(2)} ${t('usage.remaining', 'remaining')}` : `${pointsToDisplayPoints(pointsLimitInfo.remaining).toFixed(2)}`}
+                      {pointsLimitInfo.remaining >= 0 ? `${Math.round(pointsLimitInfo.remaining)} ${t('usage.remaining', 'remaining')}` : `${Math.round(pointsLimitInfo.remaining)}`}
                     </span>
                   </div>
                   
@@ -295,7 +294,7 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   <td className="stats-cell">
                     {Object.entries(group.models).map(([modelName, modelStats], index) => (
                       <span key={modelName}>
-                        {modelStats.totalPoints.toFixed(2)}
+                        {Math.round(modelStats.totalPoints)}
                         {index < Object.entries(group.models).length - 1 && <br />}
                       </span>
                     ))}

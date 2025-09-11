@@ -52,7 +52,7 @@ func (uc *UsageChecker) cleanupExpiredEntry(userID string) *UsageCacheEntry {
 // calculateRemainingPointsFromDB calculates remaining points by querying database
 func (uc *UsageChecker) calculateRemainingPointsFromDB(ctx context.Context, userID string) (int, error) {
 	// Get user's points limit (defaults to 0 if not set)
-	// This is stored as internal points (cost * 1,000,000) in the database
+	// Points are stored as cost * 10 in the database
 	pointsLimit, err := uc.pointsLimitService.GetPointsLimit(ctx, userID)
 	if err != nil {
 		return 0, fmt.Errorf("error getting points limit: %w", err)
@@ -64,14 +64,14 @@ func (uc *UsageChecker) calculateRemainingPointsFromDB(ctx context.Context, user
 	}
 
 	// Calculate current 24-hour usage (8pm-8pm UTC window)
-	// This returns points from the database (cost * 1,000,000)
+	// This returns points from the database (cost * 10)
 	currentUsagePoints, err := uc.getCurrentDailyUsage(ctx, userID)
 	if err != nil {
 		return 0, fmt.Errorf("error getting current usage: %w", err)
 	}
 
-	// Both pointsLimit and currentUsagePoints are in internal points (cost * 1,000,000)
-	// Return remaining points in native format
+	// Both pointsLimit and currentUsagePoints are points (cost * 10)
+	// Return remaining points directly
 	remainingPoints := pointsLimit - currentUsagePoints
 
 	return remainingPoints, nil
