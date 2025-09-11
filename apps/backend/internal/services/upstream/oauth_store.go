@@ -284,31 +284,37 @@ func (store *OAuthStore) GetValidTokenForUser(userID string) (*UserTokenBinding,
 }
 
 func (store *OAuthStore) ClearUserTokenBinding(userID string) error {
+	log.Printf("ClearUserTokenBinding called for user %s", userID)
 	ctx := context.Background()
 
 	// Delete from Firestore
 	_, err := store.db.Client().Collection("user_token_bindings").Doc(userID).Delete(ctx)
 	if err != nil {
+		log.Printf("Failed to delete token binding from Firestore for user %s: %v", userID, err)
 		return fmt.Errorf("failed to clear user token binding for %s: %w", userID, err)
 	}
 
 	// Remove from cache after successful database operation
 	store.userTokenCache.Remove(userID)
+	log.Printf("Successfully cleared token binding for user %s", userID)
 
 	return nil
 }
 
 func (store *OAuthStore) SaveRateLimitHeadersByToken(accessToken string, headers map[string]string) error {
+	log.Printf("SaveRateLimitHeadersByToken called with headers: %+v", headers)
 	ctx := context.Background()
 
 	// Find the OAuth token document by access_token
 	query := store.db.Client().Collection("oauth_tokens").Where("access_token", "==", accessToken).Limit(1)
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
+		log.Printf("Failed to query OAuth tokens: %v", err)
 		return fmt.Errorf("failed to find OAuth token by access token: %w", err)
 	}
 
 	if len(docs) == 0 {
+		log.Printf("No OAuth token found with the given access token")
 		return fmt.Errorf("no OAuth token found with access token")
 	}
 
@@ -319,8 +325,10 @@ func (store *OAuthStore) SaveRateLimitHeadersByToken(accessToken string, headers
 		{Path: "updated_at", Value: time.Now()},
 	})
 	if err != nil {
+		log.Printf("Failed to update OAuth token with rate limit headers: %v", err)
 		return fmt.Errorf("failed to save rate limit headers: %w", err)
 	}
 
+	log.Printf("Successfully saved rate limit headers to OAuth token")
 	return nil
 }
