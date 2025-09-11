@@ -52,14 +52,14 @@ func (uc *UsageChecker) cleanupExpiredEntry(userID string) *UsageCacheEntry {
 // calculateRemainingPointsFromDB calculates remaining points by querying database
 func (uc *UsageChecker) calculateRemainingPointsFromDB(ctx context.Context, userID string) (int, error) {
 	// Get user's points limit (defaults to 0 if not set)
-	// This is stored as display points in the database
-	displayPointsLimit, err := uc.pointsLimitService.GetPointsLimit(ctx, userID)
+	// This is stored as internal points (cost * 1,000,000) in the database
+	pointsLimit, err := uc.pointsLimitService.GetPointsLimit(ctx, userID)
 	if err != nil {
 		return 0, fmt.Errorf("error getting points limit: %w", err)
 	}
 
 	// If limit is 0, return 0 directly (no usage allowed) - don't cache
-	if displayPointsLimit == 0 {
+	if pointsLimit == 0 {
 		return 0, nil
 	}
 
@@ -70,14 +70,11 @@ func (uc *UsageChecker) calculateRemainingPointsFromDB(ctx context.Context, user
 		return 0, fmt.Errorf("error getting current usage: %w", err)
 	}
 
-	// Convert display points limit to internal points for comparison
-	limitPoints := displayPointsLimit * 10000
+	// Both pointsLimit and currentUsagePoints are in internal points (cost * 1,000,000)
+	// Return remaining points in native format
+	remainingPoints := pointsLimit - currentUsagePoints
 
-	// Calculate remaining points, then convert back to display points
-	remainingPoints := limitPoints - currentUsagePoints
-	remainingDisplayPoints := remainingPoints / 10000
-
-	return remainingDisplayPoints, nil
+	return remainingPoints, nil
 }
 
 // refreshCacheInBackground updates cache entry in background
