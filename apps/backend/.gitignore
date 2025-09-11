@@ -6,6 +6,7 @@ firestore-export/
 .env.local
 
 # Go build artifacts  
+bin/
 *.exe
 *.exe~
 *.dll
@@ -13,6 +14,7 @@ firestore-export/
 *.dylib
 *.test
 *.out
+coverage.*
 
 # Go vendor directory
 vendor/

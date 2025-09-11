@@ -1,0 +1,73 @@
+name: Backend E2E Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/backend-e2e-tests.yml'
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    name: E2E Integration Tests
+
+    services:
+      firestore:
+        image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+        ports:
+          - 8080:8080
+        env:
+          FIRESTORE_PROJECT_ID: test-project
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20'
+          cache: true
+          cache-dependency-path: apps/backend/go.sum
+
+      - name: Start Firestore Emulator
+        run: |
+          docker exec ${{ job.services.firestore.id }} gcloud emulators firestore start --host-port=0.0.0.0:8080 --project=test-project &
+          sleep 5
+          # Wait for emulator to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8080 > /dev/null 2>&1; then
+              echo "Firestore emulator is ready"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Firestore emulator failed to start"
+              exit 1
+            fi
+            sleep 1
+          done
+
+      - name: Run E2E Tests
+        working-directory: ./apps/backend
+        env:
+          FIRESTORE_EMULATOR_HOST: localhost:8080
+          GCP_PROJECT_ID: test-project
+          API_SECRET_KEY: test-secret-key
+          FIRESTORE_DATABASE_NAME: (default)
+          DISABLE_IDENTITY_TOKEN: true
+        run: |
+          # Build the backend binary
+          go build -o bin/backend-test cmd/main.go
+          
+          # Run E2E tests
+          go test -v ./e2e_test/... -run "TestE2E" -timeout 60s
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            apps/backend/bin/
+            apps/backend/e2e_test/
