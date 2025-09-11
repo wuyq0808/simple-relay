@@ -19,26 +19,6 @@ jobs:
           cache: true
           cache-dependency-path: apps/backend/go.sum
 
-      - name: Cache Firestore Docker Image
-        uses: actions/cache@v4
-        id: cache-firestore
-        with:
-          path: /tmp/firestore-emulator.tar
-          key: firestore-emulator-${{ runner.os }}-gcr.io-google.com-cloudsdktool-cloud-sdk-emulators
-        
-      - name: Load cached Docker image
-        if: steps.cache-firestore.outputs.cache-hit == 'true'
-        run: |
-          echo "Loading cached Firestore emulator image..."
-          docker load -i /tmp/firestore-emulator.tar
-        
-      - name: Pull and cache Docker image
-        if: steps.cache-firestore.outputs.cache-hit != 'true'
-        run: |
-          echo "Pulling and caching Firestore emulator image..."
-          docker pull gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
-          docker save gcr.io/google.com/cloudsdktool/cloud-sdk:emulators -o /tmp/firestore-emulator.tar
-
       - name: Start Firestore Emulator
         run: |
           # Use docker compose from our test directory
