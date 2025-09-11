@@ -195,39 +195,14 @@ func main() {
 
 	// Intercept response for billing and 429 handling
 	proxy.ModifyResponse = func(resp *http.Response) error {
+		// Log all non-200 responses with body
+		if resp.StatusCode != http.StatusOK {
+			logNon200Response(resp)
+		}
+
 		// Handle rate limit responses
 		if resp.StatusCode == http.StatusTooManyRequests {
-			accessToken := resp.Request.Context().Value("accessToken").(string)
-			userId := resp.Request.Context().Value("userId").(string)
-
-			// Capture all headers from the 429 response
-			headers := make(map[string]string)
-			for key, values := range resp.Header {
-				if len(values) > 0 {
-					headers[key] = values[0]
-				}
-			}
-
-			// Return 529 (overloaded) to client instead of 429
-			resp.StatusCode = 529
-			resp.Status = messages.ClientErrorMessages.TokenOverloaded
-
-			// Clear all headers from the response
-			for key := range resp.Header {
-				resp.Header.Del(key)
-			}
-
-			go func() {
-				// Save headers to the OAuth token
-				if err := oauthStore.SaveRateLimitHeadersByToken(accessToken, headers); err != nil {
-					log.Printf("Failed to save rate limit headers: %v", err)
-				}
-
-				// Clear the user token binding so they get a fresh token next time
-				if err := oauthStore.ClearUserTokenBinding(userId); err != nil {
-					log.Printf("Failed to clear user token binding for %s: %v", userId, err)
-				}
-			}()
+			handleRateLimitResponse(resp, oauthStore)
 		}
 
 		if strings.Contains(resp.Request.URL.Path, "/messages") {
@@ -328,6 +303,62 @@ func addOAuthBetaHeader(req *http.Request) {
 	} else {
 		req.Header.Set("anthropic-beta", oauthBetaFlag)
 	}
+}
+
+// handleRateLimitResponse handles 429 rate limit responses by logging, converting to 529, and cleaning up tokens
+func handleRateLimitResponse(resp *http.Response, oauthStore *upstream.OAuthStore) {
+	accessToken := resp.Request.Context().Value("accessToken").(string)
+	userId := resp.Request.Context().Value("userId").(string)
+	log.Printf("[429] Rate limit for user %s, clearing token and returning 529", userId)
+
+	// Capture all headers from the 429 response
+	headers := make(map[string]string)
+	for key, values := range resp.Header {
+		if len(values) > 0 {
+			headers[key] = values[0]
+		}
+	}
+
+	// Return 529 (overloaded) to client instead of 429
+	resp.StatusCode = 529
+	resp.Status = messages.ClientErrorMessages.TokenOverloaded
+
+	// Clear all headers from the response
+	for key := range resp.Header {
+		resp.Header.Del(key)
+	}
+
+	go func() {
+		// Save headers to the OAuth token
+		if err := oauthStore.SaveRateLimitHeadersByToken(accessToken, headers); err != nil {
+			log.Printf("[429] Failed to save rate limit headers: %v", err)
+		}
+
+		// Clear the user token binding so they get a fresh token next time
+		if err := oauthStore.ClearUserTokenBinding(userId); err != nil {
+			log.Printf("[429] Failed to clear user token binding for %s: %v", userId, err)
+		}
+	}()
+}
+
+// logNon200Response logs non-200 responses with their body content
+func logNon200Response(resp *http.Response) {
+	// Read the response body for logging
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[RESPONSE] Non-200 response: %d %s for %s %s (failed to read body: %v)", resp.StatusCode, resp.Status, resp.Request.Method, resp.Request.URL.Path, err)
+		return
+	}
+	
+	// Log with truncated body (first 500 chars to avoid huge logs)
+	bodyStr := string(bodyBytes)
+	if len(bodyStr) > 500 {
+		bodyStr = bodyStr[:500] + "..."
+	}
+	log.Printf("[RESPONSE] Non-200 response: %d %s for %s %s - Body: %s", resp.StatusCode, resp.Status, resp.Request.Method, resp.Request.URL.Path, bodyStr)
+	
+	// Restore the body for downstream consumption
+	resp.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 }
 
 // extractUserIdFromAPIKey extracts user ID from API key in Authorization header
