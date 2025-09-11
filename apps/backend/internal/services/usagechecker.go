@@ -139,7 +139,6 @@ func (uc *UsageChecker) getCurrentDailyUsage(ctx context.Context, userID string)
 	for _, doc := range docs {
 		data := doc.Data()
 		if points, ok := data["total_points"].(int64); ok {
-			// Database stores points (cost * 1,000,000)
 			totalPoints += int(points)
 		}
 	}
