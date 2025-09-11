@@ -192,10 +192,10 @@ export default function UsageStats({ userEmail, onMessage }: UsageStatsProps) {
                   {/* Stats */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: '#333', marginBottom: '8px' }}>
                     <span>
-                      {Math.floor(pointsLimitInfo.pointsLimit)} {t('usage.points', 'Points')}
+                      {Math.round(pointsLimitInfo.pointsLimit)} {t('usage.points', 'Points')}
                     </span>
                     <span style={{ color: pointsLimitInfo.remaining < 0 ? '#dc3545' : (pointsLimitInfo.remaining / pointsLimitInfo.pointsLimit < 0.2) ? '#dc3545' : '#28a745', fontWeight: '600' }}>
-                      {pointsLimitInfo.remaining >= 0 ? `${Math.ceil(pointsLimitInfo.remaining)} ${t('usage.remaining', 'remaining')}` : `${Math.ceil(pointsLimitInfo.remaining)}`}
+                      {pointsLimitInfo.remaining >= 0 ? `${Math.round(pointsLimitInfo.remaining)} ${t('usage.remaining', 'remaining')}` : `${Math.round(pointsLimitInfo.remaining)}`}
                     </span>
                   </div>
                   

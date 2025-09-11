@@ -122,7 +122,7 @@ echo "$RESPONSE" | jq -r '
     hour: .hour.timestampValue,
     account: .upstream_account_uuid.stringValue,
     requests: (.total_requests.integerValue // 0 | tonumber),
-    points: (.total_points.integerValue // .total_points.doubleValue // 0 | tonumber),
+    points: ((.total_points.integerValue // .total_points.doubleValue // 0 | tonumber) | round),
     cost: (.total_cost.doubleValue // 0),
     input_tokens: (.total_input_tokens.integerValue // 0 | tonumber),
     output_tokens: (.total_output_tokens.integerValue // 0 | tonumber)
@@ -201,7 +201,7 @@ EOF
       [.[] | select(.document) | .document.fields | {
         account: .upstream_account_uuid.stringValue,
         requests: (.total_requests.integerValue // 0 | tonumber),
-        points: (.total_points.integerValue // .total_points.doubleValue // 0 | tonumber),
+        points: ((.total_points.integerValue // .total_points.doubleValue // 0 | tonumber) | round),
         cost: (.total_cost.doubleValue // 0),
         input_tokens: (.total_input_tokens.integerValue // 0 | tonumber),
         output_tokens: (.total_output_tokens.integerValue // 0 | tonumber)

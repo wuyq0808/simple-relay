@@ -31,7 +31,7 @@ type UpstreamAccountHourlyAggregate struct {
 	TotalInputTokens     int                   `firestore:"total_input_tokens" json:"total_input_tokens"`
 	TotalOutputTokens    int                   `firestore:"total_output_tokens" json:"total_output_tokens"`
 	TotalCost            float64               `firestore:"total_cost" json:"total_cost"`
-	TotalPoints          int                   `firestore:"total_points" json:"total_points"`
+	TotalPoints          float64               `firestore:"total_points" json:"total_points"`
 	ModelUsage           map[string]ModelStats `firestore:"-" json:"model_usage"`
 	CreatedAt            time.Time             `firestore:"created_at" json:"created_at"`
 	UpdatedAt            time.Time             `firestore:"updated_at" json:"updated_at"`
@@ -45,7 +45,7 @@ type MemoryUpstreamAggregate struct {
 	TotalInputTokens     int                         `json:"total_input_tokens"`
 	TotalOutputTokens    int                         `json:"total_output_tokens"`
 	TotalCost            float64                     `json:"total_cost"`
-	TotalPoints          int                         `json:"total_points"`
+	TotalPoints          float64                     `json:"total_points"`
 	ModelUsage           map[string]MemoryModelStats `json:"model_usage"`
 }
 
@@ -78,7 +78,7 @@ func (uas *UpstreamAggregatorService) AggregateRecords(ctx context.Context, reco
 				TotalInputTokens:    0,
 				TotalOutputTokens:   0,
 				TotalCost:           0.0,
-				TotalPoints:         0,
+				TotalPoints:         0.0,
 				ModelUsage:          make(map[string]MemoryModelStats),
 			}
 			aggregateMap[key] = aggregate

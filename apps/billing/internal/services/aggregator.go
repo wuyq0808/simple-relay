@@ -23,7 +23,7 @@ type HourlyAggregate struct {
 	TotalInputTokens  int       `firestore:"total_input_tokens" json:"total_input_tokens"`
 	TotalOutputTokens int       `firestore:"total_output_tokens" json:"total_output_tokens"`
 	TotalCost         float64   `firestore:"total_cost" json:"total_cost"`
-	TotalPoints       int       `firestore:"total_points" json:"total_points"`
+	TotalPoints       float64   `firestore:"total_points" json:"total_points"`
 	// Note: ModelUsage is stored as flattened fields like "model_usage.{model}.{metric}"
 	// due to atomic increment requirements, not as a nested map
 	ModelUsage map[string]ModelStats `firestore:"-" json:"model_usage"`
@@ -37,7 +37,7 @@ type ModelStats struct {
 	InputTokens  int     `firestore:"input_tokens" json:"input_tokens"`
 	OutputTokens int     `firestore:"output_tokens" json:"output_tokens"`
 	TotalCost    float64 `firestore:"total_cost" json:"total_cost"`
-	TotalPoints  int     `firestore:"total_points" json:"total_points"`
+	TotalPoints  float64 `firestore:"total_points" json:"total_points"`
 }
 
 // MemoryAggregate 内存聚合数据
@@ -50,7 +50,7 @@ type MemoryAggregate struct {
 	TotalCacheReadTokens int                         `json:"total_cache_read_tokens"`
 	TotalCacheWriteTokens int                        `json:"total_cache_write_tokens"`
 	TotalCost            float64                     `json:"total_cost"`
-	TotalPoints          int                         `json:"total_points"`
+	TotalPoints          float64                     `json:"total_points"`
 	ModelUsage           map[string]MemoryModelStats `json:"model_usage"`
 }
 
@@ -62,7 +62,7 @@ type MemoryModelStats struct {
 	CacheReadTokens  int     `json:"cache_read_tokens"`
 	CacheWriteTokens int     `json:"cache_write_tokens"`
 	TotalCost        float64 `json:"total_cost"`
-	TotalPoints      int     `json:"total_points"`
+	TotalPoints      float64 `json:"total_points"`
 }
 
 // MonthlyUsage 月度使用统计
