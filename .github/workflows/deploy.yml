@@ -179,6 +179,10 @@ jobs:
           cache: true
           cache-dependency-path: apps/backend/go.sum
 
+      - name: Cache Docker images
+        uses: jpribyl/action-docker-layer-caching@v0.1.1
+        continue-on-error: true
+
       - name: Start Firestore Emulator
         run: |
           # Use docker compose from our test directory
