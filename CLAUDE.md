@@ -18,6 +18,7 @@ simple-relay-468808
 - `usage_records` - Billing usage records  
 - `hourly_aggregates` - Hourly aggregated billing data
 - `upstream_account_hourly_aggregates` - Hourly aggregated billing data by OAuth account UUID
+- `upstream_account_minute_aggregates` - Minute-level aggregated billing data by OAuth account UUID
 - `user_token_bindings` - User token binding system
 - `app_config` - Application configuration settings
 - `daily_points_limits` - Daily points limits per user (userId, pointsLimit, updateTime)
@@ -70,6 +71,13 @@ simple-relay-468808
 ./scripts/monitor-upstream-accounts.sh --days 1  # Show today's usage
 ./scripts/monitor-upstream-accounts.sh -d simple-relay-db-staging --days 1  # Check staging today
 ./scripts/monitor-upstream-accounts.sh -p simple-relay-468808 -d simple-relay-db-production --days 7  # Production usage
+
+# Monitor upstream OAuth account minute-level usage (for detailed monitoring)
+./scripts/monitor-upstream-minute-accounts.sh --hours 1  # Show last 1 hour (default)
+./scripts/monitor-upstream-minute-accounts.sh --hours 6  # Show last 6 hours
+./scripts/monitor-upstream-minute-accounts.sh --hours 24  # Show last 24 hours
+./scripts/monitor-upstream-minute-accounts.sh -d simple-relay-db-staging --hours 2  # Check staging last 2 hours
+./scripts/monitor-upstream-minute-accounts.sh -p simple-relay-468808 -d simple-relay-db-production --hours 1  # Production minute usage
 ```
 
 ## User Registration Limits
