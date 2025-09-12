@@ -1,7 +1,7 @@
 {
   "app": {
     "title": "AI Fastlane",
-    "tagline": "Fast and simple."
+    "tagline": "Secure, fast, sustainable."
   },
   "auth": {
     "verify": "Verify",
@@ -11,7 +11,7 @@
     "backToSignIn": "← Back to Sign In",
     "signOut": "Sign Out",
     "signedInAs": "Signed in as",
-    "tagline": "Fast and simple",
+    "tagline": "Secure, fast, sustainable",
     "emailPlaceholder": "Enter your email",
     "continue": "Continue",
     "sending": "Sending...",
