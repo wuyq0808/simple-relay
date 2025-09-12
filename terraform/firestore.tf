@@ -110,3 +110,38 @@ resource "google_firestore_index" "upstream_account_hourly_aggregates_account_ho
     order      = "ASCENDING"
   }
 }
+
+# Firestore Index for upstream_account_minute_aggregates collection - supports range queries
+# Document ID format: {upstream_account_uuid}_{minute} makes upstream_account_uuid effectively the partition key
+resource "google_firestore_index" "upstream_account_minute_aggregates_account_minute" {
+  project    = var.project_id
+  database   = google_firestore_database.oauth_database.name
+  collection = "upstream_account_minute_aggregates"
+
+  fields {
+    field_path = "upstream_account_uuid"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "minute"
+    order      = "ASCENDING"
+  }
+}
+
+# Firestore Index for upstream_account_minute_aggregates collection - descending minute order for recent data
+resource "google_firestore_index" "upstream_account_minute_aggregates_account_minute_desc" {
+  project    = var.project_id
+  database   = google_firestore_database.oauth_database.name
+  collection = "upstream_account_minute_aggregates"
+
+  fields {
+    field_path = "upstream_account_uuid"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "minute"
+    order      = "DESCENDING"
+  }
+}
