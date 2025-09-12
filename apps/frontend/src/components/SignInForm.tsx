@@ -15,7 +15,7 @@ export default function SignInForm({ email, loading, onEmailChange, onSubmit }: 
   return (
     <>
       <p className="description">
-        {t('auth.tagline', 'Never fall behind in the AI revolution')}
+        {t('common.tagline', 'Never fall behind in the AI revolution')}
       </p>
 
       <hr className="divider" />
