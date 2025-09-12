@@ -1,7 +1,6 @@
 {
   "app": {
-    "title": "AI Fastlane",
-    "tagline": "Secure, fast, sustainable."
+    "title": "AI Fastlane"
   },
   "auth": {
     "verify": "Verify",
@@ -11,7 +10,6 @@
     "backToSignIn": "← Back to Sign In",
     "signOut": "Sign Out",
     "signedInAs": "Signed in as",
-    "tagline": "Fast, secure, sustainable",
     "emailPlaceholder": "Enter your email",
     "continue": "Continue",
     "sending": "Sending...",
@@ -94,6 +92,7 @@
     "close": "Close",
     "copy": "Copy",
     "copied": "Copied!",
-    "error": "System error, please retry later"
+    "error": "System error, please retry later",
+    "tagline": "Fast, secure, sustainable"
   }
 }

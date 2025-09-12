@@ -50,7 +50,7 @@ export default function Dashboard({ userEmail, onMessage }: DashboardProps) {
             <QRCodeIcon />
           </h1>
           <p className="tagline">
-            {t('app.tagline')}
+            {t('common.tagline')}
           </p>
           
           <nav className="tab-navigation">

@@ -1,7 +1,6 @@
 {
   "app": {
-    "title": "AI快线",
-    "tagline": "快速，安全，可持续"
+    "title": "AI快线"
   },
   "auth": {
     "verify": "验证",
@@ -11,7 +10,6 @@
     "backToSignIn": "← 返回登录",
     "signOut": "退出登录",
     "signedInAs": "当前登录",
-    "tagline": "快速，安全，可持续",
     "emailPlaceholder": "请输入您的邮箱",
     "continue": "继续",
     "sending": "发送中...",
@@ -94,6 +92,7 @@
     "close": "关闭",
     "copy": "复制",
     "copied": "已复制！",
-    "error": "系统出错，请稍后再试"
+    "error": "系统出错，请稍后再试",
+    "tagline": "快速，安全，可持续"
   }
 }
